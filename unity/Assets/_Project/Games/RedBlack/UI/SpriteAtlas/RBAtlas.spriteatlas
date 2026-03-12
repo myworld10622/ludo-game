@@ -1,0 +1,175 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: RBAtlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: d8d56eb025cdf3942800aaa49679adf3, type: 3}
+    - {fileID: 21300000, guid: 1a216fc26232f5c42a3038c11d57b974, type: 3}
+    - {fileID: 21300000, guid: 6108621f75a71984faac821b6bb1f8ba, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 9729ecd002646454991a752432288cc2, type: 3}
+    - {fileID: 21300000, guid: d3c170a12c1c63f46ad685c2e40d25b6, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 5d9338895635c544f82d127616ebae3b, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: d7f5d7f0f2ee632419de58a5de84e2e2, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: cb56cfd58fb4f42418ca61b6835b207b, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: aeff917c90dd4f543a702a8d73310bb0, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: d7c24d0d8fd7dca4bbcc71cc851ffa33, type: 3}
+    - {fileID: 21300000, guid: b9115aba3f4dc7546b983646b17701c2, type: 3}
+    - {fileID: 21300000, guid: 610d71be58e3ae041b8ec3c0a6e444c9, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 7718bd61be233104d86a5f56c86f19a8, type: 3}
+    - {fileID: 21300000, guid: 1c48f1d6775e2e64ab0adc4580fac901, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 883ed328b35a2104687465ee49d3a27c, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: f49517f5556532a42b34531811bdcef2, type: 3}
+    - {fileID: 21300000, guid: 98c0604740c96b445af5610185ba60c2, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: b104a05890b5b7340a3c93a18f36c4dc, type: 3}
+    - {fileID: 21300000, guid: 0a3fd70988fc9984bbc59ea375b3508e, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: a854e2e6d5872d647af1b2e20b8bd5a2, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: 83bb630b68be3874b94e4a7c8df9a4f1, type: 3}
+    - {fileID: 21300000, guid: c8c2252f79b05e743ae85c3d56bde996, type: 3}
+    - {fileID: 21300000, guid: 5c3dd3aabbf13894abc44e25f934d245, type: 3}
+    - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+    - {fileID: 21300000, guid: ab36c9adbc979604ca42ac31ba3034ae, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - d8d56eb025cdf3942800aaa49679adf3: 21300000
+    - 9729ecd002646454991a752432288cc2: 21300000
+    - d7f5d7f0f2ee632419de58a5de84e2e2: 21300000
+    - 7718bd61be233104d86a5f56c86f19a8: 21300000
+    - d3c170a12c1c63f46ad685c2e40d25b6: 21300000
+    - eef351f103924e440be7f033e0780c43: 21300000
+    - 1a216fc26232f5c42a3038c11d57b974: 21300000
+    - 354a69435a26da74b89c180b1af8b8bf: 21300000
+    - cb56cfd58fb4f42418ca61b6835b207b: 21300000
+    - f49517f5556532a42b34531811bdcef2: 21300000
+    - 1c48f1d6775e2e64ab0adc4580fac901: 21300000
+    - a854e2e6d5872d647af1b2e20b8bd5a2: 21300000
+    - 98c0604740c96b445af5610185ba60c2: 21300000
+    - 883ed328b35a2104687465ee49d3a27c: 21300000
+    - b104a05890b5b7340a3c93a18f36c4dc: 21300000
+    - 95536a7810238db4abb5c02d9b700c92: 21300000
+    - 0a3fd70988fc9984bbc59ea375b3508e: 21300000
+    - 5d9338895635c544f82d127616ebae3b: 21300000
+    - 5c3dd3aabbf13894abc44e25f934d245: 21300000
+    - b9115aba3f4dc7546b983646b17701c2: 21300000
+    - 83bb630b68be3874b94e4a7c8df9a4f1: 21300000
+    - aeff917c90dd4f543a702a8d73310bb0: 21300000
+    - d7c24d0d8fd7dca4bbcc71cc851ffa33: 21300000
+    - ab36c9adbc979604ca42ac31ba3034ae: 21300000
+    - 610d71be58e3ae041b8ec3c0a6e444c9: 21300000
+    - 6108621f75a71984faac821b6bb1f8ba: 21300000
+    - c8c2252f79b05e743ae85c3d56bde996: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: d8d56eb025cdf3942800aaa49679adf3, type: 3}
+  - {fileID: 21300000, guid: 9729ecd002646454991a752432288cc2, type: 3}
+  - {fileID: 21300000, guid: d7f5d7f0f2ee632419de58a5de84e2e2, type: 3}
+  - {fileID: 21300000, guid: 7718bd61be233104d86a5f56c86f19a8, type: 3}
+  - {fileID: 21300000, guid: d3c170a12c1c63f46ad685c2e40d25b6, type: 3}
+  - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+  - {fileID: 21300000, guid: 1a216fc26232f5c42a3038c11d57b974, type: 3}
+  - {fileID: 21300000, guid: 354a69435a26da74b89c180b1af8b8bf, type: 3}
+  - {fileID: 21300000, guid: cb56cfd58fb4f42418ca61b6835b207b, type: 3}
+  - {fileID: 21300000, guid: f49517f5556532a42b34531811bdcef2, type: 3}
+  - {fileID: 21300000, guid: 1c48f1d6775e2e64ab0adc4580fac901, type: 3}
+  - {fileID: 21300000, guid: a854e2e6d5872d647af1b2e20b8bd5a2, type: 3}
+  - {fileID: 21300000, guid: 98c0604740c96b445af5610185ba60c2, type: 3}
+  - {fileID: 21300000, guid: 883ed328b35a2104687465ee49d3a27c, type: 3}
+  - {fileID: 21300000, guid: b104a05890b5b7340a3c93a18f36c4dc, type: 3}
+  - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+  - {fileID: 21300000, guid: 0a3fd70988fc9984bbc59ea375b3508e, type: 3}
+  - {fileID: 21300000, guid: 5d9338895635c544f82d127616ebae3b, type: 3}
+  - {fileID: 21300000, guid: 5c3dd3aabbf13894abc44e25f934d245, type: 3}
+  - {fileID: 21300000, guid: b9115aba3f4dc7546b983646b17701c2, type: 3}
+  - {fileID: 21300000, guid: 83bb630b68be3874b94e4a7c8df9a4f1, type: 3}
+  - {fileID: 21300000, guid: aeff917c90dd4f543a702a8d73310bb0, type: 3}
+  - {fileID: 21300000, guid: d7c24d0d8fd7dca4bbcc71cc851ffa33, type: 3}
+  - {fileID: 21300000, guid: ab36c9adbc979604ca42ac31ba3034ae, type: 3}
+  - {fileID: 21300000, guid: 610d71be58e3ae041b8ec3c0a6e444c9, type: 3}
+  - {fileID: 21300000, guid: 6108621f75a71984faac821b6bb1f8ba, type: 3}
+  - {fileID: 21300000, guid: c8c2252f79b05e743ae85c3d56bde996, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Black Pannel 1
+  - 50
+  - 15x Pure seq
+  - wallet pannel
+  - SEQ
+  - profile-icon
+  - History Pannel
+  - Black
+  - Red pannel 1
+  - 305 x pair
+  - 100
+  - 10x_color
+  - 10
+  - SET
+  - Seq 10x
+  - mask
+  - COLOR
+  - Frame 109
+  - 1000
+  - Chip
+  - Bottom Pannel
+  - PAIR
+  - PURE SEQ
+  - Menu iconns
+  - Profile amount
+  - 10x set
+  - 5000
+  m_RenderDataMap: {}
+  m_Tag: RBAtlas
+  m_IsVariant: 0

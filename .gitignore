@@ -1,0 +1,34 @@
+/.git/
+
+# Root
+package-lock.json
+
+# Unity generated files
+unity/[Ll]ibrary/
+unity/[Tt]emp/
+unity/[Oo]bj/
+unity/[Bb]uild/
+unity/[Bb]uilds/
+unity/[Ll]ogs/
+unity/[Uu]ser[Ss]ettings/
+unity/.vs/
+unity/.utmp/
+unity/*.csproj
+unity/*.sln
+unity/*.user
+unity/*.pidb
+unity/*.pdb
+unity/*.mdb
+unity/*.opendb
+unity/*.VC.db
+unity/*.apk
+unity/*.aab
+unity/*.unitypackage
+
+# Node
+node/node_modules/
+node/.env
+
+# Backend
+backend/.env
+backend/vendor/

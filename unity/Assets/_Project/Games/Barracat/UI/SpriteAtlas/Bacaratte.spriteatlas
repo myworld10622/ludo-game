@@ -1,0 +1,133 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: Bacaratte
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 21300000, guid: 31dfbc991450cd84dbd37aa8249f89b8, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 926727c4ff4b90a498f0a2bac5344b7e, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: a03e47762b11d9b41baf4d8003e2da32, type: 3}
+    - {fileID: 21300000, guid: b9115aba3f4dc7546b983646b17701c2, type: 3}
+    - {fileID: 21300000, guid: e5da9145e9d6b7e4aa78b8843f2fad0a, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 1c48f1d6775e2e64ab0adc4580fac901, type: 3}
+    - {fileID: 21300000, guid: b9115aba3f4dc7546b983646b17701c2, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 0eb45f7e2e8e9dc4a986df5124715dc2, type: 3}
+    - {fileID: 21300000, guid: e5da9145e9d6b7e4aa78b8843f2fad0a, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 21300000, guid: 4e1a524053ec0374b99a28a6ece2e3ab, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: 98c0604740c96b445af5610185ba60c2, type: 3}
+    - {fileID: 21300000, guid: 5c3dd3aabbf13894abc44e25f934d245, type: 3}
+    - {fileID: 21300000, guid: 906df35a043c49a43b9c229d8223da48, type: 3}
+    - {fileID: 21300000, guid: 9786e12b9b097e5479394573d10869a3, type: 3}
+    - {fileID: 21300000, guid: e2b3e2b905dd9c8429c32f1cdb9607eb, type: 3}
+    - {fileID: 21300000, guid: 9729ecd002646454991a752432288cc2, type: 3}
+    - {fileID: 21300000, guid: 105aa01b1530a1e48ba3df5d4a1cae8b, type: 3}
+    - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+    - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+    - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+    - {fileID: 2800000, guid: 8a9350216c069d94994d5c1e6707dde8, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - 4e1a524053ec0374b99a28a6ece2e3ab: 21300000
+    - 71364cd05c3e12e4d904e12303d3d3d7: 21300000
+    - 9729ecd002646454991a752432288cc2: 21300000
+    - 8a9350216c069d94994d5c1e6707dde8: 21300000
+    - eef351f103924e440be7f033e0780c43: 21300000
+    - 926727c4ff4b90a498f0a2bac5344b7e: 21300000
+    - e5da9145e9d6b7e4aa78b8843f2fad0a: 21300000
+    - a03e47762b11d9b41baf4d8003e2da32: 21300000
+    - 1c48f1d6775e2e64ab0adc4580fac901: 21300000
+    - 98c0604740c96b445af5610185ba60c2: 21300000
+    - 95536a7810238db4abb5c02d9b700c92: 21300000
+    - 31dfbc991450cd84dbd37aa8249f89b8: 21300000
+    - e2b3e2b905dd9c8429c32f1cdb9607eb: 21300000
+    - 906df35a043c49a43b9c229d8223da48: 21300000
+    - 5c3dd3aabbf13894abc44e25f934d245: 21300000
+    - b9115aba3f4dc7546b983646b17701c2: 21300000
+    - 105aa01b1530a1e48ba3df5d4a1cae8b: 21300000
+    - 9786e12b9b097e5479394573d10869a3: 21300000
+    - 0eb45f7e2e8e9dc4a986df5124715dc2: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: 4e1a524053ec0374b99a28a6ece2e3ab, type: 3}
+  - {fileID: 21300000, guid: 71364cd05c3e12e4d904e12303d3d3d7, type: 3}
+  - {fileID: 21300000, guid: 9729ecd002646454991a752432288cc2, type: 3}
+  - {fileID: 21300000, guid: 8a9350216c069d94994d5c1e6707dde8, type: 3}
+  - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
+  - {fileID: 21300000, guid: 926727c4ff4b90a498f0a2bac5344b7e, type: 3}
+  - {fileID: 21300000, guid: e5da9145e9d6b7e4aa78b8843f2fad0a, type: 3}
+  - {fileID: 21300000, guid: a03e47762b11d9b41baf4d8003e2da32, type: 3}
+  - {fileID: 21300000, guid: 1c48f1d6775e2e64ab0adc4580fac901, type: 3}
+  - {fileID: 21300000, guid: 98c0604740c96b445af5610185ba60c2, type: 3}
+  - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
+  - {fileID: 21300000, guid: 31dfbc991450cd84dbd37aa8249f89b8, type: 3}
+  - {fileID: 21300000, guid: e2b3e2b905dd9c8429c32f1cdb9607eb, type: 3}
+  - {fileID: 21300000, guid: 906df35a043c49a43b9c229d8223da48, type: 3}
+  - {fileID: 21300000, guid: 5c3dd3aabbf13894abc44e25f934d245, type: 3}
+  - {fileID: 21300000, guid: b9115aba3f4dc7546b983646b17701c2, type: 3}
+  - {fileID: 21300000, guid: 105aa01b1530a1e48ba3df5d4a1cae8b, type: 3}
+  - {fileID: 21300000, guid: 9786e12b9b097e5479394573d10869a3, type: 3}
+  - {fileID: 21300000, guid: 0eb45f7e2e8e9dc4a986df5124715dc2, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - vs v
+  - p
+  - 50
+  - clock
+  - profile-icon
+  - tab
+  - smallbar
+  - bara
+  - 100
+  - 10
+  - mask
+  - p.p
+  - barmediums
+  - baccart up table
+  - 1000
+  - Chip
+  - circle64
+  - vs s
+  - guest-name-pannel-icon
+  m_RenderDataMap: {}
+  m_Tag: Bacaratte
+  m_IsVariant: 0

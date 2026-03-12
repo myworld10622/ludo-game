@@ -1,0 +1,57 @@
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-body">
+                <table class="table table-bordered dt-responsive nowrap"
+                    style="border-collapse: collapse; border-spacing: 0; width: 100%;">
+                    <thead>
+                        <tr>
+                            <th>Game Id</th>
+                            <th>User Name</th>
+                            <th>User ID</th>
+                            <th>Amount</th>
+                            <th>Winnig Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                            foreach ($AllUsers as $key => $Games) {
+                            $bet='';
+                            switch ($Games->bet) {
+                                case '1':
+                                    $bet='Heart';
+                                    break;
+                                case '2':
+                                    $bet='Spade';
+                                    break;
+                                case '3':
+                                    $bet='Diamond';
+                                    break;
+                                case '4':
+                                    $bet='Club';
+                                    break;
+                                case '5':
+                                    $bet='Face';
+                                    break;
+                                case '6':
+                                    $bet='Flag';
+                                    break;
+                            }    
+                        ?>
+                        <tr>
+                            <td><?= $Games->jhandi_munda_id ?></td>
+                            <td><?= $Games->user_name ?></td>
+                            <td><?= $Games->user_id ?></td>
+                            <td><?= $Games->amount ?><?= "(".$bet.")" ?></td>
+                            <td><?= $Games->winning_amount ?></td>
+                        </tr>
+                        <?php
+                            }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <!-- end col -->
+</div>

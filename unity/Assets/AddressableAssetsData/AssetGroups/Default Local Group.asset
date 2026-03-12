@@ -1,0 +1,176 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: Default Local Group
+  m_EditorClassIdentifier: 
+  m_GroupName: Default Local Group
+  m_GUID: 0401d0549cbfa0e498db9a7f33ec7688
+  m_SerializeEntries:
+  - m_GUID: 0c42d34185e2a4845be32c98f6e4f75c
+    m_Address: ColorPrediction.untiy
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 0d5330c77336ef745ade160de1e3e332
+    m_Address: Roulette 2D.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 174c130843596d52c81ac87d445a7c57
+    m_Address: AnimalRoullete.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 1b6f9adcaed688a46b4fe931f655bb69
+    m_Address: 2_Slot_3X5.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 284c722ce7688df4cb5bb31be4e774b2
+    m_Address: TeenPatti_GamePlay.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - teenpatti
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 2d3759667b138924d8826c6c21598a87
+    m_Address: PointTable.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - point
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 3c4b1fa5e1fba60a89fd54c98ba60ccc
+    m_Address: New7UPDown.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 62b9e61f29b0ce4409a41808e65ad467
+    m_Address: ColorVerticle.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 6aa7071a5e074914384a348a82e9fb40
+    m_Address: aviator.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 76a896befeb557d40baa7e619587867c
+    m_Address: 2_Jungle__3X4.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 88615bc1bce9a1d45bfde5a5bc635c94
+    m_Address: DealRummy.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - deal
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 93378ec0b9f0ca149839acd8c1def79d
+    m_Address: AndarBahar.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 96b9175ce0705a34e9dac096af8bfe18
+    m_Address: Baccarat.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 9a499290c2d19284994264b001383ce4
+    m_Address: RedBlack.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a0068bd76d0e57546a499409a7873491
+    m_Address: DragonTiger.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: afeadd098c1262247ba986833761258e
+    m_Address: Join_Table(Pool).unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - pool
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b24f0918bb57e5d41bafabfcce6ee895
+    m_Address: EuropeanRoulette_mobile.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: b8797b83d9d1686fcb3d585e5fb6e630
+    m_Address: CarRoullete.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: bd07be9b77e6bb545b851f1d9a3748d2
+    m_Address: AndarBaharPlus.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c27eccf0b9facd5488eef08f65d7c6e3
+    m_Address: Join_Table(Deal).unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - deal
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c7cdb80ffd377e64fb074818d4453b62
+    m_Address: JhundiMunda.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: c8120e28f0b795849967bd1f6081fda2
+    m_Address: JackpotTeenPatti.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cc071cf981b10194c9d97514aad403f2
+    m_Address: TeenPatti_JoinTable.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - teenpatti
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ccd15ebe09c4fb242ba826b261e207d4
+    m_Address: Rummy_13.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - point
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cd2ca8453e0b6254fb77bf2da3855d1f
+    m_Address: HeadTail.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: deea2fbc91711944db879dd71afbdaf4
+    m_Address: 3_MagicSlot__3X4 1.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: e620a07f80ba3874b8f676e35fb21a13
+    m_Address: Assets/1_ModernSuitsSlotAsset/Scenes_Modern/5_GodOfWar_3X5 1.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: edf133ece062ac5428fd2d616c12ca7d
+    m_Address: Pool_Rummy.unity
+    m_ReadOnly: 0
+    m_SerializedLabels:
+    - pool
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: ef7170d53af8fcb409098523bbd19e80
+    m_Address: 4_ChinesSlot_3X5 1.unity
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: 49a7cc50a2fca7a4bb37b9595002f13a, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 771c744d29006ce4dabb169dabb5c64f, type: 2}
+    - {fileID: 11400000, guid: fb32b3df033f1244ba027fac7970a5a7, type: 2}

@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AndarBaharPlusAtlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 2800000, guid: d5ed1bf00c100cc48a8a6297a14e37bb, type: 3}
+    - {fileID: 2800000, guid: 4748071e180993445a588393e87d78f5, type: 3}
+    - {fileID: 2800000, guid: 6637540d15349f549b2c99398230e3c3, type: 3}
+    - {fileID: 2800000, guid: 2f1e66eb83cc03b4e9a93fddbff5c295, type: 3}
+    - {fileID: 2800000, guid: 6a1b91aeb80fc8d489809904caf8d712, type: 3}
+    - {fileID: 2800000, guid: 60067565fbf947b439ccc81e2d7179c2, type: 3}
+    - {fileID: 2800000, guid: a73eb89c06452ed42bdf823182bc86d8, type: 3}
+    - {fileID: 2800000, guid: b0ddd620d9289e6459ac7a13ee306baa, type: 3}
+    - {fileID: 2800000, guid: 8448c535aae6ae64ebe3b51a93a278ef, type: 3}
+    - {fileID: 2800000, guid: 1e607e23beba1544ba0648a6619b79f8, type: 3}
+    - {fileID: 2800000, guid: cbe9b47ea135da74682c84b0d04892f4, type: 3}
+    - {fileID: 2800000, guid: 8bd1f63c1642c374c87c92bae7141a16, type: 3}
+    - {fileID: 2800000, guid: 82aa445df0a73a34f8866ad59c9a3404, type: 3}
+    - {fileID: 2800000, guid: 42c67806a8f4a7045bdc0d8624ba6369, type: 3}
+    - {fileID: 2800000, guid: cc998174665109b4b80cc6c4e6e8e23c, type: 3}
+    - {fileID: 2800000, guid: 41efcd64023d8ff4185d599d078331cf, type: 3}
+    - {fileID: 2800000, guid: 60c9b9294cc3f7b4683f20ee08632339, type: 3}
+    - {fileID: 2800000, guid: a904ae51a8558cc42af07bc6293a5c26, type: 3}
+    - {fileID: 2800000, guid: 73dee5c4515ce8f42817d99eb497eba9, type: 3}
+    - {fileID: 2800000, guid: 46208ac0795ae144083d1b42d3f93115, type: 3}
+    - {fileID: 2800000, guid: 2ae16c62b8b56bb4aada0b3e114435b8, type: 3}
+    - {fileID: 2800000, guid: 3615927583b83774ab94a4ea0b94c208, type: 3}
+    - {fileID: 2800000, guid: 9a62a17d367e8ff48bb83c31cfcaced9, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - b0ddd620d9289e6459ac7a13ee306baa: 21300000
+    - 46208ac0795ae144083d1b42d3f93115: 21300000
+    - d5ed1bf00c100cc48a8a6297a14e37bb: 21300000
+    - a904ae51a8558cc42af07bc6293a5c26: 21300000
+    - 2ae16c62b8b56bb4aada0b3e114435b8: 21300000
+    - 1e607e23beba1544ba0648a6619b79f8: 21300000
+    - 41efcd64023d8ff4185d599d078331cf: 21300000
+    - cc998174665109b4b80cc6c4e6e8e23c: 21300000
+    - 73dee5c4515ce8f42817d99eb497eba9: 21300000
+    - 8448c535aae6ae64ebe3b51a93a278ef: 21300000
+    - 60067565fbf947b439ccc81e2d7179c2: 21300000
+    - 3615927583b83774ab94a4ea0b94c208: 21300000
+    - 42c67806a8f4a7045bdc0d8624ba6369: 21300000
+    - 60c9b9294cc3f7b4683f20ee08632339: 21300000
+    - 2f1e66eb83cc03b4e9a93fddbff5c295: 21300000
+    - 8bd1f63c1642c374c87c92bae7141a16: 21300000
+    - a73eb89c06452ed42bdf823182bc86d8: 21300000
+    - 6637540d15349f549b2c99398230e3c3: 21300000
+    - 82aa445df0a73a34f8866ad59c9a3404: 21300000
+    - 9a62a17d367e8ff48bb83c31cfcaced9: 21300000
+    - 4748071e180993445a588393e87d78f5: 21300000
+    - cbe9b47ea135da74682c84b0d04892f4: 21300000
+    - 6a1b91aeb80fc8d489809904caf8d712: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: b0ddd620d9289e6459ac7a13ee306baa, type: 3}
+  - {fileID: 21300000, guid: 46208ac0795ae144083d1b42d3f93115, type: 3}
+  - {fileID: 21300000, guid: d5ed1bf00c100cc48a8a6297a14e37bb, type: 3}
+  - {fileID: 21300000, guid: a904ae51a8558cc42af07bc6293a5c26, type: 3}
+  - {fileID: 21300000, guid: 2ae16c62b8b56bb4aada0b3e114435b8, type: 3}
+  - {fileID: 21300000, guid: 1e607e23beba1544ba0648a6619b79f8, type: 3}
+  - {fileID: 21300000, guid: 41efcd64023d8ff4185d599d078331cf, type: 3}
+  - {fileID: 21300000, guid: cc998174665109b4b80cc6c4e6e8e23c, type: 3}
+  - {fileID: 21300000, guid: 73dee5c4515ce8f42817d99eb497eba9, type: 3}
+  - {fileID: 21300000, guid: 8448c535aae6ae64ebe3b51a93a278ef, type: 3}
+  - {fileID: 21300000, guid: 60067565fbf947b439ccc81e2d7179c2, type: 3}
+  - {fileID: 21300000, guid: 3615927583b83774ab94a4ea0b94c208, type: 3}
+  - {fileID: 21300000, guid: 42c67806a8f4a7045bdc0d8624ba6369, type: 3}
+  - {fileID: 21300000, guid: 60c9b9294cc3f7b4683f20ee08632339, type: 3}
+  - {fileID: 21300000, guid: 2f1e66eb83cc03b4e9a93fddbff5c295, type: 3}
+  - {fileID: 21300000, guid: 8bd1f63c1642c374c87c92bae7141a16, type: 3}
+  - {fileID: 21300000, guid: a73eb89c06452ed42bdf823182bc86d8, type: 3}
+  - {fileID: 21300000, guid: 6637540d15349f549b2c99398230e3c3, type: 3}
+  - {fileID: 21300000, guid: 82aa445df0a73a34f8866ad59c9a3404, type: 3}
+  - {fileID: 21300000, guid: 9a62a17d367e8ff48bb83c31cfcaced9, type: 3}
+  - {fileID: 21300000, guid: 4748071e180993445a588393e87d78f5, type: 3}
+  - {fileID: 21300000, guid: cbe9b47ea135da74682c84b0d04892f4, type: 3}
+  - {fileID: 21300000, guid: 6a1b91aeb80fc8d489809904caf8d712, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - betok-btn
+  - main-table
+  - logo-base
+  - left-panel-bg
+  - red-cards
+  - cenetr-panel-bg
+  - take-btn
+  - heart
+  - left-right-card-holder
+  - cenetr-card-holder
+  - score
+  - right-panel-bg
+  - spade
+  - star
+  - anadr-btn
+  - diamond
+  - bottom-line
+  - bahar-btn
+  - divide-line
+  - score-img
+  - winner-img
+  - club
+  - black-cards
+  m_RenderDataMap: {}
+  m_Tag: AndarBaharPlusAtlas
+  m_IsVariant: 0

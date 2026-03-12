@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!687078895 &4343727234628468602
+SpriteAtlas:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: AddCashAtlas
+  m_EditorData:
+    serializedVersion: 2
+    textureSettings:
+      serializedVersion: 2
+      anisoLevel: 1
+      compressionQuality: 50
+      maxTextureSize: 2048
+      textureCompression: 0
+      filterMode: 1
+      generateMipMaps: 0
+      readable: 0
+      crunchedCompression: 0
+      sRGB: 1
+    platformSettings: []
+    packingSettings:
+      serializedVersion: 2
+      padding: 4
+      blockOffset: 1
+      allowAlphaSplitting: 0
+      enableRotation: 1
+      enableTightPacking: 0
+      enableAlphaDilation: 0
+    secondaryTextureSettings: {}
+    variantMultiplier: 1
+    packables:
+    - {fileID: 2800000, guid: 891aa79a962dbfd458c36c3372ab2c6a, type: 3}
+    - {fileID: 2800000, guid: aa0c4d91fee0b8440ad538c440913bbe, type: 3}
+    - {fileID: 2800000, guid: 606ca70595c6cd74aaf3fccb2f44a12d, type: 3}
+    - {fileID: 2800000, guid: cdda1381365a2d4439534a35e622b349, type: 3}
+    - {fileID: 2800000, guid: 65ebf7f368ab03c4f9ef8081b9a7e42b, type: 3}
+    - {fileID: 2800000, guid: ef797b065a0d72142b0de325f0ba844c, type: 3}
+    - {fileID: 2800000, guid: ddfd00cda3b895e4598f1acb17d471f1, type: 3}
+    - {fileID: 2800000, guid: 4780cfa1716613043a094d68425c7b10, type: 3}
+    bindAsDefault: 1
+    isAtlasV2: 0
+    cachedData: {fileID: 0}
+    packedSpriteRenderDataKeys:
+    - cdda1381365a2d4439534a35e622b349: 21300000
+    - aa0c4d91fee0b8440ad538c440913bbe: 21300000
+    - 4780cfa1716613043a094d68425c7b10: 21300000
+    - 65ebf7f368ab03c4f9ef8081b9a7e42b: 21300000
+    - 606ca70595c6cd74aaf3fccb2f44a12d: 21300000
+    - ef797b065a0d72142b0de325f0ba844c: 21300000
+    - 891aa79a962dbfd458c36c3372ab2c6a: 21300000
+    - ddfd00cda3b895e4598f1acb17d471f1: 21300000
+  m_MasterAtlas: {fileID: 0}
+  m_PackedSprites:
+  - {fileID: 21300000, guid: cdda1381365a2d4439534a35e622b349, type: 3}
+  - {fileID: 21300000, guid: aa0c4d91fee0b8440ad538c440913bbe, type: 3}
+  - {fileID: 21300000, guid: 4780cfa1716613043a094d68425c7b10, type: 3}
+  - {fileID: 21300000, guid: 65ebf7f368ab03c4f9ef8081b9a7e42b, type: 3}
+  - {fileID: 21300000, guid: 606ca70595c6cd74aaf3fccb2f44a12d, type: 3}
+  - {fileID: 21300000, guid: ef797b065a0d72142b0de325f0ba844c, type: 3}
+  - {fileID: 21300000, guid: 891aa79a962dbfd458c36c3372ab2c6a, type: 3}
+  - {fileID: 21300000, guid: ddfd00cda3b895e4598f1acb17d471f1, type: 3}
+  m_PackedSpriteNamesToIndex:
+  - Selected
+  - panel-bg
+  - submit
+  - close
+  - Unselected
+  - homepage-input-field
+  - add-button
+  - Table-Bg
+  m_RenderDataMap: {}
+  m_Tag: AddCashAtlas
+  m_IsVariant: 0

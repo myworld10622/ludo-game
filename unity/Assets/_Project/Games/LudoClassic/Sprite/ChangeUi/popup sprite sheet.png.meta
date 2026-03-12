@@ -1,0 +1,871 @@
+fileFormatVersion: 2
+guid: 8ed8caf2f1ca4034d898164afbc9ff23
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: 6644653347896945856
+    second: popup sprite sheet_0
+  - first:
+      213: -4897879646119607220
+    second: popup sprite sheet_1
+  - first:
+      213: 5756066364932166746
+    second: popup sprite sheet_2
+  - first:
+      213: -638828132991477836
+    second: popup sprite sheet_3
+  - first:
+      213: 3722066654597242821
+    second: popup sprite sheet_4
+  - first:
+      213: -4959641878552403696
+    second: popup sprite sheet_5
+  - first:
+      213: 3384622179957608173
+    second: popup sprite sheet_6
+  - first:
+      213: -8147561083465789851
+    second: popup sprite sheet_7
+  - first:
+      213: -2358270147448353466
+    second: popup sprite sheet_8
+  - first:
+      213: -2599448293909162601
+    second: popup sprite sheet_9
+  - first:
+      213: 6764648816238102997
+    second: popup sprite sheet_10
+  - first:
+      213: -4122023854851576358
+    second: popup sprite sheet_11
+  - first:
+      213: 3711411987177718381
+    second: popup sprite sheet_12
+  - first:
+      213: 182333367718545726
+    second: popup sprite sheet_13
+  - first:
+      213: -498051422681117904
+    second: popup sprite sheet_14
+  - first:
+      213: 273335058602952419
+    second: popup sprite sheet_15
+  - first:
+      213: -202586307394761354
+    second: popup sprite sheet_16
+  - first:
+      213: -1539155790027674927
+    second: popup sprite sheet_17
+  - first:
+      213: -4461026110582032726
+    second: popup sprite sheet_18
+  - first:
+      213: 7908984948042888299
+    second: popup sprite sheet_19
+  - first:
+      213: 7526752867511052201
+    second: popup sprite sheet_20
+  - first:
+      213: 6439028390148458812
+    second: popup sprite sheet_21
+  - first:
+      213: 1512804241687244874
+    second: popup sprite sheet_22
+  - first:
+      213: -7036186711916446444
+    second: popup sprite sheet_23
+  - first:
+      213: -5602202548328075675
+    second: popup sprite sheet_24
+  - first:
+      213: -4171088846236759592
+    second: popup sprite sheet_25
+  - first:
+      213: 6745233253047259563
+    second: popup sprite sheet_26
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 0
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 1
+    aniso: 1
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 0
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 8
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 1
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Android
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: iOS
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Server
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: popup sprite sheet_0
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 1808
+        width: 824
+        height: 564
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 0cce109d30d863c50800000000000000
+      internalID: 6644653347896945856
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_1
+      rect:
+        serializedVersion: 2
+        x: 904
+        y: 2240
+        width: 257
+        height: 105
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c44cc64796c370cb0800000000000000
+      internalID: -4897879646119607220
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_2
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 2240
+        width: 256
+        height: 105
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a541b59acd7a1ef40800000000000000
+      internalID: 5756066364932166746
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_3
+      rect:
+        serializedVersion: 2
+        x: 1450
+        y: 2241
+        width: 256
+        height: 106
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 4b7548c923d6227f0800000000000000
+      internalID: -638828132991477836
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_4
+      rect:
+        serializedVersion: 2
+        x: 1726
+        y: 2240
+        width: 254
+        height: 105
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5cf5899e6ef67a330800000000000000
+      internalID: 3722066654597242821
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_5
+      rect:
+        serializedVersion: 2
+        x: 1996
+        y: 2242
+        width: 256
+        height: 106
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 011abbf1dffcb2bb0800000000000000
+      internalID: -4959641878552403696
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_6
+      rect:
+        serializedVersion: 2
+        x: 909
+        y: 2114
+        width: 230
+        height: 99
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: dee084fa0f798fe20800000000000000
+      internalID: 3384622179957608173
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_7
+      rect:
+        serializedVersion: 2
+        x: 1139
+        y: 2114
+        width: 321
+        height: 99
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 56e893abc5c0eee80800000000000000
+      internalID: -8147561083465789851
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_8
+      rect:
+        serializedVersion: 2
+        x: 909
+        y: 2006
+        width: 511
+        height: 85
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 64dcee8abcdb54fd0800000000000000
+      internalID: -2358270147448353466
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_9
+      rect:
+        serializedVersion: 2
+        x: 2148
+        y: 1931
+        width: 121
+        height: 183
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 7959c859c87ecebd0800000000000000
+      internalID: -2599448293909162601
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_10
+      rect:
+        serializedVersion: 2
+        x: 914
+        y: 1777
+        width: 234
+        height: 211
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 5d9832af14cd0ed50800000000000000
+      internalID: 6764648816238102997
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_11
+      rect:
+        serializedVersion: 2
+        x: 1218
+        y: 1791
+        width: 765
+        height: 182
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: adda2e7b421abc6c0800000000000000
+      internalID: -4122023854851576358
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_12
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 987
+        width: 825
+        height: 779
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: d62cad6d985918330800000000000000
+      internalID: 3711411987177718381
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_13
+      rect:
+        serializedVersion: 2
+        x: 905
+        y: 979
+        width: 1031
+        height: 737
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: e39809d5b37c78200800000000000000
+      internalID: 182333367718545726
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_14
+      rect:
+        serializedVersion: 2
+        x: 2054
+        y: 1585
+        width: 255
+        height: 105
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 03bc63faed09619f0800000000000000
+      internalID: -498051422681117904
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_15
+      rect:
+        serializedVersion: 2
+        x: 2057
+        y: 1429
+        width: 255
+        height: 106
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 3e680b0a9c41bc300800000000000000
+      internalID: 273335058602952419
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_16
+      rect:
+        serializedVersion: 2
+        x: 33
+        y: 46
+        width: 824
+        height: 894
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 67d8067a3d4403df0800000000000000
+      internalID: -202586307394761354
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_17
+      rect:
+        serializedVersion: 2
+        x: 914
+        y: 628
+        width: 244
+        height: 254
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 1da2a69b6f1d3aae0800000000000000
+      internalID: -1539155790027674927
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_18
+      rect:
+        serializedVersion: 2
+        x: 1211
+        y: 644
+        width: 172
+        height: 167
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: aa6f30153604712c0800000000000000
+      internalID: -4461026110582032726
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_19
+      rect:
+        serializedVersion: 2
+        x: 1436
+        y: 667
+        width: 151
+        height: 152
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: b64f10a18eb52cd60800000000000000
+      internalID: 7908984948042888299
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_20
+      rect:
+        serializedVersion: 2
+        x: 1823
+        y: 628
+        width: 563
+        height: 207
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 9a72624cad5647860800000000000000
+      internalID: 7526752867511052201
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_21
+      rect:
+        serializedVersion: 2
+        x: 959
+        y: 430
+        width: 133
+        height: 133
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: c39447594360c5950800000000000000
+      internalID: 6439028390148458812
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_22
+      rect:
+        serializedVersion: 2
+        x: 1177
+        y: 379
+        width: 227
+        height: 227
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: a40f870517f8ef410800000000000000
+      internalID: 1512804241687244874
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_23
+      rect:
+        serializedVersion: 2
+        x: 1668
+        y: 370
+        width: 695
+        height: 206
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 41d75eef6717a5e90800000000000000
+      internalID: -7036186711916446444
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_24
+      rect:
+        serializedVersion: 2
+        x: 942
+        y: 131
+        width: 727
+        height: 145
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 56eed1bc67af042b0800000000000000
+      internalID: -5602202548328075675
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_25
+      rect:
+        serializedVersion: 2
+        x: 1842
+        y: 131
+        width: 436
+        height: 188
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: 8d9c6713bc05d16c0800000000000000
+      internalID: -4171088846236759592
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: popup sprite sheet_26
+      rect:
+        serializedVersion: 2
+        x: 1475
+        y: 2113
+        width: 240
+        height: 99
+      alignment: 0
+      pivot: {x: 0.5, y: 0.5}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: 0
+      bones: []
+      spriteID: ba1d807e7e1eb9d50800000000000000
+      internalID: 6745233253047259563
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 5e97eb03825dee720800000000000000
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      popup sprite sheet_0: 6644653347896945856
+      popup sprite sheet_1: -4897879646119607220
+      popup sprite sheet_10: 6764648816238102997
+      popup sprite sheet_11: -4122023854851576358
+      popup sprite sheet_12: 3711411987177718381
+      popup sprite sheet_13: 182333367718545726
+      popup sprite sheet_14: -498051422681117904
+      popup sprite sheet_15: 273335058602952419
+      popup sprite sheet_16: -202586307394761354
+      popup sprite sheet_17: -1539155790027674927
+      popup sprite sheet_18: -4461026110582032726
+      popup sprite sheet_19: 7908984948042888299
+      popup sprite sheet_2: 5756066364932166746
+      popup sprite sheet_20: 7526752867511052201
+      popup sprite sheet_21: 6439028390148458812
+      popup sprite sheet_22: 1512804241687244874
+      popup sprite sheet_23: -7036186711916446444
+      popup sprite sheet_24: -5602202548328075675
+      popup sprite sheet_25: -4171088846236759592
+      popup sprite sheet_26: 6745233253047259563
+      popup sprite sheet_3: -638828132991477836
+      popup sprite sheet_4: 3722066654597242821
+      popup sprite sheet_5: -4959641878552403696
+      popup sprite sheet_6: 3384622179957608173
+      popup sprite sheet_7: -8147561083465789851
+      popup sprite sheet_8: -2358270147448353466
+      popup sprite sheet_9: -2599448293909162601
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
