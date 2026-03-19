@@ -1,0 +1,61 @@
+{
+  "tournament_uuid": "643a14be-2369-4499-b841-73b08e7d2262",
+  "entries": [
+    {
+      "user_id": 1,
+      "user_name": "user-1",
+      "entry_uuid": "da2afb75-b0ae-4b64-9ec1-4f6b0fa1f54e",
+      "ticket_no": "LOAD-000001",
+      "access_token": "1892|Eqzw5PON2tv6QxrwJ0NVHu1FnFKg13S1bTQpKlxC9ac3178d"
+    },
+    {
+      "user_id": 4,
+      "user_name": "user-4",
+      "entry_uuid": "e64a169f-497a-47e7-a044-5603a901be84",
+      "ticket_no": "LOAD-000004",
+      "access_token": "1895|xFH0xKyCtybeZMJDKDNHXCDE8wuSVkw3NCMjl5tjd83b84a3"
+    },
+    {
+      "user_id": 1,
+      "user_name": "user-1",
+      "entry_uuid": "eaa6fa6e-5cdf-42f1-9874-fd727d0092d7",
+      "ticket_no": "LOAD-000005",
+      "access_token": "1896|PuPEs8YZX1w8rpKOVXZ57y0V5aIXLo4HAGNYkKjTefcb3523"
+    },
+    {
+      "user_id": 2,
+      "user_name": "user-2",
+      "entry_uuid": "88cd7988-ef7a-42e2-bba2-6afddeba7a40",
+      "ticket_no": "LOAD-000006",
+      "access_token": "1897|98lrF9QWvzC5DMyM6t9aAtLZdILYzI4oEKXVNY7g3bd51fd6"
+    },
+    {
+      "user_id": 2,
+      "user_name": "user-2",
+      "entry_uuid": "1615aff0-857a-422d-a097-18ee565ad036",
+      "ticket_no": "LOAD-000014",
+      "access_token": "1905|F6H86OeN877ryG9pllhLfXZzUMQktePCnvGEMUa242f3845f"
+    },
+    {
+      "user_id": 3,
+      "user_name": "user-3",
+      "entry_uuid": "bf8e5103-3dff-4085-bf04-1a511f20350e",
+      "ticket_no": "LOAD-000015",
+      "access_token": "1906|h2nMxgD4OLxRbEbmF4YACoqPA4eSqyPj55RVGHLZ6dc21cba"
+    },
+    {
+      "user_id": 4,
+      "user_name": "user-4",
+      "entry_uuid": "a83e72e7-fc9f-4ee2-bc7b-456c8f7ec0ce",
+      "ticket_no": "LOAD-000016",
+      "access_token": "1907|xlw5sQdT8A01N0wr5kDG8CT6iZz23KfnssBtYU1ndae827b1"
+    },
+    {
+      "user_id": 2,
+      "user_name": "user-2",
+      "entry_uuid": "c31649f2-19dc-4678-aab6-587f97f0694a",
+      "ticket_no": "LOAD-000018",
+      "access_token": "1909|rJRpCdvSnpKNhhJDcFo8NDihK9GP0AULZXHMAnJ45d20664c"
+    }
+  ]
+}
