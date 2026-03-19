@@ -81,6 +81,7 @@ const rummy_pool_socket = io.of("/rummy_pool");
 const rummy_deal_socket = io.of("/rummy_deal");
 const rummy_tournament_socket = io.of("/rummy_tournament");
 const ludo_socket = io.of("/ludo");
+const ludo_v2_socket = io.of("/ludo_v2");
 const poker_socket = io.of("/poker");
 const betreeno_socket = io.of("/betreeno");
 
@@ -240,6 +241,7 @@ require("./sockets/ludoOldSocket.js")(
   BASE_URL
 );
 require("./sockets/ludoSocket.js")(ludo_socket, request, timer, BASE_URL);
+require("./sockets/ludoRoomSocket.js")(ludo_v2_socket);
 require("./sockets/pokerSocket.js")(poker_socket, request, timer, BASE_URL);
 require("./sockets/betreenoSocket.js")(
   betreeno_socket,

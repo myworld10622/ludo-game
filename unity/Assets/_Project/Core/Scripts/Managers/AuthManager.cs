@@ -151,10 +151,28 @@ namespace AndroApps
                 $"RES_Check  + Message: {resp.message}\nRES_Check  + Code: {resp.code}"
             );
 
-            ImageUtil.Instance.isGuest = true;
+            if (ImageUtil.Instance != null)
+            {
+                ImageUtil.Instance.isGuest = true;
+            }
+            else
+            {
+                Debug.LogWarning("ImageUtil.Instance is null during guest login. Continuing without guest image state.");
+            }
+
             PlayerPrefs.SetString("id", resp.user_id);
             PlayerPrefs.SetString("token", resp.token);
-            SceneLoader.Instance.LoadScene("HomePage");
+            PlayerPrefs.Save();
+
+            if (SceneLoader.Instance != null)
+            {
+                SceneLoader.Instance.LoadScene("HomePage");
+            }
+            else
+            {
+                Debug.LogWarning("SceneLoader.Instance is null during guest login. Falling back to SceneManager.LoadScene.");
+                SceneManager.LoadScene("HomePage");
+            }
         }
 
         public async void OpenTermsAndCondition()
@@ -427,15 +445,34 @@ namespace AndroApps
 
         public async void GetProfileImage(string profile_pic)
         {
-            // string profile_url = Configuration.ProfileImage + profile_pic;
-            // SpriteManager.Instance.profile_image = await ImageUtil.Instance.GetSpriteFromURLAsync(
-            //     profile_url
-            // );
-            await SpriteManager.Instance.UpdateData(
-                Configuration.GetId(),
-                Configuration.GetToken()
-            );
-            SceneLoader.Instance.LoadScene("HomePage");
+            try
+            {
+                if (SpriteManager.Instance != null)
+                {
+                    await SpriteManager.Instance.UpdateData(
+                        Configuration.GetId(),
+                        Configuration.GetToken()
+                    );
+                }
+                else
+                {
+                    Debug.LogWarning("SpriteManager.Instance is null during login. Skipping pre-home data sync.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("GetProfileImage pre-home sync failed: " + ex.Message);
+            }
+
+            if (SceneLoader.Instance != null)
+            {
+                SceneLoader.Instance.LoadScene("HomePage");
+            }
+            else
+            {
+                Debug.LogWarning("SceneLoader.Instance is null after login. Falling back to SceneManager.LoadScene.");
+                SceneManager.LoadScene("HomePage");
+            }
             //SceneManager.LoadSceneAsync("HomePage");
             // StartCoroutine(
             //     ImageUtil.Instance.DownloadImage(
@@ -606,20 +643,40 @@ namespace AndroApps
             SignUpOutput = await APIManager.Instance.Post<newSignUpOutputs>(Url, formData);
             if (SignUpOutput.code == 200)
             {
-                SceneLoader.Instance.LoadScene("HomePage");
-                SignUpDetail.MobileInputfield.text =
-                    SignUpDetail.PasswordInputfield.text =
-                    SignUpDetail.NameInputfield.text = "";
-                // SignUpDetail.ReferralCodeInputfield.text =
-                //     "";
                 PlayerPrefs.SetString("id", SignUpOutput.user_id);
                 PlayerPrefs.SetString("token", SignUpOutput.token);
                 PlayerPrefs.Save();
-                LogInDetail.LogInPnl.SetActive(false);
-                SignUpDetail.SignUpPnl.SetActive(false);
-                SignUpDetail.OtpPanel.SetActive(false);
+
+                if (SignUpDetail != null)
+                {
+                    SignUpDetail.MobileInputfield.text =
+                        SignUpDetail.PasswordInputfield.text =
+                        SignUpDetail.NameInputfield.text = "";
+
+                    if (SignUpDetail.SignUpPnl != null)
+                        SignUpDetail.SignUpPnl.SetActive(false);
+
+                    if (SignUpDetail.OtpPanel != null)
+                        SignUpDetail.OtpPanel.SetActive(false);
+                }
+
+                if (LogInDetail != null && LogInDetail.LogInPnl != null)
+                {
+                    LogInDetail.LogInPnl.SetActive(false);
+                }
+
                 CommonUtil.CheckLog("RES_Check + Register");
                 showtoastmessage("Registered Successfully");
+
+                if (SceneLoader.Instance != null)
+                {
+                    SceneLoader.Instance.LoadScene("HomePage");
+                }
+                else
+                {
+                    Debug.LogWarning("SceneLoader.Instance is null after signup. Falling back to SceneManager.LoadScene.");
+                    SceneManager.LoadScene("HomePage");
+                }
             }
             else
             {

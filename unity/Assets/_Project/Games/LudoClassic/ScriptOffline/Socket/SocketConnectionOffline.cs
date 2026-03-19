@@ -55,7 +55,7 @@ namespace LudoClassicOffline
             else
                 socketUrl = ALLServerURL[(int)(serverType)];
 
-            Debug.LogError(" Socket Manager ||  Socket URL = " + socketUrl);
+            Debug.Log("Socket Manager || Socket URL = " + socketUrl);
 
             InterNetCheck();
             if (GameManagerOffline.instace.gameRunOnSdk)
@@ -72,7 +72,10 @@ namespace LudoClassicOffline
             }
             else
             {
-                CreateSocket();  // changes for set dashbord 27-10-23
+                if (!Configuration.IsLudoV2Enabled())
+                {
+                    CreateSocket();  // changes for set dashbord 27-10-23
+                }
             }
         }
         bool isFgbgtrue;

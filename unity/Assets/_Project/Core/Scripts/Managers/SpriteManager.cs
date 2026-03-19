@@ -83,6 +83,12 @@ public class SpriteManager : MonoBehaviour
 
     public async Task UpdateData(string id, string token) //string Token)
     {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("SpriteManager.UpdateData skipped because APIManager.Instance is null.");
+            return;
+        }
+
         string Url = Configuration.Url + Configuration.profile;
         Debug.Log("RES_Check + API-Call + UPDATE Data");
 
@@ -97,8 +103,24 @@ public class SpriteManager : MonoBehaviour
         LogInOutput = await APIManager.Instance.Post<newLogInOutputs>(Url, formData);
         if (LogInOutput.code == 200)
         {
-            await DownloadProfileImage();
-            await GetBannerImage(LogInOutput.notification_image);
+            try
+            {
+                await DownloadProfileImage();
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("SpriteManager profile image preload failed: " + ex.Message);
+            }
+
+            try
+            {
+                await GetBannerImage(LogInOutput.notification_image);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning("SpriteManager banner preload failed: " + ex.Message);
+            }
+
             PostUserSetting(Configuration.Url + Configuration.Usersetting);
         }
         else if (LogInOutput.code == 411)
@@ -112,6 +134,11 @@ public class SpriteManager : MonoBehaviour
 
     public async Task GetBannerImage(string notificationpic)
     {
+        if (ImageUtil.Instance == null || string.IsNullOrWhiteSpace(notificationpic))
+        {
+            return;
+        }
+
         string image_url = Configuration.NotificationBannerImage + notificationpic;
         SpriteManager.Instance.welcome_app_banner = await ImageUtil.Instance.GetSpriteFromURLAsync(
             image_url
@@ -120,6 +147,11 @@ public class SpriteManager : MonoBehaviour
 
     public async Task DownloadProfileImage()
     {
+        if (ImageUtil.Instance == null || string.IsNullOrWhiteSpace(Configuration.GetProfilePic()))
+        {
+            return;
+        }
+
         Debug.Log(
             "RES_check + Profile image download 3 "
                 + Configuration.ProfileImage
@@ -136,6 +168,12 @@ public class SpriteManager : MonoBehaviour
 
     public async void PostUserSetting(string url)
     {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("SpriteManager.PostUserSetting skipped because APIManager.Instance is null.");
+            return;
+        }
+
         var formData = new Dictionary<string, string>
         {
             { "user_id", Configuration.GetId() },
@@ -144,13 +182,33 @@ public class SpriteManager : MonoBehaviour
         var UserSettingOutPut = await APIManager.Instance.Post<UserSettingOutPuts>(url, formData);
         Debug.Log($"RES+Message: {UserSettingOutPut.message}\nRES+Code: {UserSettingOutPut.code}");
 
+        if (app_banner == null)
+        {
+            app_banner = new List<Sprite>();
+        }
+
+        if (app_banner_name == null)
+        {
+            app_banner_name = new List<string>();
+        }
+
         app_banner.Clear();
+        app_banner_name.Clear();
+        if (UserSettingOutPut == null || UserSettingOutPut.app_banner == null || ImageUtil.Instance == null)
+        {
+            return;
+        }
+
         for (int i = 0; i < UserSettingOutPut.app_banner.Count; i++)
         {
             Debug.Log("RES_Check + getting images");
             string app_banner_image_url =
                 Configuration.BannerImage + UserSettingOutPut.app_banner[i].banner;
-            app_banner.Add(await ImageUtil.Instance.GetSpriteFromURLAsync(app_banner_image_url));
+            Sprite bannerSprite = await ImageUtil.Instance.GetSpriteFromURLAsync(app_banner_image_url);
+            if (bannerSprite != null)
+            {
+                app_banner.Add(bannerSprite);
+            }
 
             app_banner_name.Add(UserSettingOutPut.app_banner[i].banner);
         }

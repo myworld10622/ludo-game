@@ -82,7 +82,44 @@ namespace LudoClassicOffline
         public List<GameObject> smallBoxGameObjectList;
         public List<GameObject> moveShowGameObjectList;
 
+        private void OnDisable()
+        {
+            CleanupTweensAndInvokes();
+        }
+
+        private void OnDestroy()
+        {
+            CleanupTweensAndInvokes();
+        }
+
         private void Start() => Screen.sleepTimeout = SleepTimeout.NeverSleep;
+
+        private void CleanupTweensAndInvokes()
+        {
+            CancelInvoke();
+            StopDecreaseCounter();
+
+            KillTweenTarget(emojiPanel);
+            KillTweenTarget(greenInfoPanel);
+            KillTweenTarget(yellowInfoPanel);
+            KillTweenTarget(blueInfoPanel);
+            KillTweenTarget(redInfoPanel);
+            KillTweenTarget(helpPanel != null && helpPanel.transform.childCount > 0 ? helpPanel.transform.GetChild(0).gameObject : null);
+            KillTweenTarget(leavePanel != null && leavePanel.transform.childCount > 0 ? leavePanel.transform.GetChild(0).gameObject : null);
+            KillTweenTarget(settingPanel != null && settingPanel.transform.childCount > 0 ? settingPanel.transform.GetChild(0).gameObject : null);
+            KillTweenTarget(timerCountScreen);
+            KillTweenTarget(startPanel);
+        }
+
+        private void KillTweenTarget(GameObject target)
+        {
+            if (target == null || target.transform == null)
+            {
+                return;
+            }
+
+            target.transform.DOKill();
+        }
 
         public void StopReconntionAnimation()
         {

@@ -7,36 +7,91 @@ using UnityEngine.SceneManagement;
 
 public class GameSelection : MonoBehaviour
 {
+    private const string LudoBootstrapScene = "LoginSplash";
+    private const string LudoMenuScene = "MenuScene";
+    private const string LudoFallbackScene = "LudoClassicModeOffline";
+
     public PointRummyScriptable point_rummy_scriptable;
+
+    private void LoadSceneSafe(string sceneName)
+    {
+        if (SceneLoader.Instance != null)
+        {
+            SceneLoader.Instance.LoadScene(sceneName);
+            return;
+        }
+
+        Debug.LogWarning($"SceneLoader.Instance is null. Falling back to SceneManager.LoadScene for scene: {sceneName}");
+        SceneManager.LoadScene(sceneName);
+    }
 
     public void loadscene(int num)
     {
         //SceneLoader.Instance.LoadScene(num);
-        SceneLoader.Instance.LoadScene("HomePage");
+        LoadSceneSafe("HomePage");
     }
 
     public void loadscenebyname(string scenename)
     {
-        SceneLoader.Instance.LoadScene(scenename);
+        LoadSceneSafe(scenename);
     }
 
     public void loaddynamicscenebyname(string scenename)
     {
-        SceneLoader.Instance.LoadScene(scenename);
+        LoadSceneSafe(scenename);
+    }
+
+    private bool TryLoadFirstAvailableScene(params string[] sceneNames)
+    {
+        foreach (string sceneName in sceneNames)
+        {
+            if (string.IsNullOrWhiteSpace(sceneName))
+            {
+                continue;
+            }
+
+            if (!Application.CanStreamedLevelBeLoaded(sceneName))
+            {
+                continue;
+            }
+
+            SceneManager.LoadSceneAsync(sceneName);
+            return true;
+        }
+
+        return false;
     }
 
     public void OpenLudo()
     {
+        if (ProfileManager.instance == null)
+        {
+            Debug.LogWarning("ProfileManager.instance is null while opening Ludo.");
+
+            if (!TryLoadFirstAvailableScene(LudoMenuScene, LudoFallbackScene))
+            {
+                CommonUtil.ShowToast("Ludo scene not available");
+            }
+
+            return;
+        }
+
         if (!ProfileManager.instance.ludoloaded)
         {
             CommonUtil.ShowToast("Loading...");
             ProfileManager.instance.ludoloaded = true;
-            SceneManager.LoadSceneAsync("LoginSplash");
+
+            if (!TryLoadFirstAvailableScene(LudoBootstrapScene, LudoMenuScene, LudoFallbackScene))
+            {
+                CommonUtil.ShowToast("Ludo scene not available");
+            }
         }
         else
         {
-            // loading.SetActive(true);
-            SceneManager.LoadSceneAsync("MenuScene");
+            if (!TryLoadFirstAvailableScene(LudoMenuScene, LudoFallbackScene))
+            {
+                CommonUtil.ShowToast("Ludo scene not available");
+            }
         }
     }
 
@@ -46,7 +101,7 @@ public class GameSelection : MonoBehaviour
         PlayerPrefs.SetString("Getpointplayer", "2");
         PlayerPrefs.SetString("Getpointboot", "00");
         // point_rummy_scriptable.boot_value = "0.00";
-        SceneLoader.Instance.LoadScene("Rummy_13");
+        LoadSceneSafe("Rummy_13");
     }
 
     public void ShowComingSoon()

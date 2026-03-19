@@ -7,6 +7,8 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+using UnityEngine.SceneManagement;
+
 public class LoaderScript : MonoBehaviour
 {
     public GameObject Panel;
@@ -89,7 +91,23 @@ public class LoaderScript : MonoBehaviour
 
     public void loaddynamicscenebyname(string scenename)
     {
-        SceneLoader.Instance.LoadScene(scenename);
+        if (SceneLoader.Instance != null)
+        {
+            SceneLoader.Instance.LoadScene(scenename);
+            return;
+        }
+
+        Debug.LogWarning(
+            $"SceneLoader.Instance is null. Falling back to SceneManager.LoadScene for scene: {scenename}"
+        );
+
+        if (!string.IsNullOrWhiteSpace(scenename) && Application.CanStreamedLevelBeLoaded(scenename))
+        {
+            SceneManager.LoadScene(scenename);
+            return;
+        }
+
+        Debug.LogWarning($"Unable to load scene: {scenename}");
     }
     [Button]
     public void SetTransparency(float alphaValue)

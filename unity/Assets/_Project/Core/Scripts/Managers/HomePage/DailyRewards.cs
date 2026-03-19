@@ -32,6 +32,12 @@ public class DailyRewards : MonoBehaviour
 
     public async Task ShowRewards(bool click = false)
     {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("DailyRewards skipped because APIManager.Instance is null.");
+            return;
+        }
+
         string Url = Configuration.Url + Configuration.Welcomebonus;
         Debug.Log("RES_Check + API-Call + ShowRewards");
 
@@ -42,6 +48,18 @@ public class DailyRewards : MonoBehaviour
         };
         bonus = new WelcomBonusRoot();
         bonus = await APIManager.Instance.Post<WelcomBonusRoot>(Url, formData);
+        if (bonus == null)
+        {
+            Debug.LogWarning("DailyRewards response was null.");
+            return;
+        }
+
+        if (bonus.welcome_bonus == null)
+        {
+            Debug.Log("DailyRewards response did not include welcome_bonus data.");
+            return;
+        }
+
         Debug.Log("bonus.collected_days" + bonus.collected_days);
         Debug.Log("bonus.welcome_bonus.Count" + bonus.welcome_bonus.Count);
         if (bonus.collected_days <= bonus.welcome_bonus.Count)
@@ -59,8 +77,20 @@ public class DailyRewards : MonoBehaviour
             }
             else
             {
-                for (int i = 0; i < bonus.welcome_bonus.Count; i++)
+                int rewardSlots = dailyrewardlist != null ? dailyrewardlist.Count : 0;
+                if (rewardSlots == 0)
                 {
+                    Debug.LogWarning("DailyRewards has no reward slot objects assigned.");
+                    return;
+                }
+
+                for (int i = 0; i < bonus.welcome_bonus.Count && i < rewardSlots; i++)
+                {
+                    if (dailyrewardlist[i] == null)
+                    {
+                        continue;
+                    }
+
                     dailyrewardlist[i].transform.GetChild(1).GetComponent<TextMeshProUGUI>().text =
                         bonus.welcome_bonus[i].coin;
                     if ((i + 1) <= bonus.collected_days)
@@ -72,10 +102,16 @@ public class DailyRewards : MonoBehaviour
                     }
                 }
             }
-            dailyrewardpanel.gameObject.SetActive(false);
+            if (dailyrewardpanel != null)
+            {
+                dailyrewardpanel.gameObject.SetActive(false);
+            }
             Debug.Log("RES_check + Open daily rewards");
         }
-        PopUpUtil.ButtonClick(dailyrewardpanel.gameObject);
+        if (dailyrewardpanel != null)
+        {
+            PopUpUtil.ButtonClick(dailyrewardpanel.gameObject);
+        }
     }
 
     public async void Collect()
@@ -95,9 +131,20 @@ public class DailyRewards : MonoBehaviour
         };
         messageprint message = new messageprint();
         message = await APIManager.Instance.Post<messageprint>(Url, formData);
-        LoaderUtil.instance.ShowToast(message.message);
+        if (LoaderUtil.instance != null)
+        {
+            LoaderUtil.instance.ShowToast(message.message);
+        }
 
-        GetComponent<Profile>().UpdateWallet();
-        PopUpUtil.ButtonCancel(dailyrewardpanel.gameObject);
+        Profile profile = GetComponent<Profile>();
+        if (profile != null)
+        {
+            profile.UpdateWallet();
+        }
+
+        if (dailyrewardpanel != null)
+        {
+            PopUpUtil.ButtonCancel(dailyrewardpanel.gameObject);
+        }
     }
 }

@@ -16,6 +16,8 @@ public class SettingManager : MonoBehaviour
 
     public List<Button> AllHomeScreenButtons = new List<Button>();
 
+    private bool _isInitializing;
+
     void OnEnable()
     {
         /*   if (!PlayerPrefs.HasKey("FirstTimeSetup"))
@@ -32,6 +34,17 @@ public class SettingManager : MonoBehaviour
         if (!PlayerPrefs.HasKey("sound"))
             PlayerPrefs.SetString("sound", "on");
 
+        if (musicToggle == null || soundToggle == null)
+        {
+            Debug.LogWarning("SettingManager toggles are not assigned.");
+            return;
+        }
+
+        _isInitializing = true;
+
+        musicToggle.onValueChanged.RemoveListener(OnMusicToggleChanged);
+        soundToggle.onValueChanged.RemoveListener(OnSoundToggleChanged);
+
         musicToggle.isOn = Configuration.GetMusic() == "on";
         soundToggle.isOn = Configuration.GetSound() == "on";
 
@@ -42,15 +55,56 @@ public class SettingManager : MonoBehaviour
         // Add listeners for toggle changes
         musicToggle.onValueChanged.AddListener(OnMusicToggleChanged);
         soundToggle.onValueChanged.AddListener(OnSoundToggleChanged);
+        _isInitializing = false;
 
         AllHomeScreenButtons.RemoveAll(button => button == null);
         foreach (Button button in AllHomeScreenButtons)
         {
             button.onClick.AddListener(PlayButtonSound);
         }
-        PrivacyButton.onClick.AddListener(OnClickPrivacyAndPolicy);
-        TurmsConditionButton.onClick.AddListener(OpenTermsCondition);
+        if (PrivacyButton != null)
+        {
+            PrivacyButton.onClick.RemoveListener(OnClickPrivacyAndPolicy);
+            PrivacyButton.onClick.AddListener(OnClickPrivacyAndPolicy);
+        }
+
+        if (TurmsConditionButton != null)
+        {
+            TurmsConditionButton.onClick.RemoveListener(OpenTermsCondition);
+            TurmsConditionButton.onClick.AddListener(OpenTermsCondition);
+        }
         //ResetSettingButtons();
+    }
+
+    private void OnDisable()
+    {
+        if (musicToggle != null)
+        {
+            musicToggle.onValueChanged.RemoveListener(OnMusicToggleChanged);
+        }
+
+        if (soundToggle != null)
+        {
+            soundToggle.onValueChanged.RemoveListener(OnSoundToggleChanged);
+        }
+
+        foreach (Button button in AllHomeScreenButtons)
+        {
+            if (button != null)
+            {
+                button.onClick.RemoveListener(PlayButtonSound);
+            }
+        }
+
+        if (PrivacyButton != null)
+        {
+            PrivacyButton.onClick.RemoveListener(OnClickPrivacyAndPolicy);
+        }
+
+        if (TurmsConditionButton != null)
+        {
+            TurmsConditionButton.onClick.RemoveListener(OpenTermsCondition);
+        }
     }
     public void ResetSettingButtons()
     {
@@ -80,6 +134,11 @@ public class SettingManager : MonoBehaviour
 
     private void PlayButtonSound()
     {
+        if (AudioManager._instance == null)
+        {
+            return;
+        }
+
         AudioManager._instance.ButtonClick();
     }
 
@@ -89,6 +148,11 @@ public class SettingManager : MonoBehaviour
 
         PlayerPrefs.SetString("music", isOn ? "on" : "");
         PlayerPrefs.Save();
+
+        if (_isInitializing || AudioManager._instance == null)
+        {
+            return;
+        }
 
         if (isOn)
         {
@@ -106,6 +170,11 @@ public class SettingManager : MonoBehaviour
 
         PlayerPrefs.SetString("sound", isOn ? "on" : "");
         PlayerPrefs.Save();
+        if (_isInitializing || AudioManager._instance == null)
+        {
+            return;
+        }
+
         if (!isOn)
             AudioManager._instance.StopEffect();
     }

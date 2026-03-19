@@ -1,0 +1,66 @@
+{
+    "tournament_uuid": "dca079a4-1160-480c-b63e-f6caae7c7191",
+    "match_size": 2,
+    "entries_requested": 8,
+    "entries": [
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "ca7ba385-7a17-4304-bfd3-0d6c0ccf9dbb",
+            "ticket_no": "LOAD-000001",
+            "access_token": "76|96T7feQBXykVfE13GgWNqTbVOy9XQr8IaBj1eSamf1557690"
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "33adaf3d-349a-4cc9-adfe-998f17111e37",
+            "ticket_no": "LOAD-000002",
+            "access_token": "77|FXZwljPxTMJCl7K2v32fQBSBPnQs5wsfQ4bxFGXHb4fb1f67"
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "6ea9d343-f59f-4597-a5d4-809070f3c2ee",
+            "ticket_no": "LOAD-000003",
+            "access_token": "78|v6G1U3vXhxCbhk9yhj1HnyjpPk1ODbZY7Zq8rRCl71bd66a3"
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "9c161d96-f397-4804-ad16-85f9845e48c5",
+            "ticket_no": "LOAD-000004",
+            "access_token": "79|4Cp33G7DStIa5JKFPIbk4d70C1UxqQsDMfA2I7sP888a167d"
+        },
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "e107f842-0a2a-47c0-a54b-a972ff81c042",
+            "ticket_no": "LOAD-000005",
+            "access_token": "80|dQ6LL0Y6qi7XczYXupROqmOKwhc8BGrewCDkI0Jc45f788ed"
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "7d67fd0f-837b-48c7-93c7-40358e5566be",
+            "ticket_no": "LOAD-000006",
+            "access_token": "81|YKsGXckcz6f9z07yDju56TEYrWDfKlbovcIDlGrpe0b88bab"
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "bfc3a3ab-22f7-4cfb-a775-f765804c5748",
+            "ticket_no": "LOAD-000007",
+            "access_token": "82|Vq9QsP96hATtMGpjfTjwbxYDjT4dz93v2nZUF48kd262940a"
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "a7232f17-30e9-437e-a1ee-57d51a4d0879",
+            "ticket_no": "LOAD-000008",
+            "access_token": "83|9CmJpp9DlyCbQfwoxcOOvVxX1aTawGDPac7WnHObf2fd325d"
+        }
+    ],
+    "notes": [
+        "Access tokens were minted during fixture preparation."
+    ]
+}

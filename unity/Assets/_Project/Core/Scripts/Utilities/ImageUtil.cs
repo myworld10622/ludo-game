@@ -36,7 +36,7 @@ public class ImageUtil : MonoBehaviour
 
     public async Task<Sprite> GetSpriteFromURLAsync(string url)
     {
-        if (Configuration.ProfileImage == url)
+        if (string.IsNullOrWhiteSpace(url) || Configuration.ProfileImage == url)
         {
             Debug.Log("URL NOT Found:");
             return null;
@@ -91,14 +91,14 @@ public class ImageUtil : MonoBehaviour
                     }
                     catch (Exception ex)
                     {
-                        Debug.LogError($"Error processing image: {ex.Message}");
-                        tcs.SetException(ex);
+                        Debug.LogWarning($"Error processing image: {ex.Message}");
+                        tcs.TrySetResult(null);
                     }
                 }
                 else
                 {
-                    Debug.LogError($"Download failed: {res?.Message ?? "Unknown error"}");
-                    tcs.SetException(new Exception(res?.Message ?? "Unknown error"));
+                    Debug.Log($"Image download skipped: {res?.Message ?? "Unknown error"}");
+                    tcs.TrySetResult(null);
                 }
             }
         );

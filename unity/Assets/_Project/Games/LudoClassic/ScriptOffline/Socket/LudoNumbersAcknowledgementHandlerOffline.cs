@@ -24,6 +24,35 @@ namespace LudoClassicOffline
         public TokenMove tokenMove;
         public Button yesBtn;//TODO
         public Button noBtn;//TODO
+
+        private void OnDisable()
+        {
+            CancelInvoke();
+            KillRejoinTweens();
+        }
+
+        private void OnDestroy()
+        {
+            CancelInvoke();
+            KillRejoinTweens();
+        }
+
+        private void KillRejoinTweens()
+        {
+            if (ludoNumberUiManager != null)
+            {
+                if (ludoNumberUiManager.timerCountScreen != null && ludoNumberUiManager.timerCountScreen.transform != null)
+                {
+                    ludoNumberUiManager.timerCountScreen.transform.DOKill();
+                }
+
+                if (ludoNumberUiManager.startPanel != null && ludoNumberUiManager.startPanel.transform != null)
+                {
+                    ludoNumberUiManager.startPanel.transform.DOKill();
+                }
+            }
+        }
+
         public string playerOwnId
         {
             get

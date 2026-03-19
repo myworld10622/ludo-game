@@ -7,7 +7,9 @@ using Mkey;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using Object = UnityEngine.Object;
 
 namespace LudoClassicOffline
 {
@@ -133,6 +135,15 @@ public class DashBoardManagerOffline : MonoBehaviour
         public string diceFTUE;
         public string numberFTUE;
         public Button specialOfferBtn;
+        private LudoV2MatchmakingBridge ludoV2Bridge;
+        private LudoTournamentPanelOffline ludoTournamentPanel;
+        private RectTransform tournamentTab;
+        private Button tournamentTabButton;
+        private bool hasCachedTabPositions;
+        private Vector2 cachedPlayer2Position;
+        private Vector2 cachedPlayer4Position;
+        private Vector2 cachedPlayer2Size;
+        private Vector2 cachedPlayer4Size;
 
         private void Awake()
         {
@@ -264,11 +275,24 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void Start()
         {
-            baseUrl =
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.socketDetails.hostURL
-                + ":"
-                + MGPSDK.MGPGameManager.instance.sdkConfig.data.socketDetails.portNumber
-                + "/ludogame/";
+            if (
+                MGPSDK.MGPGameManager.instance != null
+                && MGPSDK.MGPGameManager.instance.sdkConfig != null
+                && MGPSDK.MGPGameManager.instance.sdkConfig.data != null
+                && MGPSDK.MGPGameManager.instance.sdkConfig.data.socketDetails != null
+            )
+            {
+                baseUrl =
+                    MGPSDK.MGPGameManager.instance.sdkConfig.data.socketDetails.hostURL
+                    + ":"
+                    + MGPSDK.MGPGameManager.instance.sdkConfig.data.socketDetails.portNumber
+                    + "/ludogame/";
+            }
+            else
+            {
+                Debug.LogWarning("MGPGameManager socket config is unavailable. Using empty Ludo baseUrl.");
+                baseUrl = string.Empty;
+            }
 
             string s = PlayerPrefs.GetString("TimeAfterReward");
             if (s == "")
@@ -348,7 +372,18 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void ClickOnLudoGameExitBtn()
         {
-            SceneLoader.Instance.LoadScene("HomePage");
+            DOTween.KillAll(false);
+
+            if (SceneLoader.Instance != null)
+            {
+                SceneLoader.Instance.LoadScene("HomePage");
+                return;
+            }
+
+            if (Application.CanStreamedLevelBeLoaded("HomePage"))
+            {
+                SceneManager.LoadScene("HomePage");
+            }
         }
 
         #region Select Mode Practice/Cash
@@ -404,10 +439,23 @@ public class DashBoardManagerOffline : MonoBehaviour
             if (gameMode == "ONLINE")
             {
                 onlineLobbySelectionPanel.SetActive(true);
+                CloseTournamentPanel();
+                HideTournamentClassicTab();
             }
             else
             {
                 lobbySelectPanal.SetActive(true);
+                if (gameMode == "CLASSIC")
+                {
+                    ResolveTournamentPanel().ShowLauncherButton(false);
+                    EnsureTournamentClassicTab();
+                }
+                else
+                {
+                    ResolveTournamentPanel().ShowLauncherButton(false);
+                    CloseTournamentPanel();
+                    HideTournamentClassicTab();
+                }
             }
             //  MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.noOfPlayer = 4;
             //    ClickOnPlayerButton(4);
@@ -421,6 +469,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         public void ClickOnBackButton()
         {
             //ADManagerOffline.instance.HideBanner(false);
+            CloseTournamentPanel();
+            HideTournamentClassicTab();
             backButton.SetActive(false);
             selectGameModePanal.SetActive(true);
             lobbySelectPanal.SetActive(false);
@@ -727,6 +777,11 @@ public class DashBoardManagerOffline : MonoBehaviour
                 }
                 else
                 {
+                    if (Configuration.IsLudoV2Enabled() && ResolveLudoV2Bridge().TryStartMatchmaking(value, ResolveSelectedPlayerCount()))
+                    {
+                        return;
+                    }
+
                     fTUEPanal.SetActive(false);
                     fTUEManager.SetActive(false);
                     socketNumberEventReceiver.entryFee = value;
@@ -761,6 +816,187 @@ public class DashBoardManagerOffline : MonoBehaviour
             else
             {
                 alertPopUpForBalance.SetActive(true);
+            }
+        }
+
+        public bool TryStartTournamentMatch(string tournamentUuid, string tournamentEntryUuid, int maxPlayers = 2)
+        {
+            if (string.IsNullOrWhiteSpace(tournamentUuid) || string.IsNullOrWhiteSpace(tournamentEntryUuid))
+            {
+                CommonUtil.ShowToast("Tournament room details are missing");
+                return false;
+            }
+
+            if (socketNumberEventReceiver != null
+                && socketNumberEventReceiver.joinTableResponse != null
+                && socketNumberEventReceiver.joinTableResponse.data != null)
+            {
+                socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = Mathf.Max(2, maxPlayers);
+                socketNumberEventReceiver.entryFee = 0;
+                socketNumberEventReceiver.winAmt = 0;
+            }
+
+            IsPassAndPlay = false;
+            backButton.SetActive(false);
+            lobbySelectPanal.SetActive(false);
+            onlineLobbySelectionPanel.SetActive(false);
+            fTUEPanal.SetActive(false);
+            fTUEManager.SetActive(false);
+
+            return ResolveLudoV2Bridge().TryStartTournamentMatchmaking(tournamentUuid, tournamentEntryUuid);
+        }
+
+        private int ResolveSelectedPlayerCount()
+        {
+            if (socketNumberEventReceiver != null && socketNumberEventReceiver.joinTableResponse != null && socketNumberEventReceiver.joinTableResponse.data != null && socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount > 0)
+            {
+                return socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount;
+            }
+
+            return fourPlayerLobby != null && fourPlayerLobby.activeSelf ? 4 : 2;
+        }
+
+        private LudoV2MatchmakingBridge ResolveLudoV2Bridge()
+        {
+            if (ludoV2Bridge != null)
+            {
+                return ludoV2Bridge;
+            }
+
+            ludoV2Bridge = GetComponent<LudoV2MatchmakingBridge>();
+            if (ludoV2Bridge == null)
+            {
+                ludoV2Bridge = gameObject.AddComponent<LudoV2MatchmakingBridge>();
+            }
+
+            ludoV2Bridge.dashBoardManager = this;
+            ludoV2Bridge.socketNumberEventReceiver = socketNumberEventReceiver;
+            return ludoV2Bridge;
+        }
+
+        private LudoTournamentPanelOffline ResolveTournamentPanel()
+        {
+            if (ludoTournamentPanel != null)
+            {
+                return ludoTournamentPanel;
+            }
+
+            ludoTournamentPanel = GetComponent<LudoTournamentPanelOffline>();
+            if (ludoTournamentPanel == null)
+            {
+                ludoTournamentPanel = gameObject.AddComponent<LudoTournamentPanelOffline>();
+            }
+
+            ludoTournamentPanel.Initialize(this);
+            return ludoTournamentPanel;
+        }
+
+        public void OpenTournamentPanel()
+        {
+            ResolveTournamentPanel().OpenPanel();
+        }
+
+        public void CloseTournamentPanel()
+        {
+            if (ludoTournamentPanel != null)
+            {
+                ludoTournamentPanel.ClosePanel();
+            }
+        }
+
+        private void EnsureTournamentClassicTab()
+        {
+            if (player2 == null || player4 == null || player4.gameObject == null)
+            {
+                return;
+            }
+
+            if (!hasCachedTabPositions)
+            {
+                cachedPlayer2Position = player2.anchoredPosition;
+                cachedPlayer4Position = player4.anchoredPosition;
+                cachedPlayer2Size = player2.sizeDelta;
+                cachedPlayer4Size = player4.sizeDelta;
+                hasCachedTabPositions = true;
+            }
+
+            if (tournamentTab == null)
+            {
+                GameObject clone = Object.Instantiate(player4.gameObject, player4.parent);
+                clone.name = "TournamentTab";
+                tournamentTab = clone.GetComponent<RectTransform>();
+                tournamentTabButton = clone.GetComponentInChildren<Button>(true);
+
+                if (tournamentTabButton == null)
+                {
+                    tournamentTabButton = clone.GetComponent<Button>();
+                }
+
+                if (tournamentTabButton != null)
+                {
+                    tournamentTabButton.onClick.RemoveAllListeners();
+                    tournamentTabButton.onClick.AddListener(OpenTournamentPanel);
+                }
+
+                ReplaceTabText(clone.transform, "4 PLAYER", "TOURNAMENT");
+                ReplaceTabText(clone.transform, "4 Player", "Tournament");
+                ReplaceTabText(clone.transform, "4PLAYER", "TOURNAMENT");
+                ReplaceTabText(clone.transform, "PLAYER", "TOURNAMENT");
+            }
+
+            float centerX = (cachedPlayer2Position.x + cachedPlayer4Position.x) * 0.5f;
+            float tabWidth = Mathf.Min(cachedPlayer2Size.x, cachedPlayer4Size.x) * 0.78f;
+            float tabHeight = Mathf.Min(cachedPlayer2Size.y, cachedPlayer4Size.y);
+            float gap = 8f;
+            float step = tabWidth + gap;
+
+            player2.sizeDelta = new Vector2(tabWidth, tabHeight);
+            player4.sizeDelta = new Vector2(tabWidth, tabHeight);
+            player2.anchoredPosition = new Vector2(centerX - step, cachedPlayer2Position.y);
+            if (tournamentTab != null)
+            {
+                tournamentTab.gameObject.SetActive(true);
+                tournamentTab.SetAsLastSibling();
+                tournamentTab.anchoredPosition = new Vector2(centerX, cachedPlayer2Position.y);
+                tournamentTab.sizeDelta = new Vector2(tabWidth, tabHeight);
+            }
+            player4.anchoredPosition = new Vector2(centerX + step, cachedPlayer4Position.y);
+        }
+
+        private void HideTournamentClassicTab()
+        {
+            if (hasCachedTabPositions)
+            {
+                player2.anchoredPosition = cachedPlayer2Position;
+                player4.anchoredPosition = cachedPlayer4Position;
+                player2.sizeDelta = cachedPlayer2Size;
+                player4.sizeDelta = cachedPlayer4Size;
+            }
+
+            if (tournamentTab != null)
+            {
+                tournamentTab.gameObject.SetActive(false);
+            }
+        }
+
+        private void ReplaceTabText(Transform root, string source, string target)
+        {
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(labels[i].text) && labels[i].text.Contains(source))
+                {
+                    labels[i].text = labels[i].text.Replace(source, target);
+                }
+            }
+
+            TextMeshProUGUI[] tmpLabels = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < tmpLabels.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(tmpLabels[i].text) && tmpLabels[i].text.Contains(source))
+                {
+                    tmpLabels[i].text = tmpLabels[i].text.Replace(source, target);
+                }
             }
         }
 
@@ -1098,6 +1334,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         #region ResetGame
         public void ResetGame()
         {
+            CloseTournamentPanel();
+            HideTournamentClassicTab();
             selectGameModePanal.SetActive(true);
             backButton.SetActive(false);
             lobbySelectPanal.SetActive(false);

@@ -209,15 +209,30 @@ public class Profile : MonoBehaviour
 
     public async Task GetBannerImage(string notificationpic)
     {
+        if (SpriteManager.Instance == null)
+        {
+            return;
+        }
+
         string image_url = Configuration.NotificationBannerImage + notificationpic;
         SpriteManager.Instance.welcome_app_banner = await ImageUtil.Instance.GetSpriteFromURLAsync(
             image_url
         );
-        banner.enabled = true;
+
+        if (banner != null)
+        {
+            banner.enabled = true;
+        }
     }
 
     public async void PostUserSetting(string url)
     {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("Profile.PostUserSetting skipped because APIManager.Instance is null.");
+            return;
+        }
+
         var formData = new Dictionary<string, string>
         {
             { "user_id", Configuration.GetId() },
@@ -225,28 +240,75 @@ public class Profile : MonoBehaviour
         };
         var UserSettingOutPut = await APIManager.Instance.Post<UserSettingOutPuts>(url, formData);
 
+        if (UserSettingOutPut == null)
+        {
+            Debug.LogWarning("Profile.PostUserSetting received a null response.");
+            return;
+        }
+
         Debug.Log($"RES+Message: {UserSettingOutPut.message}\nRES+Code: {UserSettingOutPut.code}");
 
         Debug.Log("RES_Check + getting images");
 
-        SpriteManager.Instance.app_banner.Clear();
-        for (int i = 0; i < UserSettingOutPut.app_banner.Count; i++)
+        if (SpriteManager.Instance == null)
         {
-            Debug.Log("RES_Check + getting images");
-            string app_banner_image_url =
-                Configuration.BannerImage + UserSettingOutPut.app_banner[i].banner;
-            SpriteManager.Instance.app_banner.Add(
-                await ImageUtil.Instance.GetSpriteFromURLAsync(app_banner_image_url)
-            );
-
-            SpriteManager.Instance.app_banner_name.Add(UserSettingOutPut.app_banner[i].banner);
+            Debug.LogWarning("Profile.PostUserSetting skipped banner/avatar preload because SpriteManager.Instance is null.");
+            return;
         }
-        await GetBannerImage(LogInOutput.notification_image);
-        await DownloadProfileImage();
-        SpriteManager.Instance.avatar.Clear();
-        for (int i = 0; i < UserSettingOutPut.avatar.Count; i++)
+
+        if (SpriteManager.Instance.app_banner == null)
         {
-            await DownloadAvatarImage(UserSettingOutPut.avatar[i]);
+            SpriteManager.Instance.app_banner = new List<Sprite>();
+        }
+
+        if (SpriteManager.Instance.app_banner_name == null)
+        {
+            SpriteManager.Instance.app_banner_name = new List<string>();
+        }
+
+        if (SpriteManager.Instance.avatar == null)
+        {
+            SpriteManager.Instance.avatar = new List<Sprite>();
+        }
+
+        SpriteManager.Instance.app_banner.Clear();
+        SpriteManager.Instance.app_banner_name.Clear();
+        if (UserSettingOutPut.app_banner != null)
+        {
+            for (int i = 0; i < UserSettingOutPut.app_banner.Count; i++)
+            {
+                Debug.Log("RES_Check + getting images");
+                string app_banner_image_url =
+                    Configuration.BannerImage + UserSettingOutPut.app_banner[i].banner;
+                Sprite bannerSprite = ImageUtil.Instance != null
+                    ? await ImageUtil.Instance.GetSpriteFromURLAsync(app_banner_image_url)
+                    : null;
+
+                if (bannerSprite != null)
+                {
+                    SpriteManager.Instance.app_banner.Add(bannerSprite);
+                }
+
+                SpriteManager.Instance.app_banner_name.Add(UserSettingOutPut.app_banner[i].banner);
+            }
+        }
+
+        if (LogInOutput != null)
+        {
+            if (!string.IsNullOrWhiteSpace(LogInOutput.notification_image))
+            {
+                await GetBannerImage(LogInOutput.notification_image);
+            }
+            await DownloadProfileImage();
+        }
+
+        SpriteManager.Instance.avatar.Clear();
+        if (UserSettingOutPut.avatar != null)
+        {
+            for (int i = 0; i < UserSettingOutPut.avatar.Count; i++)
+            {
+                await DownloadAvatarImage(UserSettingOutPut.avatar[i]);
+            }
         }
         SetUserProfileDetails();
         SetBankDetails();
@@ -1110,6 +1172,12 @@ public class Profile : MonoBehaviour
 
     private async Task<List<string>> FetchGameSettingsAsync()
     {
+        if (APIManager.Instance == null)
+        {
+            Debug.LogWarning("FetchGameSettingsAsync skipped because APIManager.Instance is null.");
+            return new List<string>();
+        }
+
         string Url = Configuration.Url + Configuration.gameonoff;
         Debug.Log("RES_Check +FetchGameSettingsAsync");
 
@@ -1121,13 +1189,28 @@ public class Profile : MonoBehaviour
 
         GameRootObject rootobject = await APIManager.Instance.Post<GameRootObject>(Url, formData);
 
+        if (rootobject == null)
+        {
+            Debug.LogWarning("Game settings response was null.");
+            return new List<string>();
+        }
+
         if (rootobject.code == 200)
         {
-            GameSetting gameSetting = rootobject.game_setting;
+            if (rootobject.games != null && rootobject.games.Count > 0)
+            {
+                return rootobject.games
+                    .Where(game => game != null && game.visibility == "1" && game.status == "1")
+                    .Select(game => game.game)
+                    .Where(game => !string.IsNullOrWhiteSpace(game))
+                    .ToList();
+            }
+
+            GameSetting gameSetting = rootobject.game_setting ?? rootobject.data;
 
             if (gameSetting == null)
             {
-                Debug.LogError("GameSetting is null.");
+                Debug.LogWarning("Game settings payload did not include a supported settings object.");
                 return new List<string>();
             }
 
@@ -1142,7 +1225,6 @@ public class Profile : MonoBehaviour
                 .ToList();
         }
 
-        // Return an empty list if the code is not 200
         return new List<string>();
     }
 
@@ -1291,7 +1373,21 @@ public class Profile : MonoBehaviour
     public void LogoutFromGame()
     {
         PlayerPrefs.DeleteAll();
-        selection.loaddynamicscenebyname("LoginRegister");
+
+        if (selection == null)
+        {
+            selection = GetComponent<GameSelection>() ?? FindObjectOfType<GameSelection>();
+        }
+
+        if (selection != null)
+        {
+            selection.loaddynamicscenebyname("LoginRegister");
+        }
+        else
+        {
+            Debug.LogWarning("GameSelection reference is null during logout. Falling back to SceneManager.LoadScene.");
+            UnityEngine.SceneManagement.SceneManager.LoadScene("LoginRegister");
+        }
     }
 
     #endregion

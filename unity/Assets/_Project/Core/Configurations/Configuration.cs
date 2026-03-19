@@ -9,12 +9,19 @@ using static System.Net.WebRequestMethods;
 public class Configuration : MonoBehaviour
 {
 
-    public const string BaseUrl = "http://localhost:8080/";
-    public const string Website = "http://localhost:8080/";
+    public const string BaseUrl = "http://localhost:8000/";
+    public const string Website = "http://localhost:8000/";
     public const string BaseSocketUrl = "http://localhost:3002";
+    public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";
+    public const string LudoTournamentInfoUrl = BaseUrl + "api/v1/tournaments/";
 
     public const string APIUrl = BaseUrl + "api/";
     public const string UserUrl = BaseUrl + "api/User/";
+    public const string LudoV2QueueJoinUrl = BaseUrl + "api/v1/ludo/queue/join";
+    public const string LudoV2RoomUrl = BaseUrl + "api/v1/ludo/rooms/";
+    public const string TournamentListUrl = BaseUrl + "api/v1/tournaments";
+    public const string TournamentClaimRoomUrl = BaseUrl + "api/v1/tournaments/";
+    public const string LudoV2SocketNamespace = "/ludo_v2";
 
     //A1P
     public const string paymentgateway = BaseUrl + "api/plan/Place_Order_blinkpe";
@@ -573,6 +580,23 @@ public class Configuration : MonoBehaviour
     }
 
     public static bool showbanner = true;
+    public const bool LudoV2EnabledByDefault = true;
+
+    public static bool IsLudoV2Enabled()
+    {
+        return PlayerPrefs.GetInt("ludo_v2_enabled", LudoV2EnabledByDefault ? 1 : 0) == 1;
+    }
+
+    public static string GetLudoTournamentClaimRoomUrl(string tournamentUuid)
+    {
+        return BaseUrl + "api/v1/tournaments/" + tournamentUuid + "/claim-room";
+    }
+
+    public static void SetLudoV2Enabled(bool enabled)
+    {
+        PlayerPrefs.SetInt("ludo_v2_enabled", enabled ? 1 : 0);
+        PlayerPrefs.Save();
+    }
 
     #endregion
 

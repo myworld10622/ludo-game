@@ -14,6 +14,8 @@ namespace LudoClassicOffline
 {
     public class LudoNumberGsNewOffline : MonoBehaviour
     {
+        private readonly HashSet<int> eliminatedSeatIndices = new HashSet<int>();
+
         #region VARIABLES
 
         [Header("Script")]
@@ -1194,6 +1196,12 @@ namespace LudoClassicOffline
             board.SetActive(false);
             winningPartical.gameObject.SetActive(false);
             ludoNumberUiManager.moveLeft.SetActive(false); //TODO
+            if (LudoV2MatchmakingBridge.Instance != null)
+            {
+                LudoV2MatchmakingBridge.Instance.ReportMatchCompleted(
+                    socketNumberEventReceiver.battleFinish.data
+                );
+            }
             ludoNumberWinnerData.SetWinnerData(socketNumberEventReceiver.battleFinish.data);
             for (
                 int i = 0;
@@ -2732,7 +2740,7 @@ namespace LudoClassicOffline
                 ChangeIndex();
             else
                 socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex =
-                    socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == 0 ? 1 : 0;
+                    GetNextActiveSeatIndex(socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex);
             Debug.Log(
                 "ChangeTurnSeatIndex => "
                     + socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex
@@ -2742,10 +2750,78 @@ namespace LudoClassicOffline
 
         public void ChangeIndex()
         {
-            if (socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == 3)
-                socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex = 0;
-            else
-                socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex++;
+            socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex =
+                GetNextActiveSeatIndex(socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex);
+        }
+
+        private int GetNextActiveSeatIndex(int currentSeatIndex)
+        {
+            int maxSeats = Mathf.Max(2, socketNumberEventReceiver.maxPlayer);
+            int nextSeatIndex = currentSeatIndex;
+
+            for (int i = 0; i < maxSeats; i++)
+            {
+                nextSeatIndex = (nextSeatIndex + 1) % maxSeats;
+                if (!eliminatedSeatIndices.Contains(nextSeatIndex))
+                {
+                    return nextSeatIndex;
+                }
+            }
+
+            return currentSeatIndex;
+        }
+
+        private void EliminateSeat(int seatIndex)
+        {
+            if (eliminatedSeatIndices.Contains(seatIndex))
+            {
+                return;
+            }
+
+            eliminatedSeatIndices.Add(seatIndex);
+
+            for (int i = 0; i < ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
+            {
+                var playerControl = ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i];
+                if (playerControl == null || playerControl.playerInfoData == null)
+                {
+                    continue;
+                }
+
+                if (playerControl.playerInfoData.playerSeatIndex != seatIndex)
+                {
+                    continue;
+                }
+
+                playerControl.gameObject.SetActive(false);
+                playerControl.ludoNumbersUserData.leaveTableImage.SetActive(true);
+                playerControl.ludoNumbersUserData.smallRoundImage.SetActive(false);
+                playerControl.ludoNumbersUserData.scoreBox.SetActive(false);
+                playerControl.ludoNumbersUserData.turnProfileBlink.SetActive(false);
+                playerControl.ludoNumbersUserData.turnTimeShowArrow.SetActive(false);
+                playerControl.ludoNumbersUserData.arrowAnimationOnTurnTime.enabled = false;
+                playerControl.ludoNumbersUserData.animatorOnTurn.enabled = false;
+
+                playerControl.ludoNumbersUserData.playerCoockie.ForEach((cookie) =>
+                {
+                    if (cookie != null)
+                    {
+                        cookie.transform.SetParent(tokenKill.transform);
+                        cookie.SetActive(false);
+                    }
+                });
+
+                playerControl.ludoNumbersUserData.playerCoockieForClassicMode.ForEach((cookie) =>
+                {
+                    if (cookie != null)
+                    {
+                        cookie.transform.SetParent(tokenKill.transform);
+                        cookie.SetActive(false);
+                    }
+                });
+
+                break;
+            }
         }
 
         public void OffSixNumberShow()
@@ -3814,6 +3890,11 @@ namespace LudoClassicOffline
                     ludoNumbersAcknowledgementHandler
                         .ludoNumberPlayerControl[i]
                         .ludoNumbersUserData.infoBtn.transform.DOScale(Vector2.one, 0.2f);
+
+                    if (lives >= 3)
+                    {
+                        EliminateSeat(socketNumberEventReceiver.turnMiss.data.playerSeatIndex);
+                    }
                 }
             }
         }
@@ -4122,6 +4203,7 @@ namespace LudoClassicOffline
         #region ResetGamne
         public void ResetGame()
         {
+            eliminatedSeatIndices.Clear();
             for (int i = 0; i < ludoNumberPlayerControl.Length; i++)
             {
                 ludoNumberPlayerControl[i]

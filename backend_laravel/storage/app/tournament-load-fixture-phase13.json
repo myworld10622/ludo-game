@@ -1,0 +1,122 @@
+{
+    "tournament_uuid": "2b6be28d-b2aa-44ee-a383-5e58dc1b2d10",
+    "match_size": 4,
+    "entries_requested": 16,
+    "entries": [
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "b1100dbe-e024-40b6-b080-15ad6c9c9768",
+            "ticket_no": "LOAD-000001",
+            "access_token": null
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "97b98069-1745-4710-b73e-ba0c4448eba5",
+            "ticket_no": "LOAD-000002",
+            "access_token": null
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "2625d34b-1a42-4195-9562-53ec720e42eb",
+            "ticket_no": "LOAD-000003",
+            "access_token": null
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "3857691b-64fb-42d0-abeb-a9afae9f5116",
+            "ticket_no": "LOAD-000004",
+            "access_token": null
+        },
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "0ca1309c-65ea-4adc-ad21-2f5a8293eb64",
+            "ticket_no": "LOAD-000005",
+            "access_token": null
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "4f3c7b5e-d479-4ade-99e4-fd8b775eeece",
+            "ticket_no": "LOAD-000006",
+            "access_token": null
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "ffbaf66d-3305-46c0-bdce-f134ca9d3711",
+            "ticket_no": "LOAD-000007",
+            "access_token": null
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "5bd0cc6c-6cd8-4a45-b530-396aa764808b",
+            "ticket_no": "LOAD-000008",
+            "access_token": null
+        },
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "5e3cd4ea-7b81-4732-ae80-b4d02039256e",
+            "ticket_no": "LOAD-000009",
+            "access_token": null
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "d5d64a1c-0ef4-44ff-8aa6-830de5add187",
+            "ticket_no": "LOAD-000010",
+            "access_token": null
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "26d30086-e781-4d33-8354-0d88da262326",
+            "ticket_no": "LOAD-000011",
+            "access_token": null
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "d23f33a0-f78c-42d0-a2e8-7fd2f356e27e",
+            "ticket_no": "LOAD-000012",
+            "access_token": null
+        },
+        {
+            "user_id": 1,
+            "user_name": "user-1",
+            "entry_uuid": "e8f3fa28-627e-4cf4-b4fc-6a8f1227377b",
+            "ticket_no": "LOAD-000013",
+            "access_token": null
+        },
+        {
+            "user_id": 2,
+            "user_name": "user-2",
+            "entry_uuid": "18fada88-d683-4e95-acfb-e7e11a5f461b",
+            "ticket_no": "LOAD-000014",
+            "access_token": null
+        },
+        {
+            "user_id": 3,
+            "user_name": "user-3",
+            "entry_uuid": "6d2efa53-ad89-41be-9621-e26d44cccfb2",
+            "ticket_no": "LOAD-000015",
+            "access_token": null
+        },
+        {
+            "user_id": 4,
+            "user_name": "user-4",
+            "entry_uuid": "eb412e20-8088-4ea8-bd4f-482d81e9efa1",
+            "ticket_no": "LOAD-000016",
+            "access_token": null
+        }
+    ],
+    "notes": [
+        "Fill access_token values before running socket load script."
+    ]
+}

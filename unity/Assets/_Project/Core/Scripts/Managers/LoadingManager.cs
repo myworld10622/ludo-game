@@ -58,8 +58,13 @@ public class LoadingManager : MonoBehaviour
         slider.value = targetValue;
 
         string id = Configuration.GetId();
+        string token = Configuration.GetToken();
+        bool hasSession = !string.IsNullOrWhiteSpace(id) && !string.IsNullOrWhiteSpace(token);
+
         CommonUtil.CheckLog("RES_Check + name " + Configuration.GetName());
-        if (id != string.Empty)
+        CommonUtil.CheckLog("RES_Check + startup session id: " + id + " token_exists: " + (!string.IsNullOrWhiteSpace(token)));
+
+        if (hasSession)
         {
             // LogUtil.CheckLog("RES_check + Profile image download + " + Configuration.GetProfilePic());
             // DownloadProfileImage();
@@ -68,6 +73,13 @@ public class LoadingManager : MonoBehaviour
         }
         else
         {
+            if (!string.IsNullOrWhiteSpace(id) || !string.IsNullOrWhiteSpace(token))
+            {
+                PlayerPrefs.DeleteKey("id");
+                PlayerPrefs.DeleteKey("token");
+                PlayerPrefs.Save();
+            }
+
             SceneLoader.Instance.LoadScene("LoginRegister");
             // LoaderUtil.instance.LoadScene("LoginRegister");
         }

@@ -12,7 +12,7 @@ public static class SpriteAtlasUtil
     {
         if (atlas == null)
         {
-            Debug.LogError("SpriteAtlas is null. Please provide a valid Sprite Atlas.");
+            Debug.Log("SpriteAtlas is null. Please provide a valid Sprite Atlas.");
             return null;
         }
 
@@ -28,7 +28,7 @@ public static class SpriteAtlasUtil
             return sprite;
         }
 
-        Debug.LogError($"Sprite '{spriteName}' not found in the provided Sprite Atlas.");
+        Debug.Log($"Sprite '{spriteName}' not found in the provided Sprite Atlas.");
         return null;
     }
 
@@ -83,7 +83,7 @@ public static class SpriteAtlasUtil
                 }
                 else
                 {
-                    Debug.LogWarning("Skipping null target image in SpriteAtlas assignment.");
+                    Debug.Log("Skipping null target image in SpriteAtlas assignment.");
                 }
             }
         }
@@ -104,7 +104,7 @@ public static class SpriteAtlasUtil
                 }
                 else
                 {
-                    Debug.LogWarning("Skipping null target renderer in SpriteAtlas assignment.");
+                    Debug.Log("Skipping null target renderer in SpriteAtlas assignment.");
                 }
             }
         }
@@ -139,7 +139,7 @@ public static class SpriteAtlasUtil
             }
             else
             {
-                Debug.LogWarning($"No matching targets found for sprite name: {spriteName}");
+                Debug.Log($"No matching targets found for sprite name: {spriteName}");
             }
         }
     }
@@ -161,7 +161,7 @@ public static class SpriteAtlasUtil
             }
             else
             {
-                Debug.LogError($"Failed to load sprite: {spriteName}");
+                Debug.Log($"Failed to load sprite: {spriteName}");
                 return;
             }
         }

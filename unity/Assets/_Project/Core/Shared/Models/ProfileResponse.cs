@@ -526,7 +526,22 @@ public class GameRootObject
 {
     public string message;
     public GameSetting game_setting;
+    public GameSetting data;
+    public List<GameSettingItem> games;
     public int code;
+}
+
+[System.Serializable]
+public class GameSettingItem
+{
+    public string game;
+    public string name;
+    public string status;
+    public string visibility;
+    public string tournament_status;
+    public string client_route;
+    public string socket_namespace;
+    public string sort_order;
 }
 
 [Serializable]
