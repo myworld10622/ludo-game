@@ -9,60 +9,58 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class TournamentMatch extends Model
 {
     protected $fillable = [
-        'match_uuid',
         'tournament_id',
-        'game_id',
-        'round_no',
-        'match_no',
-        'bracket_position',
-        'stage',
+        'round_number',
+        'match_number',
+        'room_id',
         'status',
-        'winner_entry_id',
-        'max_players',
-        'table_fee',
-        'node_room_id',
-        'external_match_ref',
+        'winner_registration_id',
+        'forced_winner_registration_id',
+        'player_scores',
+        'game_log',
+        'is_admin_override',
+        'admin_override_note',
         'scheduled_at',
         'started_at',
-        'completed_at',
-        'settings',
-        'meta',
+        'ended_at',
     ];
 
-    protected function casts(): array
-    {
-        return [
-            'table_fee' => 'decimal:4',
-            'scheduled_at' => 'datetime',
-            'started_at' => 'datetime',
-            'completed_at' => 'datetime',
-            'settings' => 'array',
-            'meta' => 'array',
-        ];
-    }
+    protected $casts = [
+        'player_scores'     => 'array',
+        'game_log'          => 'array',
+        'is_admin_override' => 'boolean',
+        'scheduled_at'      => 'datetime',
+        'started_at'        => 'datetime',
+        'ended_at'          => 'datetime',
+    ];
+
+    const STATUS_SCHEDULED  = 'scheduled';
+    const STATUS_WAITING    = 'waiting';
+    const STATUS_IN_PROGRESS = 'in_progress';
+    const STATUS_COMPLETED  = 'completed';
+    const STATUS_CANCELLED  = 'cancelled';
+    const STATUS_DISPUTED   = 'disputed';
+    const STATUS_FORFEITED  = 'forfeited';
+
+    // ── Relationships ─────────────────────────────────────────────────────────
 
     public function tournament(): BelongsTo
     {
         return $this->belongsTo(Tournament::class);
     }
 
-    public function game(): BelongsTo
+    public function winner(): BelongsTo
     {
-        return $this->belongsTo(Game::class);
+        return $this->belongsTo(TournamentRegistration::class, 'winner_registration_id');
     }
 
-    public function winnerEntry(): BelongsTo
+    public function forcedWinner(): BelongsTo
     {
-        return $this->belongsTo(TournamentEntry::class, 'winner_entry_id');
+        return $this->belongsTo(TournamentRegistration::class, 'forced_winner_registration_id');
     }
 
-    public function entries(): HasMany
+    public function players(): HasMany
     {
-        return $this->hasMany(TournamentMatchEntry::class);
-    }
-
-    public function activeEntries(): HasMany
-    {
-        return $this->hasMany(TournamentMatchEntry::class)->where('status', '!=', 'completed');
+        return $this->hasMany(TournamentMatchPlayer::class, 'match_id')->orderBy('slot_number');
     }
 }

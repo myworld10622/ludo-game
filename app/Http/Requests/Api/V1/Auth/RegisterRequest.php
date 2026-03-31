@@ -18,9 +18,11 @@ class RegisterRequest extends ApiFormRequest
             'username' => ['required', 'string', 'min:3', 'max:50', 'alpha_dash', Rule::unique('users', 'username')],
             'email' => ['nullable', 'email', 'max:255', Rule::unique('users', 'email')],
             'mobile' => ['nullable', 'string', 'max:20', Rule::unique('users', 'mobile')],
-            'password' => ['required', 'string', 'min:8', 'max:255'],
+            // Match the existing app signup flow, which allows shorter passwords.
+            'password' => ['required', 'string', 'min:4', 'max:255'],
             'device_name' => ['nullable', 'string', 'max:100'],
-            'referral_code' => ['nullable', 'string', 'max:32', Rule::exists('users', 'referral_code')],
+            // Referral is optional. If the code doesn't match any user, ignore it instead of blocking signup.
+            'referral_code' => ['nullable', 'string', 'max:32'],
             'profile.first_name' => ['nullable', 'string', 'max:100'],
             'profile.last_name' => ['nullable', 'string', 'max:100'],
             'profile.date_of_birth' => ['nullable', 'date'],

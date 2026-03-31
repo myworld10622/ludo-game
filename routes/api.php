@@ -2,31 +2,37 @@
 
 use App\Http\Controllers\Api\Legacy\UserCompatibilityController;
 use App\Http\Controllers\Api\Internal\V1\LudoMatchController as InternalLudoMatchController;
-use App\Http\Controllers\Api\Internal\V1\TournamentLudoMatchController as InternalTournamentLudoMatchController;
+use App\Http\Controllers\Api\Internal\V1\TournamentMatchResultController as InternalTournamentMatchResult;
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LudoController;
-use App\Http\Controllers\Api\V1\TournamentController as ApiTournamentController;
-use App\Http\Controllers\Api\V1\TournamentRoomController;
+use App\Http\Controllers\Api\V1\TournamentController;
+use App\Http\Controllers\Api\V1\TournamentRegistrationController;
 use App\Http\Controllers\Api\V1\WalletController;
 use Illuminate\Support\Facades\Route;
 
 $version = config('platform.api.default_version', 'v1');
 
+// ── Internal Routes (Node.js → Laravel, secured via internal.api middleware) ──
 Route::prefix('internal/v1')
     ->middleware(['internal.api'])
     ->group(function () {
+        // Non-tournament Ludo match callbacks (existing)
         Route::prefix('ludo')->group(function () {
             Route::post('/rooms/{roomUuid}/start', [InternalLudoMatchController::class, 'start']);
             Route::post('/matches/{matchUuid}/complete', [InternalLudoMatchController::class, 'complete']);
         });
-        Route::prefix('tournaments/ludo')->group(function () {
-            Route::post('/rooms/{roomUuid}/complete', [InternalTournamentLudoMatchController::class, 'complete']);
+
+        // Tournament match result (new — called by Node.js after each match ends)
+        Route::prefix('tournaments')->group(function () {
+            Route::post('/matches/{match}/result', [InternalTournamentMatchResult::class, 'submit']);
+            Route::post('/matches/{match}/override', [InternalTournamentMatchResult::class, 'override']);
         });
     });
 
+// ── Legacy Compatibility Routes ───────────────────────────────────────────────
 foreach (['user', 'User'] as $legacyUserPrefix) {
     Route::prefix($legacyUserPrefix)->group(function () {
         Route::post('/guest_register', [UserCompatibilityController::class, 'guestRegister']);
@@ -43,14 +49,18 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
     });
 }
 
+// ── API v1 Routes ─────────────────────────────────────────────────────────────
 Route::prefix($version)
     ->middleware(['api.version'])
     ->group(function () {
+
+        // Health & Config
         Route::get('/health', HealthController::class);
         Route::get('/app-config', AppConfigController::class);
         Route::get('/games', [GameController::class, 'index']);
         Route::get('/home', [GameController::class, 'home']);
 
+        // Auth
         Route::prefix('auth')->group(function () {
             Route::post('/register', [AuthController::class, 'register']);
             Route::post('/signup', [AuthController::class, 'register']);
@@ -58,23 +68,56 @@ Route::prefix($version)
             Route::post('/logout', [AuthController::class, 'logout'])->middleware('api.auth');
         });
 
-        Route::get('/me', [AuthController::class, 'me'])->middleware('api.auth');
-        Route::get('/me/profile', [AuthController::class, 'me'])->middleware('api.auth');
-
-        Route::prefix('tournaments')->group(function () {
-            Route::get('/me/entries', [ApiTournamentController::class, 'myEntries'])->middleware('api.auth');
-            Route::get('/', [ApiTournamentController::class, 'index']);
-            Route::get('/{tournament}', [ApiTournamentController::class, 'show']);
-            Route::get('/{tournament}/leaderboard', [ApiTournamentController::class, 'leaderboard']);
-            Route::post('/{tournament}/join', [ApiTournamentController::class, 'join'])->middleware('api.auth');
-            Route::post('/{tournament}/claim-room', [TournamentRoomController::class, 'claim'])->middleware('api.auth');
+        Route::middleware('api.auth')->group(function () {
+            Route::get('/me', [AuthController::class, 'me']);
+            Route::get('/me/profile', [AuthController::class, 'me']);
         });
 
+        // ── Tournament Routes ──────────────────────────────────────────────────
+        Route::prefix('tournaments')->group(function () {
+
+            // Public browsing (no auth required)
+            Route::get('/', [TournamentController::class, 'index']);
+            Route::get('/{tournament}/bracket', [TournamentController::class, 'bracket']);
+            Route::get('/{tournament}/leaderboard', [TournamentController::class, 'leaderboard']);
+            Route::get('/private/{invite_code}', [TournamentController::class, 'showByInviteCode']);
+            Route::get('/{tournament}', [TournamentController::class, 'show']);
+
+            // Authenticated user actions
+            Route::middleware('api.auth')->group(function () {
+                // Create tournament (user-created)
+                Route::post('/', [TournamentController::class, 'store']);
+
+                // Claim match room (called by Node.js with user's token)
+                Route::post('/{tournament}/claim-room', [TournamentController::class, 'claimRoom']);
+
+                // Register / unregister
+                Route::post('/{tournament}/register', [TournamentRegistrationController::class, 'register']);
+                Route::delete('/{tournament}/register', [TournamentRegistrationController::class, 'cancel']);
+
+                // User history
+                Route::get('/me/history', [TournamentRegistrationController::class, 'myHistory']);
+
+                // Admin-only actions (additional admin middleware applied inside controllers)
+                Route::post('/{tournament}/approve', [TournamentController::class, 'approve']);
+                Route::post('/{tournament}/publish', [TournamentController::class, 'publish']);
+                Route::post('/{tournament}/close-registration', [TournamentController::class, 'closeRegistration']);
+                Route::post('/{tournament}/generate-bracket', [TournamentController::class, 'generateBracket']);
+                Route::post('/{tournament}/cancel', [TournamentController::class, 'cancel']);
+                Route::get('/{tournament}/financials', [TournamentController::class, 'financials']);
+                Route::get('/{tournament}/registrations', [TournamentRegistrationController::class, 'list']);
+                Route::post('/{tournament}/add-bot', [TournamentRegistrationController::class, 'addBot']);
+                Route::delete('/{tournament}/bots/{registration}', [TournamentRegistrationController::class, 'removeBot']);
+            });
+        });
+
+        // ── Wallet Routes ──────────────────────────────────────────────────────
         Route::prefix('wallet')->middleware('api.auth')->group(function () {
             Route::get('/', [WalletController::class, 'summary']);
             Route::get('/history', [WalletController::class, 'history']);
         });
 
+        // ── Ludo Queue Routes ─────────────────────────────────────────────────
         Route::prefix('ludo')->middleware('api.auth')->group(function () {
             Route::post('/queue/join', [LudoController::class, 'joinQueue']);
             Route::get('/rooms/{roomUuid}', [LudoController::class, 'room']);

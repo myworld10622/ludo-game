@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
@@ -18,6 +20,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'uuid',
+        'user_code',
         'username',
         'email',
         'mobile',
@@ -30,6 +33,21 @@ class User extends Authenticatable
         'email_verified_at',
         'mobile_verified_at',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $user) {
+            if (empty($user->uuid)) {
+                $user->uuid = (string) Str::uuid();
+            }
+            if (empty($user->user_code)) {
+                do {
+                    $code = str_pad((string) random_int(10000000, 99999999), 8, '0', STR_PAD_LEFT);
+                } while (self::where('user_code', $code)->exists());
+                $user->user_code = $code;
+            }
+        });
+    }
 
     protected $hidden = [
         'password',
@@ -62,8 +80,68 @@ class User extends Authenticatable
         return $this->hasMany(Wallet::class);
     }
 
-    public function tournamentEntries(): HasMany
+    public function tournamentRegistrations(): HasMany
     {
-        return $this->hasMany(TournamentEntry::class);
+        return $this->hasMany(TournamentRegistration::class);
+    }
+
+    public function tournaments(): HasMany
+    {
+        return $this->hasMany(Tournament::class, 'creator_user_id');
+    }
+
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
+    public function supportMessages(): HasMany
+    {
+        return $this->hasMany(SupportTicketMessage::class, 'sender_user_id');
+    }
+
+    public function primaryWallet(): HasOne
+    {
+        return $this->hasOne(Wallet::class)->latestOfMany('id');
+    }
+
+    public static function defaultPanelPermissions(): array
+    {
+        return [
+            'view_panel' => true,
+            'manage_tournaments' => true,
+            'approve_tournaments' => false,
+            'force_live' => false,
+            'manage_fake_registrations' => false,
+            'view_match_monitor' => true,
+            'force_match_winner' => true,
+        ];
+    }
+
+    public function panelPermissions(): array
+    {
+        $this->loadMissing('profile');
+
+        $stored = Arr::get($this->profile?->preferences ?? [], 'panel_permissions', []);
+
+        return array_merge(self::defaultPanelPermissions(), is_array($stored) ? $stored : []);
+    }
+
+    public function hasPanelPermission(string $permission): bool
+    {
+        return (bool) ($this->panelPermissions()[$permission] ?? false);
+    }
+
+    public function updatePanelPermissions(array $permissions): void
+    {
+        $this->loadMissing('profile');
+
+        $profile = $this->profile ?: $this->profile()->create([]);
+        $preferences = $profile->preferences ?? [];
+        $preferences['panel_permissions'] = array_merge(self::defaultPanelPermissions(), $permissions);
+
+        $profile->forceFill([
+            'preferences' => $preferences,
+        ])->save();
     }
 }

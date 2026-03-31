@@ -2,232 +2,338 @@
 
 @section('title', 'Tournaments')
 @section('heading', 'Tournaments')
-@section('subheading', 'Create, publish, cancel, and maintain tournament inventory')
+@section('subheading', 'Create, monitor, and open full reports for admin and user tournaments')
 
 @php
     $isEdit = (bool) $editingTournament;
     $formAction = $isEdit ? route('admin.tournaments.update', $editingTournament) : route('admin.tournaments.store');
-    $statusOptions = ['draft', 'published', 'entry_open', 'entry_locked', 'seeding', 'running', 'cancelled', 'completed'];
-    $visibilityOptions = ['public', 'private'];
-    $typeOptions = ['knockout'];
-    $seedingStrategyOptions = ['random', 'ranked', 'segmented'];
-    $botFillPolicyOptions = ['fill_after_timeout', 'real_only', 'never_fill'];
-    $editingMeta = $editingTournament?->meta ?? [];
-    $editingRules = $editingTournament?->rules ?? [];
+    $t = $editingTournament;
+    $existingPrizes = collect($t?->prizes ?? []);
+    $prizePct = fn (int $pos) => old("prize_pct_{$pos}", $existingPrizes->firstWhere('position', $pos)?->prize_pct ?? match($pos) {1 => 50, 2 => 25, 3 => 15, 4 => 7, 5 => 3});
 @endphp
 
 @section('content')
-    <div class="stack">
-        <div class="panel">
-            <div class="header-row">
-                <strong>{{ $isEdit ? 'Edit Tournament' : 'Create Tournament' }}</strong>
+<div class="stack">
+    <div class="panel" style="background:linear-gradient(135deg,#0f172a,#153e75);color:#fff;border:none;">
+        <div style="display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;">
+            <div>
+                <div class="badge" style="background:rgba(255,255,255,0.14);color:#fff;">Tournament Control Center</div>
+                <h2 style="margin:12px 0 8px;font-size:30px;">Admin tournament reports and controls in one screen</h2>
+                <div style="color:rgba(255,255,255,0.84);max-width:860px;line-height:1.7;">
+                    Open any tournament to see full report like the user panel: created date, status, registrations, round-wise matches, winners, and financials.
+                </div>
+            </div>
+            <form method="POST" action="{{ route('admin.tournaments.run-scheduler') }}">
+                @csrf
+                <button type="submit" class="btn" style="background:#2563eb;"
+                    onclick="return confirm('Run status scheduler now?\n\nThis will move tournaments based on current time.')">
+                    Run Scheduler Now
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="stats">
+        <div class="stat-card"><div class="stat-label">Total Tournaments</div><div class="stat-value">{{ $tournamentStats['total'] }}</div></div>
+        <div class="stat-card"><div class="stat-label">Admin Tournaments</div><div class="stat-value">{{ $tournamentStats['admin_total'] }}</div></div>
+        <div class="stat-card"><div class="stat-label">User Tournaments</div><div class="stat-value">{{ $tournamentStats['user_total'] }}</div></div>
+        <div class="stat-card"><div class="stat-label">Live</div><div class="stat-value">{{ $tournamentStats['live'] }}</div></div>
+        <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value">{{ $tournamentStats['completed'] }}</div></div>
+        <div class="stat-card"><div class="stat-label">Pending Approval</div><div class="stat-value">{{ $tournamentStats['pending_approval'] }}</div></div>
+    </div>
+
+    <div class="panel">
+        <div class="header-row">
+            <strong>Pending Approval Queue</strong>
+            <span class="muted">{{ $pendingApprovalTournaments->count() }} waiting</span>
+        </div>
+        <div class="table-wrap responsive-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Tournament</th>
+                        <th>User</th>
+                        <th>Created</th>
+                        <th>Review</th>
+                        <th>Edit</th>
+                        <th>Approve</th>
+                        <th>Reject With Reason</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse($pendingApprovalTournaments as $tournament)
+                        <tr>
+                            <td data-label="Tournament">
+                                <strong>{{ $tournament->name }}</strong>
+                                <div class="muted" style="font-size:12px;">{{ ucfirst($tournament->type) }} · {{ ucwords(str_replace('_',' ', $tournament->format)) }}</div>
+                            </td>
+                            <td data-label="User">{{ $tournament->creator?->username ?? 'User' }}<div class="muted" style="font-size:12px;">{{ $tournament->creator?->user_code ?? '—' }}</div></td>
+                            <td data-label="Created">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                            <td data-label="Review"><a href="{{ route('admin.tournaments.report', $tournament) }}" class="btn btn-secondary" style="font-size:12px;padding:6px 10px;">Review Details</a></td>
+                            <td data-label="Edit"><a href="{{ route('admin.tournaments.edit', $tournament) }}" class="btn btn-secondary" style="font-size:12px;padding:6px 10px;">Edit Form</a></td>
+                            <td data-label="Approve"><form method="POST" action="{{ route('admin.tournaments.approve', $tournament) }}">@csrf<button type="submit" class="btn" style="font-size:12px;padding:6px 10px;">Approve</button></form></td>
+                            <td data-label="Reject" style="min-width:280px;">
+                                <form method="POST" action="{{ route('admin.tournaments.reject', $tournament) }}" class="stack" style="gap:8px;">
+                                    @csrf
+                                    <textarea name="reason" rows="2" placeholder="Write rejection reason for user..." required></textarea>
+                                    <button type="submit" class="btn btn-secondary" style="font-size:12px;padding:6px 10px;">Reject And Notify</button>
+                                </form>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="muted" style="text-align:center;padding:20px;">No tournaments pending approval.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="header-row">
+            <strong>Recent Tournament Reports</strong>
+            <span class="muted">Click any card to open full report</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
+            @forelse($recentTournamentReports as $tournament)
+                <a href="{{ route('admin.tournaments.report', $tournament) }}" style="display:block;border:1px solid #d9e1e7;border-radius:14px;padding:16px;background:#f8fafc;">
+                    <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
+                        <div>
+                            <div style="font-size:18px;font-weight:700;">{{ $tournament->name }}</div>
+                            <div class="muted" style="font-size:12px;margin-top:4px;">
+                                {{ ucfirst($tournament->creator_type) }}
+                                @if($tournament->creator_type === 'user' && $tournament->creator)
+                                    · {{ $tournament->creator->username }} ({{ $tournament->creator->user_code }})
+                                @endif
+                            </div>
+                        </div>
+                        <span class="badge">{{ ucwords(str_replace('_', ' ', $tournament->status)) }}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px;">
+                        <div><div class="stat-label">Players</div><div style="font-weight:700;">{{ $tournament->registrations_count }}/{{ $tournament->max_players }}</div></div>
+                        <div><div class="stat-label">Prize Pool</div><div style="font-weight:700;">₹{{ number_format((float) $tournament->total_prize_pool, 0) }}</div></div>
+                        <div><div class="stat-label">Completed</div><div style="font-weight:700;">{{ $tournament->completed_matches_count }}</div></div>
+                        <div><div class="stat-label">Pending</div><div style="font-weight:700;">{{ $tournament->pending_matches_count }}</div></div>
+                    </div>
+                    <div style="margin-top:12px;color:#2563eb;font-weight:700;">Open Full Report</div>
+                </a>
+            @empty
+                <div class="muted">No tournaments yet.</div>
+            @endforelse
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="header-row">
+            <div>
+                <strong>Tournament Form</strong>
+                <div class="muted" style="margin-top:4px;">Open popup, fill tournament details, and submit.</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+                <button type="button" class="btn" data-modal-open="adminTournamentModal">{{ $isEdit ? 'Edit Tournament' : 'Create Tournament' }}</button>
                 @if ($isEdit)
                     <a class="btn btn-secondary" href="{{ route('admin.tournaments.index') }}">New Tournament</a>
                 @endif
             </div>
-            <div class="muted" style="margin-bottom:12px;">
-                For Unity-visible joinable tournaments, use `published` or `entry_open` and keep the registration window open.
-            </div>
+        </div>
+    </div>
 
+    <div id="adminTournamentModal" class="modal-shell {{ ($isEdit || $errors->any()) ? 'is-open' : '' }}">
+        <div class="modal-backdrop" data-modal-close="adminTournamentModal"></div>
+        <div class="modal-card">
+            <div class="modal-head">
+                <div>
+                    <div style="font-size:20px;font-weight:700;">{{ $isEdit ? 'Edit Tournament' : 'Create Tournament' }}</div>
+                    <div class="muted">Fill tournament details and submit.</div>
+                </div>
+                <button type="button" class="modal-close" data-modal-close="adminTournamentModal">×</button>
+            </div>
             <form method="POST" action="{{ $formAction }}" class="stack">
                 @csrf
-                @if ($isEdit)
-                    @method('PUT')
-                @endif
+                @if ($isEdit) @method('PUT') @endif
 
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-                    <div>
-                        <label>Game</label>
-                        <select name="game_id" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($games as $game)
-                                <option value="{{ $game->id }}" @selected(old('game_id', $editingTournament?->game_id) == $game->id)>{{ $game->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Name</label>
-                        <input name="name" value="{{ old('name', $editingTournament?->name) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Status</label>
-                        <select name="status" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($statusOptions as $status)
-                                <option value="{{ $status }}" @selected(old('status', $editingTournament?->status ?? 'draft') === $status)>{{ ucfirst(str_replace('_', ' ', $status)) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Visibility</label>
-                        <select name="visibility" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($visibilityOptions as $visibility)
-                                <option value="{{ $visibility }}" @selected(old('visibility', $editingTournament?->visibility ?? 'public') === $visibility)>{{ ucfirst($visibility) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Tournament Type</label>
-                        <select name="tournament_type" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($typeOptions as $type)
-                                <option value="{{ $type }}" @selected(old('tournament_type', $editingTournament?->type ?? 'knockout') === $type)>{{ ucfirst($type) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Currency</label>
-                        <input name="currency" value="{{ old('currency', $editingTournament?->currency ?? 'INR') }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Entry Fee</label>
-                        <input type="number" step="0.0001" name="entry_fee" value="{{ old('entry_fee', $editingTournament?->entry_fee ?? 0) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Max Entries Per User</label>
-                        <input type="number" name="max_entries_per_user" value="{{ old('max_entries_per_user', $editingTournament?->max_entries_per_user ?? 1) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Max Total Entries</label>
-                        <input type="number" name="max_total_entries" value="{{ old('max_total_entries', $editingTournament?->max_total_entries) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Min Entries Required</label>
-                        <input type="number" name="min_players" value="{{ old('min_players', $editingTournament?->min_total_entries ?? 2) }}" min="2" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Match Size</label>
-                        <select name="match_size" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ([2, 4] as $matchSize)
-                                <option value="{{ $matchSize }}" @selected((int) old('match_size', $editingTournament?->match_size ?? 4) === $matchSize)>{{ $matchSize }} Players</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Advance Count</label>
-                        <input type="number" name="advance_count" value="{{ old('advance_count', $editingTournament?->advance_count ?? 1) }}" min="1" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Bracket Size</label>
-                        <input type="number" name="bracket_size" value="{{ old('bracket_size', $editingTournament?->bracket_size) }}" min="1" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Seeding Strategy</label>
-                        <select name="seeding_strategy" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($seedingStrategyOptions as $strategy)
-                                <option value="{{ $strategy }}" @selected(old('seeding_strategy', $editingTournament?->seeding_strategy ?? 'random') === $strategy)>{{ ucfirst($strategy) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Bot Fill Policy</label>
-                        <select name="bot_fill_policy" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            @foreach ($botFillPolicyOptions as $botFillPolicy)
-                                <option value="{{ $botFillPolicy }}" @selected(old('bot_fill_policy', $editingTournament?->bot_fill_policy ?? 'fill_after_timeout') === $botFillPolicy)>{{ ucfirst(str_replace('_', ' ', $botFillPolicy)) }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label>Prize Pool</label>
-                        <input type="number" step="0.0001" name="prize_pool" value="{{ old('prize_pool', $editingTournament?->prize_pool ?? 0) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Registration Start</label>
-                        <input type="datetime-local" name="registration_starts_at" value="{{ old('registration_starts_at', optional($editingTournament?->entry_open_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Registration End</label>
-                        <input type="datetime-local" name="registration_ends_at" value="{{ old('registration_ends_at', optional($editingTournament?->entry_close_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Tournament Start</label>
-                        <input type="datetime-local" name="starts_at" value="{{ old('starts_at', optional($editingTournament?->start_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
-                    <div>
-                        <label>Tournament End</label>
-                        <input type="datetime-local" name="ends_at" value="{{ old('ends_at', optional($editingTournament?->end_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                    </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;">
+                    <div><label>Name</label><input name="name" value="{{ old('name', $t?->name) }}" required style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Type</label><select name="type" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">@foreach (['public','private'] as $v)<option value="{{ $v }}" @selected(old('type', $t?->type ?? 'public') === $v)>{{ ucfirst($v) }}</option>@endforeach</select></div>
+                    <div><label>Format</label><select name="format" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"><option value="knockout" @selected(old('format', $t?->format ?? 'knockout') === 'knockout')>Knockout</option><option value="round_robin" @selected(old('format', $t?->format) === 'round_robin')>Round Robin</option><option value="double_elim" @selected(old('format', $t?->format) === 'double_elim')>Double Elimination</option><option value="group_knockout" @selected(old('format', $t?->format) === 'group_knockout')>Group + Knockout</option></select></div>
+                    <div><label>Status</label><select name="status" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">@foreach (['draft','registration_open','registration_closed','in_progress','completed','cancelled'] as $s)<option value="{{ $s }}" @selected(old('status', $t?->status ?? 'registration_open') === $s)>{{ ucwords(str_replace('_',' ',$s)) }}</option>@endforeach</select></div>
+                    <div><label>Entry Fee</label><input type="number" step="0.01" name="entry_fee" value="{{ old('entry_fee', $t?->entry_fee ?? 10) }}" required style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Max Players</label><select name="max_players" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">@foreach ([4, 8, 16, 32, 64] as $n)<option value="{{ $n }}" @selected((int) old('max_players', $t?->max_players ?? 8) === $n)>{{ $n }}</option>@endforeach</select></div>
+                    <div><label>Players Per Match</label><select name="players_per_match" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"><option value="4" @selected((int) old('players_per_match', $t?->players_per_match ?? 4) === 4)>4 Players</option><option value="2" @selected((int) old('players_per_match', $t?->players_per_match) === 2)>2 Players</option></select></div>
+                    <div><label>Platform Fee %</label><input type="number" step="0.1" name="platform_fee_pct" value="{{ old('platform_fee_pct', $t?->platform_fee_pct ?? 20) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Bracket Mode</label><select name="bracket_mode" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"><option value="auto" @selected(old('bracket_mode', $t?->bracket_mode ?? 'auto') === 'auto')>Auto</option><option value="manual" @selected(old('bracket_mode', $t?->bracket_mode) === 'manual')>Manual</option></select></div>
+                    <div><label>Allow Bots</label><select name="bot_allowed" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"><option value="0" @selected(! old('bot_allowed', $t?->bot_allowed ?? true))>No</option><option value="1" @selected((bool) old('bot_allowed', $t?->bot_allowed ?? true))>Yes</option></select></div>
+                    <div><label>Max Bot %</label><input type="number" step="1" name="max_bot_pct" value="{{ old('max_bot_pct', $t?->max_bot_pct ?? 5) }}" min="0" max="100" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Registration Opens</label><input type="datetime-local" name="registration_start_at" value="{{ old('registration_start_at', optional($t?->registration_start_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Registration Closes</label><input type="datetime-local" name="registration_end_at" value="{{ old('registration_end_at', optional($t?->registration_end_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Tournament Start</label><input type="datetime-local" name="tournament_start_at" required value="{{ old('tournament_start_at', optional($t?->tournament_start_at)->format('Y-m-d\\TH:i')) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
+                    <div><label>Private Password</label><input name="invite_password" value="{{ old('invite_password', $t?->invite_password) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;"></div>
                 </div>
 
                 <div>
-                    <label>Description / Notes</label>
-                    <textarea name="metadata[notes]" rows="3" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">{{ old('metadata.notes', $editingMeta['notes'] ?? '') }}</textarea>
-                </div>
-
-                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
-                    <div>
-                        <label>Platform Fee</label>
-                        <input type="number" step="0.0001" name="platform_fee" value="{{ old('platform_fee', $editingTournament?->platform_fee ?? 0) }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
+                    <strong>Playing Slots</strong>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px;">
+                        @for ($slot = 1; $slot <= 5; $slot++)
+                            @php
+                                $slotStart = data_get($t?->play_slots, ($slot - 1).'.start_at');
+                                $slotEnd = data_get($t?->play_slots, ($slot - 1).'.end_at');
+                            @endphp
+                            <div class="panel" style="padding:12px;">
+                                <div style="font-size:14px;font-weight:700;margin-bottom:8px;">Slot {{ $slot }}</div>
+                                <label>Start</label>
+                                <input type="datetime-local" name="play_slot_start_{{ $slot }}" value="{{ old('play_slot_start_'.$slot, $slotStart ? \Illuminate\Support\Carbon::parse($slotStart)->format('Y-m-d\\TH:i') : '') }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">
+                                <label style="margin-top:8px;">End</label>
+                                <input type="datetime-local" name="play_slot_end_{{ $slot }}" value="{{ old('play_slot_end_'.$slot, $slotEnd ? \Illuminate\Support\Carbon::parse($slotEnd)->format('Y-m-d\\TH:i') : '') }}" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">
+                            </div>
+                        @endfor
                     </div>
                 </div>
 
-                <div>
-                    <strong>Prize Slabs</strong>
-                    <div class="muted" style="margin:6px 0 12px;">First 3 rows are editable in this first-pass admin screen.</div>
-                    @php
-                        $prizes = old('prize_slabs', $editingTournament?->prizes?->map(fn($prize) => [
-                            'rank_from' => $prize->rank_from,
-                            'rank_to' => $prize->rank_to,
-                            'prize_type' => $prize->prize_type,
-                            'prize_amount' => $prize->prize_amount,
-                            'currency' => $prize->currency,
-                        ])->values()->all() ?? [['rank_from'=>1,'rank_to'=>1,'prize_type'=>'cash','prize_amount'=>0,'currency'=>'INR']]);
-                    @endphp
-                    @for ($i = 0; $i < 3; $i++)
-                        @php $prize = $prizes[$i] ?? ['rank_from'=>'','rank_to'=>'','prize_type'=>'cash','prize_amount'=>'','currency'=>'INR']; @endphp
-                        <div style="display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:12px;margin-bottom:12px;">
-                            <input type="number" name="prize_slabs[{{ $i }}][rank_from]" placeholder="Rank From" value="{{ $prize['rank_from'] }}" style="padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            <input type="number" name="prize_slabs[{{ $i }}][rank_to]" placeholder="Rank To" value="{{ $prize['rank_to'] }}" style="padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            <input name="prize_slabs[{{ $i }}][prize_type]" placeholder="Prize Type" value="{{ $prize['prize_type'] }}" style="padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            <input type="number" step="0.0001" name="prize_slabs[{{ $i }}][prize_amount]" placeholder="Prize Amount" value="{{ $prize['prize_amount'] }}" style="padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                            <input name="prize_slabs[{{ $i }}][currency]" placeholder="Currency" value="{{ $prize['currency'] }}" style="padding:10px;border:1px solid #d9e1e7;border-radius:10px;">
-                        </div>
-                    @endfor
-                </div>
+                <div><label>Terms & Conditions</label><textarea name="terms_conditions" rows="2" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">{{ old('terms_conditions', $t?->terms_conditions) }}</textarea></div>
 
                 <div>
+                    <strong>Prize Distribution</strong>
+                    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:10px;">
+                        @for ($pos = 1; $pos <= 5; $pos++)
+                            <div>
+                                <label>{{ ['1st','2nd','3rd','4th','5th'][$pos-1] }}</label>
+                                <input type="number" step="0.1" name="prize_pct_{{ $pos }}" value="{{ old("prize_pct_{$pos}", $prizePct($pos)) }}" min="0" max="100" style="width:100%;padding:10px;border:1px solid #d9e1e7;border-radius:8px;">
+                            </div>
+                        @endfor
+                    </div>
+                </div>
+
+                <div style="display:flex;gap:10px;flex-wrap:wrap;">
                     <button class="btn" type="submit">{{ $isEdit ? 'Update Tournament' : 'Create Tournament' }}</button>
+                    <button type="button" class="btn btn-secondary" data-modal-close="adminTournamentModal">Close</button>
+                    @if($isEdit)
+                        <a href="{{ route('admin.tournaments.index') }}" class="btn btn-secondary">Cancel Edit</a>
+                    @endif
                 </div>
             </form>
         </div>
+    </div>
 
-        <div class="panel">
-            <div class="header-row">
-                <strong>Tournament List</strong>
-                <span class="muted">Operational view with quick edit access</span>
-            </div>
-            <div class="table-wrap">
-                <table>
-                    <thead>
+    @php
+        $renderRow = function (App\Models\Tournament $tournament) {
+            $isDraft = $tournament->status === 'draft';
+            $isOpen = $tournament->status === 'registration_open';
+            $fake = (int) ($tournament->fake_registrations_count ?? 0);
+            return compact('isDraft', 'isOpen', 'fake');
+        };
+    @endphp
+
+    <div class="panel">
+        <div class="header-row">
+            <strong>User-Created Tournaments</strong>
+            <span class="muted">{{ $userTournaments->count() }} total</span>
+        </div>
+        <div class="table-wrap responsive-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tournament</th>
+                        <th>Creator</th>
+                        <th>Status</th>
+                        <th>Players</th>
+                        <th>Matches</th>
+                        <th>Prize Pool</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($userTournaments as $tournament)
+                        @php extract($renderRow($tournament)); @endphp
                         <tr>
-                            <th>Name</th>
-                            <th>Game</th>
-                            <th>Status</th>
-                            <th>Type</th>
-                            <th>Entry Fee</th>
-                            <th>Entries</th>
-                            <th>Starts At</th>
-                            <th>Action</th>
+                            <td data-label="ID">{{ $tournament->id }}</td>
+                            <td data-label="Tournament">
+                                <strong>{{ $tournament->name }}</strong>
+                                <div class="muted" style="font-size:12px;">{{ ucfirst($tournament->type) }} · {{ ucwords(str_replace('_',' ',$tournament->format)) }} · {{ $tournament->created_at?->format('d M Y, h:i A') }}</div>
+                            </td>
+                            <td data-label="Creator">{{ $tournament->creator?->username ?? 'User' }}<div class="muted" style="font-size:12px;">{{ $tournament->creator?->user_code ?? '—' }}</div></td>
+                            <td data-label="Status">{{ ucwords(str_replace('_',' ',$tournament->status)) }}</td>
+                            <td data-label="Players">{{ $tournament->registrations_count + $fake }}/{{ $tournament->max_players }}</td>
+                            <td data-label="Matches">{{ $tournament->completed_matches_count }} complete · {{ $tournament->pending_matches_count }} pending</td>
+                            <td data-label="Prize Pool">₹{{ number_format((float) $tournament->total_prize_pool, 2) }}</td>
+                            <td data-label="Actions" style="white-space:nowrap;">
+                                <a class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px;" href="{{ route('admin.tournaments.report', $tournament) }}">Open Report</a>
+                                @if(!$tournament->is_approved)
+                                    <form method="POST" action="{{ route('admin.tournaments.approve', $tournament) }}" style="display:inline;">@csrf<button type="submit" class="btn" style="background:#10b981;font-size:12px;padding:4px 10px;margin-right:4px;">Approve</button></form>
+                                @endif
+                                @if($isDraft)
+                                    <form method="POST" action="{{ route('admin.tournaments.force-live', $tournament) }}" style="display:inline;">@csrf<button type="submit" class="btn" style="background:#f59e0b;font-size:12px;padding:4px 10px;margin-right:4px;">Force Live</button></form>
+                                @endif
+                                <a class="btn btn-secondary" style="font-size:12px;padding:4px 10px;" href="{{ route('admin.tournaments.edit', $tournament) }}">Edit</a>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        @forelse ($tournaments as $tournament)
-                            <tr>
-                                <td>{{ $tournament->name }}</td>
-                                <td>{{ $tournament->game?->name ?: '-' }}</td>
-                                <td>{{ $tournament->status }}</td>
-                                <td>{{ $tournament->type }}</td>
-                                <td>{{ $tournament->entry_fee }} {{ $tournament->currency }}</td>
-                                <td>{{ $tournament->entries()->count() }} / {{ $tournament->max_total_entries ?: 'Open' }}</td>
-                                <td>{{ optional($tournament->start_at)->toDateTimeString() ?: '-' }}</td>
-                                <td><a class="btn btn-secondary" href="{{ route('admin.tournaments.edit', $tournament) }}">Edit</a></td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="8" class="muted">No tournaments found.</td>
-                            </tr>
-                        @endforelse
-                    </tbody>
-                </table>
-            </div>
-            <div style="margin-top:16px;">{{ $tournaments->links() }}</div>
+                    @empty
+                        <tr><td colspan="8" class="muted" style="text-align:center;padding:20px;">No user-created tournaments yet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
+
+    <div class="panel">
+        <div class="header-row">
+            <strong>Admin-Created Tournaments</strong>
+            <span class="muted">{{ $adminTournaments->count() }} total</span>
+        </div>
+        <div class="table-wrap responsive-table">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tournament</th>
+                        <th>Status</th>
+                        <th>Players</th>
+                        <th>Matches</th>
+                        <th>Prize Pool</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($adminTournaments as $tournament)
+                        @php extract($renderRow($tournament)); @endphp
+                        <tr>
+                            <td data-label="ID">{{ $tournament->id }}</td>
+                            <td data-label="Tournament">
+                                <strong>{{ $tournament->name }}</strong>
+                                <div class="muted" style="font-size:12px;">{{ ucfirst($tournament->type) }} · {{ ucwords(str_replace('_',' ',$tournament->format)) }} · {{ $tournament->created_at?->format('d M Y, h:i A') }}</div>
+                            </td>
+                            <td data-label="Status">{{ ucwords(str_replace('_',' ',$tournament->status)) }}</td>
+                            <td data-label="Players">{{ $tournament->registrations_count + $fake }}/{{ $tournament->max_players }}</td>
+                            <td data-label="Matches">{{ $tournament->completed_matches_count }} complete · {{ $tournament->pending_matches_count }} pending</td>
+                            <td data-label="Prize Pool">₹{{ number_format((float) $tournament->total_prize_pool, 2) }}</td>
+                            <td data-label="Actions" style="white-space:nowrap;">
+                                <a class="btn" style="font-size:12px;padding:4px 10px;margin-right:4px;" href="{{ route('admin.tournaments.report', $tournament) }}">Open Report</a>
+                                @if($isDraft)
+                                    <form method="POST" action="{{ route('admin.tournaments.force-live', $tournament) }}" style="display:inline;">@csrf<button type="submit" class="btn" style="background:#f59e0b;font-size:12px;padding:4px 10px;margin-right:4px;">Force Live</button></form>
+                                @endif
+                                <a class="btn btn-secondary" style="font-size:12px;padding:4px 10px;" href="{{ route('admin.tournaments.edit', $tournament) }}">Edit</a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="7" class="muted" style="text-align:center;padding:20px;">No admin-created tournaments yet.</td></tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.querySelectorAll('[data-modal-open]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        document.getElementById(button.getAttribute('data-modal-open'))?.classList.add('is-open');
+    });
+});
+document.querySelectorAll('[data-modal-close]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        document.getElementById(button.getAttribute('data-modal-close'))?.classList.remove('is-open');
+    });
+});
+</script>
+@endpush

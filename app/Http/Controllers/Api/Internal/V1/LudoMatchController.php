@@ -8,6 +8,7 @@ use App\Http\Requests\Api\Internal\V1\Ludo\StartLudoMatchRequest;
 use App\Http\Resources\Api\V1\GameMatchResource;
 use App\Models\GameMatch;
 use App\Models\GameRoom;
+use App\Models\TournamentMatch;
 use App\Services\Match\LudoMatchLifecycleService;
 
 class LudoMatchController extends Controller
@@ -19,6 +20,25 @@ class LudoMatchController extends Controller
 
     public function start(StartLudoMatchRequest $request, string $roomUuid)
     {
+        // Tournament room — roomUuid is "tournament-match-{id}"
+        if (str_starts_with($roomUuid, 'tournament-match-')) {
+            $matchId = (int) str_replace('tournament-match-', '', $roomUuid);
+            $tournamentMatch = TournamentMatch::find($matchId);
+
+            if ($tournamentMatch && $tournamentMatch->status !== TournamentMatch::STATUS_IN_PROGRESS) {
+                $tournamentMatch->update([
+                    'status'     => TournamentMatch::STATUS_IN_PROGRESS,
+                    'started_at' => now(),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tournament match started.',
+                'data'    => ['match_uuid' => $roomUuid],
+            ]);
+        }
+
         $room = GameRoom::query()
             ->with(['game', 'players.user'])
             ->where('room_uuid', $roomUuid)

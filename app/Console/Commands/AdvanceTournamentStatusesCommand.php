@@ -9,16 +9,15 @@ class AdvanceTournamentStatusesCommand extends Command
 {
     protected $signature = 'tournaments:advance-statuses';
 
-    protected $description = 'Advance tournament statuses based on configured timings.';
+    protected $description = 'Time-based tournament status transitions: draft→registration_open, registration_open→registration_closed.';
 
     public function handle(TournamentStatusAutomationService $service): int
     {
         $result = $service->advanceStatuses();
 
-        $this->info('Tournament status automation complete.');
-        $this->line('Moved to entry_open: '.$result['entry_open']);
-        $this->line('Moved to entry_locked: '.$result['entry_locked']);
-        $this->line('Moved to seeding: '.$result['seeding']);
+        $this->info('[TournamentScheduler] Status automation complete.');
+        $this->line('  draft → registration_open  : ' . $result['opened_registration']);
+        $this->line('  registration_open → closed : ' . $result['closed_registration']);
 
         return self::SUCCESS;
     }
