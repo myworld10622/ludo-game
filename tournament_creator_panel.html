@@ -1,0 +1,869 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tournament Creator Web Panel — Feature Specification v2</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --brand: #238636;
+    --brand-light: #2ea043;
+    --accent: #1f6feb;
+    --warn: #d29922;
+    --danger: #da3633;
+    --tag-bg: #21262d;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; line-height: 1.6; }
+
+  .header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 24px 48px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 24px; font-weight: 700; color: #fff; }
+  .header .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .version { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; background: #1a3a1a; color: #56d364; border: 1px solid #2ea04340; }
+
+  .layout { display: grid; grid-template-columns: 240px 1fr; min-height: calc(100vh - 80px); }
+
+  .toc { background: var(--panel); border-right: 1px solid var(--border); padding: 20px 0; position: sticky; top: 0; height: calc(100vh - 80px); overflow-y: auto; }
+  .toc-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); padding: 12px 18px 4px; }
+  .toc a { display: block; padding: 5px 18px; color: var(--muted); font-size: 13px; text-decoration: none; border-left: 2px solid transparent; transition: all 0.1s; }
+  .toc a:hover { color: var(--text); border-left-color: var(--accent); background: #ffffff08; }
+  .toc a.sub { padding-left: 30px; font-size: 12px; }
+
+  .content { padding: 40px 52px; max-width: 960px; }
+
+  h2 { font-size: 20px; font-weight: 700; color: #fff; margin: 48px 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); scroll-margin-top: 20px; }
+  h2:first-child { margin-top: 0; }
+  h3 { font-size: 15px; font-weight: 700; color: var(--text); margin: 26px 0 10px; }
+  p { color: var(--text); margin-bottom: 12px; line-height: 1.7; }
+  ul, ol { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; color: var(--muted); font-size: 14px; }
+  li strong { color: var(--text); }
+
+  .callout { border-radius: 8px; padding: 14px 18px; margin: 16px 0; border-left: 3px solid; }
+  .callout.info  { background: #0c1c36; border-color: var(--accent); }
+  .callout.warn  { background: #2a1f00; border-color: var(--warn); }
+  .callout.ok    { background: #0a2010; border-color: var(--brand); }
+  .callout .ct   { font-weight: 700; font-size: 13px; margin-bottom: 5px; }
+  .callout.info  .ct { color: #79b8ff; }
+  .callout.warn  .ct { color: #e3b341; }
+  .callout.ok    .ct { color: #56d364; }
+  .callout p { margin: 0; font-size: 14px; color: var(--muted); }
+
+  /* flow strip */
+  .flow { display: flex; margin: 18px 0; overflow-x: auto; gap: 0; }
+  .fs { background: var(--panel); border: 1px solid var(--border); padding: 14px 16px; min-width: 150px; flex: 1; }
+  .fs + .fs { margin-left: -1px; }
+  .fs:first-child { border-radius: 8px 0 0 8px; }
+  .fs:last-child  { border-radius: 0 8px 8px 0; }
+  .fs.ok   { background: #0a2010; border-color: #2ea04350; }
+  .fs.warn { background: #2a1f00; border-color: #d2992250; }
+  .fs.blue { background: #0c1c36; border-color: #1f6feb50; }
+  .fs .n   { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); }
+  .fs.ok   .n { color: #56d364; }
+  .fs.warn .n { color: #e3b341; }
+  .fs.blue .n { color: #79b8ff; }
+  .fs .l   { font-size: 13px; font-weight: 600; margin-top: 4px; color: var(--text); }
+  .fs .d   { font-size: 12px; color: var(--muted); margin-top: 3px; }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin: 14px 0; }
+  .card  { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h4 { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); margin-bottom: 10px; }
+  .card ul { padding-left: 14px; }
+  .card li { font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+  th { background: var(--panel); border: 1px solid var(--border); padding: 9px 13px; text-align: left; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  td { border: 1px solid var(--border); padding: 9px 13px; vertical-align: top; color: var(--muted); }
+  td strong { color: var(--text); }
+  tr:nth-child(even) td { background: #0d111760; }
+
+  code { background: var(--tag-bg); padding: 2px 7px; border-radius: 4px; font-size: 12px; color: #79b8ff; font-family: "Consolas", "Fira Code", monospace; }
+  pre  { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 18px; overflow-x: auto; margin: 14px 0; }
+  pre code { background: none; padding: 0; color: #e6edf3; font-size: 13px; line-height: 1.6; }
+
+  .tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+  .tag.new  { background: #1a3a1a; color: #56d364; border: 1px solid #2ea04330; }
+  .tag.mod  { background: #0c1c36; color: #79b8ff; border: 1px solid #1f6feb30; }
+  .tag.u    { background: #1a1a3a; color: #b48fff; border: 1px solid #8b6fff30; }
+
+  /* mock screens */
+  .mock { background: #090e18; border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin: 14px 0; }
+  .mock-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .mock-btn { display: inline-block; padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .green { background: #238636; color: #fff; }
+  .blue  { background: #1f6feb; color: #fff; }
+  .gray  { background: #30363d; color: #e6edf3; }
+  .url-pill { background: #0c1c36; border: 1px solid #1f6feb40; border-radius: 8px; padding: 10px 16px; font-family: monospace; font-size: 13px; color: #79b8ff; margin: 10px 0; word-break: break-all; }
+
+  .phase { border-left: 3px solid var(--accent); padding: 16px 20px; margin: 16px 0; background: #0c1c3640; border-radius: 0 8px 8px 0; }
+  .phase h3 { color: #79b8ff; margin-top: 0; }
+
+  .check-list { list-style: none; padding: 0; }
+  .check-list li { padding: 8px 0 8px 26px; position: relative; font-size: 14px; color: var(--muted); border-bottom: 1px solid var(--border); }
+  .check-list li:last-child { border: none; }
+  .check-list li::before { content: "○"; position: absolute; left: 0; color: #30363d; }
+  .check-list li .tag { margin-left: 8px; }
+  .check-list li strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Tournament Creator Web Panel</h1>
+    <div class="meta">Feature Specification v2 &nbsp;·&nbsp; Revised approach — web-first creation &nbsp;·&nbsp; 2026-03-30</div>
+  </div>
+  <span class="version">Ready for Review</span>
+</div>
+
+<div class="layout">
+<nav class="toc">
+  <div class="toc-section">Overview</div>
+  <a href="#concept">Core Concept</a>
+  <a href="#what-changed">What Changed from v1</a>
+
+  <div class="toc-section">Unity Side</div>
+  <a href="#unity-flow">Button Flow</a>
+  <a href="#unity-email-check">Email Gate</a>
+  <a href="#unity-popup">Redirect Popup</a>
+
+  <div class="toc-section">Web Panel</div>
+  <a href="#url-design">URL Design</a>
+  <a href="#login">Login Page</a>
+  <a href="#create-form">Create Tournament</a>
+  <a href="#my-tournaments">My Tournaments</a>
+  <a href="#tournament-detail">Tournament Detail</a>
+  <a class="sub" href="#players-tab">Players Tab</a>
+  <a class="sub" href="#matches-tab">Matches Tab</a>
+  <a class="sub" href="#bracket-tab">Bracket Tab</a>
+
+  <div class="toc-section">Backend</div>
+  <a href="#db">Database Changes</a>
+  <a href="#routes">Routes</a>
+  <a href="#controllers">Controllers &amp; Files</a>
+  <a href="#auth">Authentication</a>
+  <a href="#email">Email</a>
+
+  <div class="toc-section">Plan</div>
+  <a href="#phases">Implementation Phases</a>
+  <a href="#questions">Open Questions</a>
+</nav>
+
+<main class="content">
+
+<!-- ══════════════════ CONCEPT ══════════════════ -->
+<h2 id="concept">Core Concept</h2>
+
+<p>
+  Tournament creation is moved entirely off the Unity app and onto a
+  <strong>dedicated web panel</strong>. Unity's role is only to
+  <strong>detect intent → verify email → show the user their web panel URL</strong>.
+  Everything else (creating, configuring, monitoring) happens in the browser.
+</p>
+
+<div class="grid3">
+  <div class="card">
+    <h4>Unity does</h4>
+    <ul>
+      <li>Check email verified</li>
+      <li>Show web panel URL popup</li>
+      <li>Send info email</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Web panel does</h4>
+    <ul>
+      <li>Tournament creation form</li>
+      <li>List user's tournaments</li>
+      <li>Players / Matches / Bracket</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>No change needed in</h4>
+    <ul>
+      <li>Node.js socket layer</li>
+      <li>Unity tournament list UI</li>
+      <li>Existing API routes</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="what-changed">What Changed from v1</h2>
+<table>
+  <thead><tr><th>Topic</th><th>v1 (old)</th><th>v2 (new — this doc)</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><strong>Where user creates tournament</strong></td>
+      <td>Unity UI form</td>
+      <td><strong>Web browser</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Panel URL format</strong></td>
+      <td><code>/tc/{random_token}</code> — per tournament</td>
+      <td><code>/panel/{user_id}</code> — per user, all their tournaments</td>
+    </tr>
+    <tr>
+      <td><strong>Login credentials</strong></td>
+      <td>Temp password generated per tournament</td>
+      <td><strong>Same email + password as their app account</strong></td>
+    </tr>
+    <tr>
+      <td><strong>Unity "Create" button action</strong></td>
+      <td>Opens creation form in Unity</td>
+      <td><strong>Shows popup with web URL + sends email</strong></td>
+    </tr>
+    <tr>
+      <td><strong>New DB columns</strong></td>
+      <td>3 columns on tournaments table</td>
+      <td><strong>0 new columns</strong> — reuse existing user auth</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout ok">
+  <div class="ct">Why this approach is better</div>
+  <p>
+    Web forms are far better for creating tournaments — full keyboard, larger screen, easier to fill
+    prize structure and settings. No new Unity UI to build or maintain. The web panel also
+    works from any browser on any device forever, not just in-app. Simpler backend: reuse existing
+    user auth, no per-tournament tokens or temp passwords to manage.
+  </p>
+</div>
+
+<!-- ══════════════════ UNITY FLOW ══════════════════ -->
+<h2 id="unity-flow">Unity — Button Flow</h2>
+
+<div class="flow">
+  <div class="fs">
+    <div class="n">Step 1</div>
+    <div class="l">Tap "＋ Create"</div>
+    <div class="d">Tournament list create button</div>
+  </div>
+  <div class="fs warn">
+    <div class="n">Step 2</div>
+    <div class="l">Check Email Verified</div>
+    <div class="d">Read from cached profile</div>
+  </div>
+  <div class="fs warn">
+    <div class="n">If NOT verified</div>
+    <div class="l">Warning popup</div>
+    <div class="d">Verify email first</div>
+  </div>
+  <div class="fs ok">
+    <div class="n">If verified</div>
+    <div class="l">Show Web URL Popup</div>
+    <div class="d">yourdomain.com/panel/123456</div>
+  </div>
+  <div class="fs blue">
+    <div class="n">Background</div>
+    <div class="l">Send Email</div>
+    <div class="d">Panel URL + login info</div>
+  </div>
+</div>
+
+<h3 id="unity-email-check">Email Verification Gate</h3>
+
+<p>
+  When the user taps "＋ Create", before anything else, the app checks
+  <code>email_verified_at</code> from the user's cached profile (already fetched at login).
+  No extra network call needed — this data is already available.
+</p>
+
+<div class="mock">
+  <div class="mock-title">Unity Popup — Email Not Verified</div>
+  <div style="text-align:center; padding: 24px 0;">
+    <div style="font-size:36px; margin-bottom:10px;">📧</div>
+    <div style="font-size:15px; font-weight:700; color:#fff; margin-bottom:8px;">Email Verification Required</div>
+    <div style="font-size:13px; color:#8b949e; max-width:280px; margin: 0 auto 20px;">
+      To create a tournament, your email must be verified.<br><br>
+      Check your inbox for a verification link, or resend it from your profile.
+    </div>
+    <span class="mock-btn gray">OK</span>
+  </div>
+</div>
+
+<h3 id="unity-popup">Web Panel Redirect Popup</h3>
+
+<p>
+  When email is verified: show a full-screen popup that tells the user their personal web
+  panel URL, explains they can create a tournament there, and triggers an email with the same info.
+</p>
+
+<div class="mock">
+  <div class="mock-title">Unity Popup — Email Verified → Go to Web Panel</div>
+  <div style="padding: 16px 0;">
+    <div style="text-align:center; margin-bottom:18px;">
+      <div style="font-size:32px; margin-bottom:8px;">🌐</div>
+      <div style="font-size:16px; font-weight:700; color:#fff;">Create Your Tournament on the Web</div>
+      <div style="font-size:13px; color:#8b949e; margin-top:6px;">Use your personal tournament management panel</div>
+    </div>
+    <div style="background:#0c1c36; border:1px solid #1f6feb40; border-radius:8px; padding:14px 16px; margin-bottom:14px;">
+      <div style="font-size:10px; color:#79b8ff; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Your Panel URL</div>
+      <div style="font-family:monospace; font-size:14px; color:#e6edf3; letter-spacing:1px;">yourdomain.com/panel/123456</div>
+      <div style="font-size:11px; color:#8b949e; margin-top:6px;">Login with your app email and password</div>
+    </div>
+    <div style="background:#0a2010; border:1px solid #2ea04330; border-radius:8px; padding:10px 14px; margin-bottom:16px; font-size:12px; color:#56d364;">
+      ✓ Details also sent to your registered email address
+    </div>
+    <div style="font-size:12px; color:#8b949e; margin-bottom:16px;">
+      On the web panel you can:<br>
+      • Create and configure your tournament<br>
+      • Set entry fee, prize pool, player limit<br>
+      • Monitor registered players and live matches<br>
+      • View bracket and match results
+    </div>
+    <div style="text-align:center;">
+      <span class="mock-btn green">Got it!</span>
+    </div>
+  </div>
+</div>
+
+<div class="callout info">
+  <div class="ct">Email trigger timing</div>
+  <p>
+    The email is sent when the user first taps "＋ Create" and their email is verified —
+    <strong>before</strong> they create any tournament. It's a "welcome to your panel" email,
+    not a "tournament created" email. This way the user gets the URL immediately and can
+    bookmark it. The email is only sent ONCE per user (check if already sent via a
+    <code>users.panel_email_sent_at</code> timestamp — if null, send; if already sent, skip).
+  </p>
+</div>
+
+<!-- ══════════════════ WEB PANEL ══════════════════ -->
+<h2 id="url-design">URL Design</h2>
+
+<table>
+  <thead><tr><th>URL</th><th>Page</th></tr></thead>
+  <tbody>
+    <tr><td><code>/panel/{user_id}</code></td><td>Root — redirects to login if not authenticated, else to My Tournaments</td></tr>
+    <tr><td><code>/panel/{user_id}/login</code></td><td>Login form (email + password)</td></tr>
+    <tr><td><code>/panel/{user_id}/logout</code> POST</td><td>Logout</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments</code></td><td>My Tournaments list (default after login)</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments/create</code></td><td>Create new tournament form</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments/{uuid}</code></td><td>Tournament detail (Players / Matches / Bracket tabs)</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments/{uuid}/players</code></td><td>Players list for this tournament</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments/{uuid}/matches</code></td><td>Live + completed matches</td></tr>
+    <tr><td><code>/panel/{user_id}/tournaments/{uuid}/bracket</code></td><td>Bracket view</td></tr>
+    <tr><td><code>/panel/{user_id}/change-password</code></td><td>Change panel password</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info">
+  <div class="ct">Security: user_id in URL vs. random token</div>
+  <p>
+    Using the numeric <code>user_id</code> in the URL is fine because the
+    <strong>password is the actual security</strong>. The URL identifies which panel to show;
+    the login gate protects the data. Anyone who navigates to the URL without the password
+    just sees a login form. If we want extra obscurity, we can use <code>uuid</code> instead
+    of numeric ID — decision in Open Questions.
+  </p>
+</div>
+
+<h2 id="login">Login Page</h2>
+
+<p>
+  Standard email + password form. No "register" link — this is only for existing app users.
+  Successful login creates a server-side session scoped to <code>panel_{user_id}</code>.
+</p>
+
+<div class="mock">
+  <div class="mock-title">Browser — Panel Login Page (yourdomain.com/panel/123456)</div>
+  <div style="max-width:320px; margin:0 auto; padding:20px 0;">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div style="font-size:20px; font-weight:700; color:#fff;">Tournament Panel</div>
+      <div style="font-size:13px; color:#8b949e; margin-top:4px;">Sign in with your app account</div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:12px; color:#8b949e; margin-bottom:4px;">Email</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:10px 12px; font-size:13px; color:#8b949e;">your@email.com</div>
+    </div>
+    <div style="margin-bottom:18px;">
+      <div style="font-size:12px; color:#8b949e; margin-bottom:4px;">Password</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:10px 12px; font-size:13px; color:#8b949e;">••••••••</div>
+    </div>
+    <span class="mock-btn green" style="display:block; text-align:center; padding:11px; border-radius:7px;">Sign In</span>
+    <div style="text-align:center; margin-top:14px; font-size:12px; color:#8b949e;">Use the same password as your Ludo app</div>
+  </div>
+</div>
+
+<div class="callout warn">
+  <div class="ct">Auth uses existing users table</div>
+  <p>
+    Login checks: <code>users</code> table where <code>email = input</code> AND
+    <code>Hash::check(input_password, users.password)</code>.
+    The user's existing app password works — no new password column, no temp passwords.
+    If the user registered via social login (no password set), they'll need to set one
+    from their profile in the app first (note this in the login page footer).
+  </p>
+</div>
+
+<h2 id="create-form">Create Tournament (Web Form)</h2>
+
+<p>
+  This is the main purpose of the web panel. Full form with all tournament configuration options.
+  On submit: calls the existing <code>POST /api/v1/tournaments</code> API internally
+  (or directly inserts via the controller — same validation rules apply).
+</p>
+
+<div class="grid2">
+  <div class="card">
+    <h4>Basic Info</h4>
+    <ul>
+      <li>Tournament Name</li>
+      <li>Game Type (Ludo Classic, etc.)</li>
+      <li>Tournament Type (public / private)</li>
+      <li>Invite Code (if private — auto-generate button)</li>
+      <li>Password (optional extra protection)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Players &amp; Prizes</h4>
+    <ul>
+      <li>Max Players (dropdown: 4, 8, 16, 32, 64, 128, 256, 512)</li>
+      <li>Players Per Match (2 or 4)</li>
+      <li>Entry Fee (₹ input)</li>
+      <li>Prize Pool (auto-calculated or manual)</li>
+      <li>Prize Distribution (1st, 2nd, 3rd — % inputs)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Schedule</h4>
+    <ul>
+      <li>Registration Opens At (datetime picker)</li>
+      <li>Registration Closes At</li>
+      <li>Starts At</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Advanced (optional)</h4>
+    <ul>
+      <li>Min Players to start</li>
+      <li>Description / Rules (textarea)</li>
+      <li>Allow bots to fill empty slots (checkbox)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="mock">
+  <div class="mock-title">Browser — Create Tournament Form</div>
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:14px;">
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Tournament Name *</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e6edf3;">VIP Ludo Private League</div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Type *</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e6edf3;">Private ▾</div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Max Players *</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e6edf3;">32 ▾</div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Entry Fee (₹) *</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e6edf3;">50</div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Invite Code</div>
+      <div style="display:flex; gap:6px; align-items:center;">
+        <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e3b341; font-family:monospace; flex:1; letter-spacing:3px;">YAFWGH</div>
+        <span style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 10px; font-size:11px; color:#8b949e; cursor:pointer;">↻</span>
+      </div>
+    </div>
+    <div>
+      <div style="font-size:11px; color:#8b949e; margin-bottom:4px;">Players Per Match</div>
+      <div style="background:#21262d; border:1px solid #30363d; border-radius:6px; padding:9px 12px; font-size:13px; color:#e6edf3;">2 ▾</div>
+    </div>
+  </div>
+  <div style="background:#0a2010; border:1px solid #2ea04330; border-radius:8px; padding:12px 14px; font-size:12px; color:#56d364; margin-bottom:14px;">
+    Prize Pool (auto): ₹1,440 &nbsp;·&nbsp; 80% of entry fees collected (after 20% platform fee)
+  </div>
+  <div style="display:flex; gap:10px;">
+    <span class="mock-btn green">Create Tournament</span>
+    <span class="mock-btn gray">Cancel</span>
+  </div>
+</div>
+
+<h2 id="my-tournaments">My Tournaments List</h2>
+
+<p>
+  Default page after login. Shows all tournaments created by this user with quick status indicators.
+</p>
+
+<div class="mock">
+  <div class="mock-title">Browser — My Tournaments</div>
+  <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+    <div style="font-size:15px; font-weight:700; color:#fff;">My Tournaments</div>
+    <span class="mock-btn green" style="font-size:12px; padding:6px 14px;">＋ Create New</span>
+  </div>
+  <table>
+    <thead><tr><th>Name</th><th>Status</th><th>Players</th><th>Live Matches</th><th>Entry Fee</th><th>Actions</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><strong style="color:#e6edf3;">VIP Ludo Private League</strong><br><span style="font-size:11px;">Created 30 Mar 2026</span></td>
+        <td><span style="background:#0a2010; color:#56d364; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">In Progress</span></td>
+        <td>24 / 32</td>
+        <td><span style="color:#e3b341; font-weight:700;">3 live</span></td>
+        <td>₹50</td>
+        <td><span class="mock-btn blue" style="font-size:11px; padding:4px 10px;">View →</span></td>
+      </tr>
+      <tr>
+        <td><strong style="color:#e6edf3;">Weekend Ludo Bash</strong><br><span style="font-size:11px;">Created 25 Mar 2026</span></td>
+        <td><span style="background:#1a1a00; color:#e3b341; padding:2px 8px; border-radius:4px; font-size:11px; font-weight:700;">Completed</span></td>
+        <td>16 / 16</td>
+        <td>—</td>
+        <td>₹25</td>
+        <td><span class="mock-btn blue" style="font-size:11px; padding:4px 10px;">View →</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<h2 id="tournament-detail">Tournament Detail Page</h2>
+
+<p>
+  Clicking "View →" opens the tournament's detail page with three tabs.
+  The page auto-refreshes match data every 30 seconds (simple JavaScript — no websocket needed).
+</p>
+
+<h3 id="players-tab">Players Tab</h3>
+<table>
+  <thead><tr><th>Column</th><th>Data source</th></tr></thead>
+  <tbody>
+    <tr><td><strong>#</strong></td><td>Row number</td></tr>
+    <tr><td><strong>Username</strong></td><td><code>users.username</code></td></tr>
+    <tr><td><strong>User Code</strong></td><td><code>users.user_code</code> (8-digit)</td></tr>
+    <tr><td><strong>Registered At</strong></td><td><code>tournament_registrations.created_at</code></td></tr>
+    <tr><td><strong>Status</strong></td><td><code>tournament_registrations.status</code> (registered / playing / winner / eliminated / refunded)</td></tr>
+    <tr><td><strong>Current Round</strong></td><td>Derived from their latest match</td></tr>
+    <tr><td><strong>Result</strong></td><td>Won / Lost + which match</td></tr>
+  </tbody>
+</table>
+
+<h3 id="matches-tab">Matches Tab</h3>
+<p>Two sub-tabs: <strong>Live</strong> and <strong>Completed</strong>.</p>
+<div class="grid2">
+  <div class="card">
+    <h4>Live Matches</h4>
+    <ul>
+      <li>Round + Match ID</li>
+      <li>Player 1 vs Player 2 usernames</li>
+      <li>Started At</li>
+      <li>Duration (live counter in JS)</li>
+      <li>Game room code (if available)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h4>Completed Matches</h4>
+    <ul>
+      <li>Round + Match ID</li>
+      <li>Player 1 vs Player 2</li>
+      <li><strong>Winner</strong> (highlighted green)</li>
+      <li>Duration</li>
+      <li>Finished At</li>
+    </ul>
+  </div>
+</div>
+
+<h3 id="bracket-tab">Bracket Tab</h3>
+<p>
+  Rounds displayed as columns of match cards. Each card shows two players and the winner (if decided).
+  V1: tabular layout. V2: visual bracket with connecting lines (optional enhancement).
+</p>
+
+<div class="callout warn">
+  <div class="ct">Read-only panel — no admin override</div>
+  <p>
+    Creator panel is <strong>monitoring only</strong>. Creators can see everything but cannot
+    force-set winners, kick players, or change tournament settings after creation.
+    Those powers remain exclusively in the admin panel at <code>/admin</code>.
+  </p>
+</div>
+
+<!-- ══════════════════ BACKEND ══════════════════ -->
+<h2 id="db">Database Changes</h2>
+
+<p>Only ONE new column needed (the email-sent tracker). Everything else reuses existing data.</p>
+
+<table>
+  <thead><tr><th>Table</th><th>Column</th><th>Type</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>users</code></td>
+      <td><code>panel_email_sent_at</code></td>
+      <td>TIMESTAMP, nullable</td>
+      <td>
+        Tracks if the "here's your web panel" email was already sent to this user.
+        If null → send email + set this timestamp. If not null → skip sending again.
+        Prevents duplicate welcome emails on repeated Create button taps.
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+<pre><code>// Migration: 2026_03_26_030000_add_panel_email_sent_to_users.php
+Schema::table('users', function (Blueprint $table) {
+    $table->timestamp('panel_email_sent_at')->nullable()->after('user_code');
+});</code></pre>
+
+<h2 id="routes">Routes</h2>
+
+<p>New file: <code>routes/creator_panel.php</code> — loaded in <code>bootstrap/app.php</code> <code>then:</code> callback.</p>
+
+<pre><code>// routes/creator_panel.php
+use App\Http\Controllers\CreatorPanel\CreatorPanelController;
+use Illuminate\Support\Facades\Route;
+
+Route::prefix('panel/{userId}')->group(function () {
+    Route::get('/',         [CreatorPanelController::class, 'index']);
+    Route::get('/login',    [CreatorPanelController::class, 'showLogin']);
+    Route::post('/login',   [CreatorPanelController::class, 'login']);
+    Route::post('/logout',  [CreatorPanelController::class, 'logout']);
+
+    Route::middleware('creator.auth')->group(function () {
+        Route::get('/tournaments',              [CreatorPanelController::class, 'tournaments']);
+        Route::get('/tournaments/create',       [CreatorPanelController::class, 'createForm']);
+        Route::post('/tournaments',             [CreatorPanelController::class, 'store']);
+        Route::get('/tournaments/{uuid}',       [CreatorPanelController::class, 'show']);
+        Route::get('/tournaments/{uuid}/players', [CreatorPanelController::class, 'players']);
+        Route::get('/tournaments/{uuid}/matches', [CreatorPanelController::class, 'matches']);
+        Route::get('/tournaments/{uuid}/bracket', [CreatorPanelController::class, 'bracket']);
+        Route::get('/change-password',          [CreatorPanelController::class, 'changePasswordForm']);
+        Route::post('/change-password',         [CreatorPanelController::class, 'changePassword']);
+    });
+});</code></pre>
+
+<h2 id="controllers">Controllers &amp; Files</h2>
+
+<table>
+  <thead><tr><th>File</th><th>Tag</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><code>app/Http/Controllers/CreatorPanel/CreatorPanelController.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>All panel actions in one controller. Validates <code>userId</code> route param matches authenticated session user.</td>
+    </tr>
+    <tr>
+      <td><code>app/Http/Middleware/CreatorPanelAuth.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Checks <code>session('creator_panel_user_id')</code> and matches against route <code>userId</code>. Redirects to login if not set.</td>
+    </tr>
+    <tr>
+      <td><code>app/Mail/CreatorPanelWelcomeMail.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Mailable — sends when user first clicks Create in Unity with verified email.</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/creator_panel/layout.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Shared layout with sidebar nav (My Tournaments, Create, Change Password, Logout).</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/creator_panel/login.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Login form page.</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/creator_panel/tournaments/index.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>My Tournaments list.</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/creator_panel/tournaments/create.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Create tournament form.</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/creator_panel/tournaments/show.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>Tournament detail with tabs (Players / Matches / Bracket).</td>
+    </tr>
+    <tr>
+      <td><code>resources/views/emails/creator_panel_welcome.blade.php</code></td>
+      <td><span class="tag new">NEW</span></td>
+      <td>HTML email template — panel URL + login instructions.</td>
+    </tr>
+    <tr>
+      <td><code>app/Http/Controllers/Api/V1/TournamentRegistrationController.php</code></td>
+      <td><span class="tag mod">MODIFIED</span></td>
+      <td>Remove old Unity create form handling (or keep as-is since web form calls same endpoint). Trigger welcome email on user's first "Create" intent (via separate API endpoint).</td>
+    </tr>
+    <tr>
+      <td><code>bootstrap/app.php</code></td>
+      <td><span class="tag mod">MODIFIED</span></td>
+      <td>Add <code>require base_path('routes/creator_panel.php')</code> in <code>then:</code>. Add <code>'creator.auth' => CreatorPanelAuth::class</code> alias.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2 id="auth">Authentication</h2>
+
+<pre><code>// CreatorPanelController::login()
+$user = User::where('email', $request->email)->first();
+if (!$user || !Hash::check($request->password, $user->password)) {
+    return back()->withErrors(['email' => 'Invalid credentials.']);
+}
+// Verify this user owns this panel URL
+if ($user->id !== (int) $request->route('userId')) {
+    return back()->withErrors(['email' => 'Invalid credentials.']);
+}
+session(['creator_panel_user_id' => $user->id]);
+return redirect("/panel/{$user->id}/tournaments");
+
+// CreatorPanelAuth middleware
+public function handle($request, $next)
+{
+    $sessionUserId = session('creator_panel_user_id');
+    $routeUserId   = (int) $request->route('userId');
+    if (!$sessionUserId || $sessionUserId !== $routeUserId) {
+        return redirect("/panel/{$routeUserId}/login");
+    }
+    return $next($request);
+}</code></pre>
+
+<h2 id="email">Email — Creator Panel Welcome</h2>
+
+<p>
+  Sent once per user when they first tap "＋ Create" in Unity with a verified email.
+  Contains their web panel URL and login instructions.
+</p>
+
+<table>
+  <thead><tr><th>Field</th><th>Value</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Subject</strong></td><td>Your Tournament Management Panel is Ready 🎮</td></tr>
+    <tr><td><strong>To</strong></td><td>User's verified email</td></tr>
+    <tr><td><strong>Template</strong></td><td><code>emails/creator_panel_welcome.blade.php</code></td></tr>
+    <tr><td><strong>When sent</strong></td><td>Unity taps Create → calls <code>POST /api/v1/user/notify-panel</code> → server checks <code>panel_email_sent_at</code> → sends if null</td></tr>
+    <tr><td><strong>Sent again?</strong></td><td>No — only once per user (guarded by <code>panel_email_sent_at</code>)</td></tr>
+  </tbody>
+</table>
+
+<h4>Email Contents</h4>
+<table>
+  <thead><tr><th>Section</th><th>Content</th></tr></thead>
+  <tbody>
+    <tr><td>Greeting</td><td>Hi [Username]!</td></tr>
+    <tr><td>Headline</td><td>"Your personal tournament management panel is ready."</td></tr>
+    <tr><td>Panel URL (big button)</td><td><code>yourdomain.com/panel/123456</code></td></tr>
+    <tr><td>Login instructions</td><td>"Use your existing Ludo app email and password to log in."</td></tr>
+    <tr><td>What you can do</td><td>Bullet list: create tournaments, monitor players, track live matches, view bracket</td></tr>
+    <tr><td>Footer</td><td>Support info</td></tr>
+  </tbody>
+</table>
+
+<h4>New Unity API endpoint (notify-panel)</h4>
+<pre><code>// POST /api/v1/user/notify-panel
+// Called by Unity when user taps Create with verified email
+// Auth: Bearer token (existing user auth)
+public function notifyPanel(Request $request): JsonResponse
+{
+    $user = $request->user();
+    if (is_null($user->panel_email_sent_at)) {
+        Mail::to($user->email)->queue(new CreatorPanelWelcomeMail($user));
+        $user->update(['panel_email_sent_at' => now()]);
+    }
+    return response()->json([
+        'panel_url' => url('/panel/' . $user->id),
+    ]);
+}</code></pre>
+
+<!-- ══════════════════ PHASES ══════════════════ -->
+<h2 id="phases">Implementation Phases</h2>
+
+<div class="phase">
+  <h3>Phase 1 — Foundation (Backend)</h3>
+  <ul class="check-list">
+    <li><strong>Migration:</strong> add <code>panel_email_sent_at</code> to <code>users</code> <span class="tag new">NEW</span></li>
+    <li><strong>Route file:</strong> <code>routes/creator_panel.php</code> with all /panel/* routes <span class="tag new">NEW</span></li>
+    <li><strong>Middleware:</strong> <code>CreatorPanelAuth</code> — session check + userId match <span class="tag new">NEW</span></li>
+    <li><strong>Register:</strong> add to <code>bootstrap/app.php</code> + middleware alias <span class="tag mod">MOD</span></li>
+    <li><strong>Controller stub:</strong> <code>CreatorPanelController</code> with all methods (blank views) <span class="tag new">NEW</span></li>
+    <li><strong>Test:</strong> navigate to <code>/panel/1</code> → should redirect to login → login → should enter panel</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 2 — Web Views</h3>
+  <ul class="check-list">
+    <li><strong>Layout blade</strong> (sidebar nav + topbar) <span class="tag new">NEW</span></li>
+    <li><strong>Login page</strong> blade + POST handler <span class="tag new">NEW</span></li>
+    <li><strong>My Tournaments</strong> list blade (table of user's tournaments with status) <span class="tag new">NEW</span></li>
+    <li><strong>Create Tournament</strong> form blade + POST handler (reuse API validation) <span class="tag new">NEW</span></li>
+    <li><strong>Tournament Detail</strong> blade with tabs: Players / Matches / Bracket <span class="tag new">NEW</span></li>
+    <li><strong>Auto-refresh JS:</strong> matches tab refreshes every 30s (simple <code>setInterval</code> reload) <span class="tag new">NEW</span></li>
+    <li><strong>Change Password</strong> form + handler (updates <code>users.password</code>) <span class="tag new">NEW</span></li>
+    <li><strong>Test:</strong> full flow — login → create tournament → see it in list → view detail tabs</li>
+  </ul>
+</div>
+
+<div class="phase">
+  <h3>Phase 3 — Email + Unity Changes</h3>
+  <ul class="check-list">
+    <li><strong>API endpoint:</strong> <code>POST /api/v1/user/notify-panel</code> (returns panel_url, triggers email once) <span class="tag new">NEW</span></li>
+    <li><strong>Email mailable:</strong> <code>CreatorPanelWelcomeMail</code> class <span class="tag new">NEW</span></li>
+    <li><strong>Email template:</strong> <code>emails/creator_panel_welcome.blade.php</code> <span class="tag new">NEW</span></li>
+    <li><strong>Unity — email gate:</strong> check <code>email_verified_at</code> from cached profile before showing popup <span class="tag u">UNITY</span></li>
+    <li><strong>Unity — redirect popup:</strong> call <code>notify-panel</code> API → parse <code>panel_url</code> → show popup with URL <span class="tag u">UNITY</span></li>
+    <li><strong>Test:</strong> tap Create in Unity → verify popup shows correct URL → verify email received → login on web → create tournament</li>
+  </ul>
+</div>
+
+<!-- ══════════════════ QUESTIONS ══════════════════ -->
+<h2 id="questions">Open Questions</h2>
+
+<table>
+  <thead><tr><th>#</th><th>Question</th><th>Options</th><th>Recommendation</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1</td>
+      <td>URL: numeric user_id or UUID in panel URL?</td>
+      <td><code>/panel/123</code> (numeric) or <code>/panel/uuid-string</code></td>
+      <td>UUID is safer (can't enumerate users). Numeric ID is simpler. Decide before Phase 1.</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>Tournament creation on web — does it go through the existing API or directly via controller?</td>
+      <td>Web form → existing <code>POST /api/v1/tournaments</code> OR web form → controller → direct DB insert</td>
+      <td>Direct via controller (simpler, no token auth loop). Use same validation rules.</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>Should the old Unity "Create Tournament" form (LudoCreateTournamentPanelOffline) be removed or kept?</td>
+      <td>Remove entirely OR keep as dead code</td>
+      <td>Remove the form UI but keep the component class (simplify it to just show the popup).</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>Email queue or sync?</td>
+      <td>Queue (fast API response, needs worker) or sync (simple, slightly slower)</td>
+      <td>Queue if worker is configured. Email is low-priority (panel URL is already shown in Unity popup).</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>Can user access panel before creating any tournament?</td>
+      <td>Yes, show empty state with "Create your first tournament" OR require at least one tournament to have been created</td>
+      <td>Yes — allow access immediately after first login. Show empty state with create button.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout ok">
+  <div class="ct">Ready to start after your review</div>
+  <p>
+    Confirm the Open Questions above (especially Q1 and Q3), then implementation begins with
+    Phase 1. Each phase will be tested end-to-end before moving to the next.
+    Total estimated work: ~4 days across all three phases.
+  </p>
+</div>
+
+</main>
+</div>
+</body>
+</html>

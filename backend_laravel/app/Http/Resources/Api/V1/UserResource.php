@@ -10,6 +10,7 @@ class UserResource extends BaseResource
     {
         return [
             'id' => $this->id,
+            'user_code' => $this->user_code,
             'uuid' => $this->uuid,
             'username' => $this->username,
             'email' => $this->email,

@@ -328,6 +328,31 @@ public class newSignUpOutputs
 }
 
 [System.Serializable]
+public class AuthRegisterV1User
+{
+    public string id;
+    public string user_code;
+    public string email;
+    public string username;
+}
+
+[System.Serializable]
+public class AuthRegisterV1Data
+{
+    public string token;
+    public string token_type;
+    public AuthRegisterV1User user;
+}
+
+[System.Serializable]
+public class AuthRegisterV1Response
+{
+    public bool success;
+    public string message;
+    public AuthRegisterV1Data data;
+}
+
+[System.Serializable]
 public class Setting
 {
     public string id;
@@ -458,19 +483,26 @@ public class newSignUpDetails
 {
     public TMP_InputField PasswordInputfield;
     public TMP_InputField MobileInputfield;
-    public TMP_InputField NameInputfield;
+    public TMP_InputField EmailInputfield;      // NEW — assign in Inspector
+    public TMP_InputField NameInputfield;       // kept for legacy; hide in UI
     public TMP_InputField ReferralCodeInputfield;
     public Toggle _Toggle;
     public GameObject OtpPanel;
-
     public GameObject SignUpPnl;
+
+    // NEW — assign the parent GameObject that wraps the Mobile input row
+    // and the one that wraps the Email input row so we can show/hide them
+    public GameObject MobileGroup;   // GameObject containing MobileInputfield (and its label)
+    public GameObject EmailGroup;    // GameObject containing EmailInputfield (and its label)
 
     public void Clear()
     {
         PasswordInputfield.text = string.Empty;
-        MobileInputfield.text = string.Empty;
-        NameInputfield.text = string.Empty;
-        if (!ReferralCodeInputfield.text.Contains("777-"))
+        if (MobileInputfield != null) MobileInputfield.text = string.Empty;
+        if (EmailInputfield  != null) EmailInputfield.text  = string.Empty;
+        if (NameInputfield   != null) NameInputfield.text   = string.Empty;
+        if (ReferralCodeInputfield != null &&
+            !ReferralCodeInputfield.text.Contains("777-"))
         {
             ReferralCodeInputfield.text = string.Empty;
         }

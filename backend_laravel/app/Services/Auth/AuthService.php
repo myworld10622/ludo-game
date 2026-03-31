@@ -21,7 +21,7 @@ class AuthService
             $referrer = null;
 
             if (! empty($payload['referral_code'])) {
-                $referrer = User::query()->where('referral_code', $payload['referral_code'])->first();
+                $referrer = $this->resolveReferrer((string) $payload['referral_code']);
             }
 
             $user = User::query()->create([
@@ -55,6 +55,7 @@ class AuthService
             ->where('username', $payload['identity'])
             ->orWhere('email', $payload['identity'])
             ->orWhere('mobile', $payload['identity'])
+            ->orWhere('user_code', $payload['identity'])
             ->first();
 
         if (! $user || ! Hash::check($payload['password'], $user->password)) {
@@ -87,5 +88,20 @@ class AuthService
     public function profile(User $user): User
     {
         return $user->load('profile');
+    }
+
+    protected function resolveReferrer(string $referralCode): ?User
+    {
+        $normalizedCode = strtoupper(trim($referralCode));
+        $normalizedCode = preg_replace('/^777-/i', '', $normalizedCode);
+
+        if ($normalizedCode === '') {
+            return null;
+        }
+
+        return User::query()
+            ->where('referral_code', $normalizedCode)
+            ->orWhere('user_code', $normalizedCode)
+            ->first();
     }
 }

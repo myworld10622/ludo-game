@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ludo Tournament System — Full Documentation</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f6f9; color: #2c3e50; }
+  .cover { background: linear-gradient(135deg, #1B4F72, #2E86AB); color: white; text-align: center; padding: 80px 40px; }
+  .cover h1 { font-size: 42px; font-weight: 800; letter-spacing: 2px; margin-bottom: 16px; }
+  .cover h2 { font-size: 18px; font-weight: 300; opacity: 0.9; margin-bottom: 30px; }
+  .cover .stack { font-size: 14px; opacity: 0.75; background: rgba(255,255,255,0.1); display: inline-block; padding: 10px 24px; border-radius: 30px; }
+  .toc { background: white; max-width: 960px; margin: 30px auto; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 40px; }
+  .toc h2 { color: #1B4F72; font-size: 22px; border-bottom: 3px solid #2E86AB; padding-bottom: 10px; margin-bottom: 20px; }
+  .toc ol { padding-left: 24px; }
+  .toc li { padding: 6px 0; font-size: 15px; color: #2E86AB; }
+  .container { max-width: 960px; margin: 0 auto; padding: 20px; }
+  .section { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); padding: 40px; margin-bottom: 30px; }
+  h1.sec { font-size: 26px; color: #1B4F72; border-bottom: 3px solid #2E86AB; padding-bottom: 12px; margin-bottom: 24px; }
+  h2.sub { font-size: 18px; color: #2E86AB; margin: 24px 0 12px; }
+  h3.sub3 { font-size: 15px; color: #117A65; margin: 16px 0 8px; font-weight: 700; }
+  p { line-height: 1.7; margin-bottom: 12px; font-size: 15px; }
+  ul, ol { padding-left: 24px; margin-bottom: 14px; }
+  li { line-height: 1.7; font-size: 14px; margin-bottom: 4px; }
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead tr { background: #1B4F72; color: white; }
+  thead th { padding: 12px 14px; text-align: left; font-weight: 600; }
+  tbody tr:nth-child(even) { background: #EBF5FB; }
+  tbody tr:nth-child(odd) { background: #ffffff; }
+  tbody td { padding: 10px 14px; border-bottom: 1px solid #dce8f0; vertical-align: top; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+  .badge-blue  { background: #D6EAF8; color: #1B4F72; }
+  .badge-green { background: #D5F5E3; color: #117A65; }
+  .badge-yellow{ background: #FEF9E7; color: #9A7D0A; }
+  .badge-red   { background: #FADBD8; color: #922B21; }
+  .badge-purple{ background: #E8DAEF; color: #6C3483; }
+  .info-box   { background: #D6EAF8; border-left: 5px solid #2E86AB; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-size: 14px; line-height: 1.7; }
+  .note-box   { background: #FEF9E7; border-left: 5px solid #F4D03F; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-size: 14px; }
+  .success-box{ background: #D5F5E3; border-left: 5px solid #27AE60; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-size: 14px; }
+  .warn-box   { background: #FDEDEC; border-left: 5px solid #E74C3C; padding: 16px 20px; border-radius: 6px; margin: 16px 0; font-size: 14px; }
+  pre { background: #F0F7EE; border: 1px solid #C8E6C9; border-radius: 8px; padding: 20px; font-family: 'Courier New', monospace; font-size: 12px; color: #1A5276; overflow-x: auto; margin: 16px 0; line-height: 1.6; }
+  .phase { background: linear-gradient(135deg, #EBF5FB, #D6EAF8); border-radius: 10px; padding: 24px; margin: 16px 0; border-left: 5px solid #2E86AB; }
+  .phase h3 { color: #1B4F72; font-size: 16px; margin-bottom: 12px; }
+  .footer { text-align: center; padding: 40px; color: #7f8c8d; font-size: 13px; }
+  .emoji-big { font-size: 60px; display: block; margin-bottom: 16px; }
+  .flow-step { display: flex; align-items: flex-start; margin: 10px 0; }
+  .flow-num  { background: #1B4F72; color: white; border-radius: 50%; min-width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-right: 12px; margin-top: 2px; }
+  .flow-text { font-size: 14px; line-height: 1.7; }
+  code { background: #EBF5FB; color: #1B4F72; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+  @media print { .section { box-shadow: none; border: 1px solid #ddd; } }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <span class="emoji-big">🎲</span>
+  <h1>LUDO TOURNAMENT SYSTEM</h1>
+  <h2>Complete Implementation Documentation — As Actually Built</h2>
+  <div class="stack">Laravel 11 (Backend API) &nbsp;•&nbsp; Node.js + Socket.IO (Real-time) &nbsp;•&nbsp; Unity C# (Game Client)</div>
+  <p style="margin-top:24px; opacity:0.6; font-size:13px;">Version 2.0 &nbsp;|&nbsp; March 2026 &nbsp;|&nbsp; Live Implementation Status</p>
+</div>
+
+<div class="container">
+
+<!-- TOC -->
+<div class="toc">
+  <h2>📋 Table of Contents</h2>
+  <ol>
+    <li>Project Overview &amp; Current Status</li>
+    <li>Architecture &amp; Tech Stack</li>
+    <li>Tournament Lifecycle — Complete Flow</li>
+    <li>Fee-Based vs Tournament Matchmaking</li>
+    <li>Bot Behavior &amp; Fill Rules</li>
+    <li>Database Schema (Actual Migrations)</li>
+    <li>Laravel API — All Endpoints</li>
+    <li>Node.js Socket Events (Real-time)</li>
+    <li>Unity Client — Screens &amp; Scripts</li>
+    <li>Admin Panel — Capabilities</li>
+    <li>User Powers — Tournament Creator</li>
+    <li>Private Tournament Flow</li>
+    <li>Prize Distribution Engine</li>
+    <li>Test &amp; Simulation Commands</li>
+    <li>What Is Working vs What Is Missing</li>
+    <li>Implementation Roadmap — Next Steps</li>
+  </ol>
+</div>
+
+<!-- SECTION 1 -->
+<div class="section">
+  <h1 class="sec">1. Project Overview &amp; Current Status</h1>
+  <p>The Ludo Tournament System is built on top of an existing real-money Ludo game. It adds structured multi-player tournament support with brackets, prize pools, bot fallback, private invite-only rooms, and user-created tournaments.</p>
+
+  <h2 class="sub">1.1 What Is Currently Live (Implemented)</h2>
+  <div class="success-box">
+    ✅ Tournament CRUD (create, publish, close, cancel, generate bracket)<br>
+    ✅ Player registration (idempotent, wallet deduction ready)<br>
+    ✅ Knockout + Round Robin bracket generation<br>
+    ✅ Queue-style matchmaking when no bracket (first player creates room, next fills it)<br>
+    ✅ Node.js socket room claim flow (<code>ludo.tournament.claim_room</code>)<br>
+    ✅ Bot fill via <code>scheduleBotFill</code> — one bot per 8 seconds per empty seat<br>
+    ✅ Match result recording + bracket advancement<br>
+    ✅ Prize distribution to wallets on tournament completion<br>
+    ✅ Private tournament with invite code + optional password<br>
+    ✅ User-created tournaments (public &amp; private) via Unity Create Tournament panel<br>
+    ✅ Unity tournament list panel — compact fee-table style rows<br>
+    ✅ Unity Create Tournament panel — instant / scheduled modes<br>
+    ✅ Simulation command: <code>php artisan tournament:simulate</code>
+  </div>
+
+  <h2 class="sub">1.2 What Is Partially Implemented / Pending</h2>
+  <div class="warn-box">
+    ⚠️ Admin bracket view in admin web panel (basic list only, no visual drag-drop)<br>
+    ⚠️ Push notifications (FCM) for match reminders / prize credited<br>
+    ⚠️ KYC check on tournament join above ₹500<br>
+    ⚠️ Visual bracket tree in Unity (BracketUI.cs not yet built)<br>
+    ⚠️ Admin manual match override UI (API ready, Unity panel not built)<br>
+    ⚠️ "My Tournaments" tab in Unity (history screen)<br>
+    ⚠️ Refund flow on tournament cancellation (job exists, wallet debit not yet wired)<br>
+    ⚠️ TDS deduction on prizes &gt; ₹10,000
+  </div>
+</div>
+
+<!-- SECTION 2 -->
+<div class="section">
+  <h1 class="sec">2. Architecture &amp; Tech Stack</h1>
+
+  <h2 class="sub">2.1 Component Overview</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Layer</th><th>Technology</th><th>Port / URL</th><th>Role</th></tr></thead>
+    <tbody>
+      <tr><td>Backend API</td><td>Laravel 11 (PHP 8.2)</td><td>localhost:8000</td><td>REST API, DB, Auth (Sanctum), Admin panel, Prize logic</td></tr>
+      <tr><td>Real-time Server</td><td>Node.js + Socket.IO</td><td>localhost:3002</td><td>Game rooms, match start, bot fill, socket events</td></tr>
+      <tr><td>Game Client</td><td>Unity (C#)</td><td>—</td><td>Ludo game, tournament lobby, matchmaking, create tournament</td></tr>
+      <tr><td>Database</td><td>MySQL</td><td>localhost:3306</td><td>All persistent data</td></tr>
+      <tr><td>Admin Panel</td><td>Laravel Blade</td><td>/admin/tournaments</td><td>Tournament management, bracket view, approve user tournaments</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">2.2 Key URL Constants (Unity Configuration.cs)</h2>
+  <pre>BaseUrl                  = "http://[SERVER_IP]/"   (set in Configuration.cs)
+BaseSocketUrl            = "http://localhost:3002"
+LudoTournamentListUrl    = BaseUrl + "api/v1/tournaments"
+LudoTournamentInfoUrl    = BaseUrl + "api/v1/tournaments/"
+LudoV2QueueJoinUrl       = BaseUrl + "api/v1/ludo/queue/join"
+LudoV2SocketNamespace    = "/ludo_v2"</pre>
+</div>
+
+<!-- SECTION 3 -->
+<div class="section">
+  <h1 class="sec">3. Tournament Lifecycle — Complete Flow</h1>
+
+  <h2 class="sub">3.1 Admin-Created Tournament (Bracket Mode)</h2>
+  <div class="flow-step"><div class="flow-num">1</div><div class="flow-text"><strong>Create:</strong> Admin creates tournament via <code>POST /api/v1/tournaments</code> with name, format, entry fee, max_players, prize structure (must sum 100%). Status = <code>draft</code>.</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div class="flow-text"><strong>Publish:</strong> Admin calls <code>POST /{tournament}/publish</code> → status = <code>registration_open</code>. Tournament appears in Unity lobby.</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div class="flow-text"><strong>Players Register:</strong> Unity calls <code>POST /{tournament}/register</code> (idempotent — safe to retry). Entry fee checked and deducted from wallet. Registration stored with <code>status=registered</code>.</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div class="flow-text"><strong>Close Registration:</strong> Admin calls <code>POST /{tournament}/close-registration</code> → status = <code>registration_closed</code>. Prize pool auto-calculated (entry_fee × players × 80%).</div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div class="flow-text"><strong>Generate Bracket:</strong> Admin calls <code>POST /{tournament}/generate-bracket</code> → <code>TournamentBracketService</code> creates all <code>TournamentMatch</code> rows with assigned players. Status = <code>in_progress</code>.</div></div>
+  <div class="flow-step"><div class="flow-num">6</div><div class="flow-text"><strong>Player Claims Room:</strong> Unity calls <code>POST /{tournament}/claim-room</code> → Laravel finds the player's current unplayed match → returns room data with human players only.</div></div>
+  <div class="flow-step"><div class="flow-num">7</div><div class="flow-text"><strong>Socket Connect:</strong> Unity emits <code>ludo.tournament.claim_room</code> on <code>/ludo_v2</code> namespace → Node.js builds room state from claim-room data. Bot fill timer starts for empty seats.</div></div>
+  <div class="flow-step"><div class="flow-num">8</div><div class="flow-text"><strong>Game Starts:</strong> When room full (or all bots filled), Node.js calls <code>POST /api/internal/v1/ludo/rooms/{id}/start</code> → Laravel detects <code>tournament-match-{id}</code> prefix, updates TournamentMatch status = <code>in_progress</code>.</div></div>
+  <div class="flow-step"><div class="flow-num">9</div><div class="flow-text"><strong>Match Played:</strong> Ludo game runs via existing game engine. Seats/tokens controlled by Node.js server-side logic.</div></div>
+  <div class="flow-step"><div class="flow-num">10</div><div class="flow-text"><strong>Match Result:</strong> Node.js calls <code>POST /api/internal/v1/tournaments/matches/{match}/result</code> with scores, positions, winner. Laravel records result, marks loser as <code>eliminated</code>, advances winner to next match in bracket.</div></div>
+  <div class="flow-step"><div class="flow-num">11</div><div class="flow-text"><strong>Next Round:</strong> Winner is re-inserted into next-round TournamentMatch. When that match fills, it becomes <code>waiting</code>. Winner calls claim-room again → new socket room.</div></div>
+  <div class="flow-step"><div class="flow-num">12</div><div class="flow-text"><strong>Final / Completion:</strong> When all matches complete, tournament status = <code>completed</code>. Prize distribution runs automatically: wallets credited, TournamentWalletTransaction rows created.</div></div>
+
+  <h2 class="sub">3.2 User-Created Tournament (Queue Mode)</h2>
+  <div class="info-box">
+    User-created tournaments work the same as admin ones, except:<br>
+    • User creates via Unity Create Tournament panel (instant or scheduled)<br>
+    • Status starts as <code>registration_open</code> immediately (instant mode) or at schedule time<br>
+    • If no bracket is generated, <strong>queue-mode</strong> matchmaking is used: first player creates a waiting match, next player fills it, etc.<br>
+    • Bracket can be generated by admin later, or left in queue mode for smaller private groups.
+  </div>
+
+  <h2 class="sub">3.3 Queue-Mode Matchmaking (No Bracket)</h2>
+  <p>When a player claims a room and there is no pre-generated bracket, <code>findOrCreateWaitingMatch()</code> is called:</p>
+  <ul>
+    <li>Looks for an existing <code>waiting/scheduled</code> match with empty slots.</li>
+    <li>If none found, creates a new <code>TournamentMatch</code> with status <code>waiting</code>.</li>
+    <li>Adds the player as a <code>TournamentMatchPlayer</code>.</li>
+    <li>Node.js starts bot fill timer — bots fill empty seats after 8s each.</li>
+    <li>When all seats filled → game starts automatically.</li>
+  </ul>
+</div>
+
+<!-- SECTION 4 -->
+<div class="section">
+  <h1 class="sec">4. Fee-Based vs Tournament Matchmaking</h1>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Aspect</th><th>Fee-Based Table (Normal)</th><th>Tournament Match</th></tr></thead>
+    <tbody>
+      <tr><td>Entry</td><td>Any time, instant join</td><td>Must register first</td></tr>
+      <tr><td>Room ID</td><td>Real GameRoom UUID from DB</td><td>Synthetic <code>tournament-match-{id}</code></td></tr>
+      <tr><td>Socket Event (join)</td><td><code>ludo.queue.join</code></td><td><code>ludo.tournament.claim_room</code></td></tr>
+      <tr><td>Socket Event (snapshot)</td><td><code>ludo.room.waiting</code></td><td><code>ludo.tournament.room_claimed</code></td></tr>
+      <tr><td>Bot fill</td><td>Auto after 8 sec (same)</td><td>Auto after 8 sec (same logic)</td></tr>
+      <tr><td>Match start call</td><td><code>POST /internal/v1/ludo/rooms/{uuid}/start</code></td><td>Same endpoint, detects tournament prefix</td></tr>
+      <tr><td>Result reporting</td><td><code>ludo.match.complete</code> socket</td><td><code>ludo.tournament.match_complete</code> socket</td></tr>
+      <tr><td>Bracket advancement</td><td>None</td><td>Automatic via <code>TournamentMatchResultController</code></td></tr>
+      <tr><td>Prize payout</td><td>Direct wallet credit</td><td>Via <code>distributePrizes()</code> on tournament completion</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- SECTION 5 -->
+<div class="section">
+  <h1 class="sec">5. Bot Behavior &amp; Fill Rules</h1>
+
+  <h2 class="sub">5.1 How Bot Fill Works</h2>
+  <div class="info-box">
+    <strong>Rule:</strong> Bots are NEVER pre-seated in the room. The <code>claim-room</code> API returns only human players. Node.js receives empty seats and schedules bot fill after <code>bot_fill_after_seconds</code> (default: 8 seconds).
+  </div>
+  <ul>
+    <li>When a tournament room is created in Node.js (<code>buildTournamentRoomFromClaim</code>), <code>minRealPlayers = 1</code> is set.</li>
+    <li>If <code>allowBots = true</code> AND <code>currentPlayers &lt; maxPlayers</code> → <code>scheduleBotFill(room)</code> is called.</li>
+    <li>After 8 seconds: <code>engine.buildStartDecision(room)</code> checks if <code>realPlayers ≥ minRealPlayers</code> (1). If yes → adds one bot seat.</li>
+    <li>State changes to <code>waiting_bot_fill</code> and emits a snapshot. Unity client shows "Waiting for X more players..."</li>
+    <li>Timer reschedules itself for the next bot until room is full → game starts.</li>
+    <li><strong>Max bot % rule:</strong> <code>max_bot_pct = 5%</code> stored in tournament. Enforcement is at admin/registration level; bot fill itself doesn't recheck this at runtime.</li>
+  </ul>
+
+  <h2 class="sub">5.2 Bot Rules for Prizes</h2>
+  <ul>
+    <li>Bots are registered as <code>is_bot = true</code> in <code>TournamentRegistration</code>.</li>
+    <li>During <code>distributePrizes()</code>, the loop skips bot registrations: prize cascades to the next real player.</li>
+    <li>Bots are excluded from financials (<code>is_bot = false</code> filter on entry fee stats).</li>
+  </ul>
+
+  <h2 class="sub">5.3 Bot Flow Sequence</h2>
+  <pre>User joins → claim-room → Node.js gets {players: [human_only]}
+ → scheduleBotFill() → state = "waiting_bot_fill"
+ → after 8s: buildStartDecision() → shouldFillBots = true
+ → push bot seat → emit ludo.room.bot_joined to all clients
+ → Unity shows bot joining animation (via OnBotJoined in LudoV2MatchmakingBridge)
+ → if room full → startRoom() → ludo.room.starting emitted
+ → Unity enters game board</pre>
+</div>
+
+<!-- SECTION 6 -->
+<div class="section">
+  <h1 class="sec">6. Database Schema (Actual Tables)</h1>
+
+  <h2 class="sub">6.1 tournaments</h2>
+  <pre>id, name, description, banner_image
+creator_type (admin|user), creator_user_id
+type (public|private), format (knockout|double_elim|round_robin|group_knockout)
+bracket_mode (auto|manual), status (draft|registration_open|registration_closed|in_progress|completed|cancelled)
+entry_fee (float), max_players, current_players, players_per_match (2|4)
+total_prize_pool (float), platform_fee_pct (float, default 20), platform_fee_amount (float)
+turn_time_limit, match_timeout, disconnect_grace
+bot_allowed (bool), max_bot_pct (int, max 5)
+invite_code (nullable, unique 6-char), invite_password (nullable)
+requires_approval (bool), is_approved (bool)
+terms_conditions (text), registration_start_at, registration_end_at
+tournament_start_at, tournament_end_at, completed_at, cancelled_at
+timestamps, softDeletes
+[Computed: can_join — returned in JSON via $appends]</pre>
+
+  <h2 class="sub">6.2 tournament_prizes</h2>
+  <pre>id, tournament_id (FK), position (1–5), prize_pct, prize_amount
+winner_user_id (nullable), payout_status (pending|paid|disputed|forfeited)
+paid_at (nullable), timestamps</pre>
+
+  <h2 class="sub">6.3 tournament_registrations</h2>
+  <pre>id, tournament_id (FK), user_id (nullable for bots)
+is_bot (bool), bot_difficulty (nullable), bot_name (nullable), seed_number (nullable)
+entry_fee_paid, status (registered|checked_in|playing|eliminated|winner|disqualified|refunded)
+final_position (nullable), prize_won (float), registered_at
+eliminated_at (nullable), completed_at (nullable), timestamps</pre>
+
+  <h2 class="sub">6.4 tournament_matches</h2>
+  <pre>id, tournament_id (FK), round_number, match_number, room_id (nullable)
+status (scheduled|waiting|in_progress|completed|cancelled|disputed|forfeited)
+winner_registration_id (nullable FK), player_scores (json), game_log (json)
+is_admin_override (bool), admin_override_note (text)
+scheduled_at, started_at, ended_at, timestamps</pre>
+
+  <h2 class="sub">6.5 tournament_match_players</h2>
+  <pre>id, match_id (FK → tournament_matches), registration_id (FK)
+slot_number, score (int), finish_position (nullable)
+result (win|loss|draw|forfeit|disconnected|nullable)
+joined_at, finished_at, timestamps</pre>
+
+  <h2 class="sub">6.6 tournament_wallet_transactions</h2>
+  <pre>id, tournament_id (FK), user_id, registration_id (nullable FK)
+type (entry_fee|prize_credit|refund|platform_fee|creation_deposit)
+amount, status (completed|pending|failed), description, timestamps</pre>
+</div>
+
+<!-- SECTION 7 -->
+<div class="section">
+  <h1 class="sec">7. Laravel API — All Endpoints</h1>
+  <p>Base: <code>GET /api/v1/</code> &nbsp; Auth: Laravel Sanctum bearer token. Internal: separate server token.</p>
+
+  <h2 class="sub">7.1 Tournament Endpoints (Public &amp; Auth)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method</th><th>Endpoint</th><th>Auth</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments</td><td>No</td><td>List public, approved, active tournaments. Filters: status, format, min_fee, max_fee</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments/{id}</td><td>No</td><td>Tournament detail + prizes (public only; private returns 404)</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments/private/{invite_code}</td><td>Optional</td><td>Lookup private tournament. Password via <code>?password=</code> query param</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments/{id}/bracket</td><td>No</td><td>Full bracket with rounds, matches, players, scores</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments/{id}/leaderboard</td><td>No</td><td>Final rankings with prizes won</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/v1/tournaments</td><td>✅ User</td><td>Create tournament. Prizes must sum to 100%.</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/v1/tournaments/{id}/register</td><td>✅ User</td><td>Register for tournament (idempotent — safe to call twice). Returns registration ID used as <code>entryUuid</code>.</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/api/v1/tournaments/{id}/register</td><td>✅ User</td><td>Cancel registration (if before deadline)</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/api/v1/tournaments/me/history</td><td>✅ User</td><td>My registration history across all tournaments</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/v1/tournaments/{id}/claim-room</td><td>✅ User</td><td>Get current match room data. Returns human players only — bots filled by Node.js.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">7.2 Admin-Only Endpoints</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/{id}/publish</td><td>Draft → registration_open</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/{id}/close-registration</td><td>Close registrations, calculate prize pool</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/{id}/generate-bracket</td><td>Auto-generate bracket from current registrations</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/{id}/cancel</td><td>Cancel tournament, trigger refund job</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/{id}/financials</td><td>Revenue breakdown: entry collected, platform fee, prizes paid/pending</td></tr>
+      <tr><td><span class="badge badge-green">GET</span></td><td>/{id}/registrations</td><td>Full registration list with status</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/{id}/add-bot</td><td>Register a bot player into the tournament</td></tr>
+      <tr><td><span class="badge badge-red">DELETE</span></td><td>/{id}/bots/{registration}</td><td>Remove a bot registration</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">7.3 Internal Server Endpoints (Node.js → Laravel)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Method</th><th>Endpoint</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/internal/v1/ludo/rooms/{uuid}/start</td><td>Node.js calls this when game starts. Detects <code>tournament-match-*</code> prefix → updates TournamentMatch status = in_progress.</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/internal/v1/tournaments/matches/{match}/result</td><td>Node.js posts final result. Updates match, records scores, advances bracket, checks tournament completion.</td></tr>
+      <tr><td><span class="badge badge-blue">POST</span></td><td>/api/internal/v1/tournaments/matches/{match}/override</td><td>Admin override of match result (dispute resolution).</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">7.4 claim-room Response Format</h2>
+  <pre>{
+  "success": true,
+  "data": {
+    "uuid": "tournament-match-{match_id}",    // synthetic room ID
+    "mode": "tournament",
+    "status": "waiting",
+    "max_players": 2,                         // tournament.players_per_match
+    "current_players": 1,                     // human count only
+    "current_real_players": 1,
+    "current_bot_players": 0,
+    "entry_fee": 50,
+    "allow_bots": true,                       // from tournament.bot_allowed
+    "bot_fill_after_seconds": 8,
+    "tournament_match_id": 12,
+    "tournament_id": 3,
+    "players": [                              // ONLY human players
+      {
+        "seat_no": 1, "user_id": 4,
+        "player_type": "human",
+        "display_name": "PlayerName",
+        "meta": { "tournament_entry_uuid": "7", "tournamentEntryUuid": "7" }
+      }
+    ]
+  }
+}</pre>
+</div>
+
+<!-- SECTION 8 -->
+<div class="section">
+  <h1 class="sec">8. Node.js Socket Events (Real-time)</h1>
+  <p>Namespace: <code>/ludo_v2</code> at <code>BaseSocketUrl/socket.io/</code></p>
+
+  <h2 class="sub">8.1 Normal Match Events</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Direction</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>ludo.queue.join</code></td><td>Client → Server</td><td>Join a fee-based room queue. Payload: {userId, roomUuid, maxPlayers, entryFee, allowBots, ...}</td></tr>
+      <tr><td><code>ludo.room.waiting</code></td><td>Server → Client</td><td>Room snapshot while waiting for players. Contains seats[] array.</td></tr>
+      <tr><td><code>ludo.room.bot_joined</code></td><td>Server → All</td><td>A bot was added to a seat. Payload: {room_id, seat: {seatNo, playerType, botCode, displayName}}</td></tr>
+      <tr><td><code>ludo.room.starting</code></td><td>Server → All</td><td>Room is full, game is starting. Payload: {room_id, seats[], started_with_bots}</td></tr>
+      <tr><td><code>ludo.game.snapshot</code></td><td>Server → Client</td><td>Periodic room state snapshot during waiting.</td></tr>
+      <tr><td><code>ludo.game.result</code></td><td>Server → Client</td><td>Match completed. Includes settlement data and tournament status if applicable.</td></tr>
+      <tr><td><code>ludo.match.complete</code></td><td>Client → Server</td><td>Client reports final match result (non-tournament).</td></tr>
+      <tr><td><code>ludo.error</code></td><td>Server → Client</td><td>Error payload. Payload: {message}</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">8.2 Tournament-Specific Events</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Event</th><th>Direction</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><code>ludo.tournament.claim_room</code></td><td>Client → Server</td><td>Claim a tournament match room. Payload: {userId, accessToken, tournamentUuid, tournamentEntryUuid}</td></tr>
+      <tr><td><code>ludo.tournament.room_claimed</code></td><td>Server → Client</td><td>Room successfully claimed. Returns full room snapshot (human seats only — bots fill over time).</td></tr>
+      <tr><td><code>ludo.tournament.room_claim_failed</code></td><td>Server → Client</td><td>Claim failed (not registered, tournament over, etc.). Payload: {message}</td></tr>
+      <tr><td><code>ludo.tournament.match_complete</code></td><td>Client → Server</td><td>Client reports tournament match result. Payload: {tournament_uuid, tournament_entry_uuid, winner, placements[]}</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">8.3 Tournament Room ID Convention</h2>
+  <div class="info-box">
+    Tournament rooms use a <strong>synthetic ID</strong>: <code>"tournament-match-{match_id}"</code> (e.g. <code>"tournament-match-7"</code>).<br>
+    This is NOT a real GameRoom UUID in the database — it's a string constructed by Laravel's claim-room endpoint.<br>
+    Node.js and the internal <code>start</code> endpoint both detect this prefix to handle tournament logic separately.
+  </div>
+</div>
+
+<!-- SECTION 9 -->
+<div class="section">
+  <h1 class="sec">9. Unity Client — Screens &amp; Scripts</h1>
+
+  <h2 class="sub">9.1 Tournament Scripts (Built)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Script</th><th>Location</th><th>Responsibility</th></tr></thead>
+    <tbody>
+      <tr><td><code>LudoTournamentPanelOffline.cs</code></td><td>ScriptOffline/Managers/</td><td>Tournament list panel. Shows compact fee-table-style rows (name, entry, prize, players, PLAY/CLOSED button). Join Private popup. "+ Create" button.</td></tr>
+      <tr><td><code>LudoCreateTournamentPanelOffline.cs</code></td><td>ScriptOffline/Managers/</td><td>Create Tournament form panel. Cycle-button selectors for type/format/players/schedule. Instant and scheduled modes. Submits to <code>POST /api/v1/tournaments</code>.</td></tr>
+      <tr><td><code>LudoV2MatchmakingBridge.cs</code></td><td>ScriptOffline/Socket/</td><td>Handles all Socket.IO connections for both fee-based and tournament matchmaking. Bot-joined animations, match result reporting.</td></tr>
+      <tr><td><code>DashBoardManagerOffline.cs</code></td><td>ScriptOffline/Managers/</td><td>Main dashboard. Wires tournament tab between 2P/4P. Resolves and opens LudoTournamentPanelOffline and LudoCreateTournamentPanelOffline.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">9.2 Tournament Panel UI Flow (Unity)</h2>
+  <pre>DashBoardManager (CLASSIC mode)
+  → EnsureTournamentClassicTab()  — adds "TOURNAMENT" tab between 2P / 4P
+  → Click TOURNAMENT tab
+    → OpenTournamentPanel()
+      → LudoTournamentPanelOffline.OpenPanel()
+        → Fetches GET /api/v1/tournaments
+        → Renders fee-table rows:
+            [Name | Entry: ₹50 | Prize: ₹200 | 3/8 Players | PLAY btn]
+        → Buttons: [Join Private] [+ Create] [Refresh] [Close]
+
+  → Click "+ Create"
+    → OpenCreateTournamentPanel()
+      → LudoCreateTournamentPanelOffline.OpenPanel()
+        → Form: Name, Type (public/private), Format, Per-match (2/4)
+                Entry Fee, Max Players, Invite Code, Password
+                Schedule mode: instant | scheduled
+        → Submit → POST /api/v1/tournaments
+        → On success → ClosePanel() → back to tournament list
+
+  → Click "PLAY" on a row
+    → JoinTournament(tournament)
+      → POST /{id}/register  (idempotent)
+      → extract entryUuid from response
+      → DashBoard.TryStartTournamentMatch(tournamentUuid, entryUuid)
+        → LudoV2MatchmakingBridge.TryStartTournamentMatchmaking()
+          → ConnectTournamentSocket()
+          → emit ludo.tournament.claim_room
+          → receive ludo.tournament.room_claimed → enter board
+          → bot fill runs on server side (state: waiting_bot_fill)
+          → ludo.room.starting → game begins</pre>
+
+  <h2 class="sub">9.3 Private Tournament Join Flow</h2>
+  <pre>Click "Join Private" → EnsurePrivatePopup()
+  → Enter invite code + optional password
+  → Click Confirm → GET /api/v1/tournaments/private/{code}?password=xxx
+  → On success → JoinTournament(parsed tournament)
+    → same as above PLAY flow</pre>
+</div>
+
+<!-- SECTION 10 -->
+<div class="section">
+  <h1 class="sec">10. Admin Panel — Capabilities</h1>
+
+  <h2 class="sub">10.1 What Admin Can Do</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Action</th><th>How</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td>Create tournament</td><td>Admin panel form at <code>/admin/tournaments/create</code> OR API</td><td>✅ Working</td></tr>
+      <tr><td>View all tournaments</td><td><code>/admin/tournaments</code> — list with status, players, prize pool</td><td>✅ Working</td></tr>
+      <tr><td>Publish (draft → open)</td><td>Button in admin panel OR <code>POST /{id}/publish</code></td><td>✅ Working</td></tr>
+      <tr><td>Close registration</td><td><code>POST /{id}/close-registration</code></td><td>✅ Working</td></tr>
+      <tr><td>Generate bracket</td><td><code>POST /{id}/generate-bracket</code></td><td>✅ Working</td></tr>
+      <tr><td>View bracket</td><td><code>GET /{id}/bracket</code> — JSON (no visual drag-drop yet)</td><td>⚠️ API only</td></tr>
+      <tr><td>Add bot to slot</td><td><code>POST /{id}/add-bot</code> with {slot, bot_difficulty}</td><td>✅ Working</td></tr>
+      <tr><td>Remove bot</td><td><code>DELETE /{id}/bots/{reg_id}</code></td><td>✅ Working</td></tr>
+      <tr><td>Override match result</td><td><code>POST /internal/matches/{match}/override</code> with {winner_user_id, reason}</td><td>✅ API ready</td></tr>
+      <tr><td>Cancel tournament</td><td><code>POST /{id}/cancel</code> — triggers refund job</td><td>✅ Working</td></tr>
+      <tr><td>View financials</td><td><code>GET /{id}/financials</code> — entry collected, fee, prizes paid/pending</td><td>✅ Working</td></tr>
+      <tr><td>Approve user tournaments</td><td>Set <code>is_approved = true</code> on tournament record</td><td>⚠️ No UI, manual DB</td></tr>
+    </tbody>
+  </table></div>
+</div>
+
+<!-- SECTION 11 -->
+<div class="section">
+  <h1 class="sec">11. User Powers — Tournament Creator</h1>
+  <p>Any logged-in user can create tournaments via Unity. Tournaments above ₹500 entry fee require admin approval (<code>requires_approval = true</code>).</p>
+
+  <h2 class="sub">11.1 Create Tournament Form Fields</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Field</th><th>Values</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Name</td><td>Any string</td><td>Required</td></tr>
+      <tr><td>Type</td><td>public | private</td><td>Private gets auto invite_code</td></tr>
+      <tr><td>Format</td><td>knockout | round_robin | double_elim | group_knockout</td><td>—</td></tr>
+      <tr><td>Players per match</td><td>2 or 4</td><td>—</td></tr>
+      <tr><td>Entry Fee</td><td>0 = free, any positive</td><td>≥ ₹500 needs approval</td></tr>
+      <tr><td>Max Players</td><td>4, 8, 16, 32, 64, or 128</td><td>Validated server-side</td></tr>
+      <tr><td>Invite Code</td><td>Custom or leave blank (auto-generated)</td><td>Private only</td></tr>
+      <tr><td>Password</td><td>Optional</td><td>Private only</td></tr>
+      <tr><td>Schedule Mode</td><td>instant | scheduled</td><td>Instant = opens immediately</td></tr>
+      <tr><td>Scheduled dates</td><td>reg_start, reg_end, start_at (UTC)</td><td>Scheduled mode only</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">11.2 What User Creator Gets</h2>
+  <ul>
+    <li>For <strong>public</strong> tournaments: appears in the lobby for all players to find and join.</li>
+    <li>For <strong>private</strong> tournaments: receives an invite code to share with friends. Invite code can have an optional password.</li>
+    <li>Prize structure is pre-set to 60% / 30% / 10% for positions 1 / 2 / 3. (Customizable via API directly.)</li>
+    <li>20% platform fee always applies — both admin and user-created tournaments.</li>
+    <li>User does NOT have a separate "manage my tournament" screen yet — this is a pending feature.</li>
+  </ul>
+</div>
+
+<!-- SECTION 12 -->
+<div class="section">
+  <h1 class="sec">12. Private Tournament Flow</h1>
+
+  <h2 class="sub">12.1 How Private Tournaments Work</h2>
+  <div class="flow-step"><div class="flow-num">1</div><div class="flow-text">User creates tournament with <code>type = "private"</code>. Laravel auto-generates a unique 6-character invite code (e.g. <code>YAFWGH</code>). Optional password field.</div></div>
+  <div class="flow-step"><div class="flow-num">2</div><div class="flow-text">Tournament is NOT listed in <code>GET /api/v1/tournaments</code> (public list excludes private tournaments).</div></div>
+  <div class="flow-step"><div class="flow-num">3</div><div class="flow-text">Creator shares the code (and password if set) with friends via external channel (WhatsApp, etc.).</div></div>
+  <div class="flow-step"><div class="flow-num">4</div><div class="flow-text">Friend opens Unity → Tournament tab → "Join Private" button → enters code + password → Unity calls <code>GET /api/v1/tournaments/private/{code}?password={pw}</code>.</div></div>
+  <div class="flow-step"><div class="flow-num">5</div><div class="flow-text">Laravel checks: invite code exists? Password matches? Returns tournament data.</div></div>
+  <div class="flow-step"><div class="flow-num">6</div><div class="flow-text">Unity parses tournament → calls <code>POST /{id}/register</code> → then claim-room → socket join → game starts.</div></div>
+
+  <h2 class="sub">12.2 Private Tournament Limitations</h2>
+  <ul>
+    <li>No in-game invite link sharing yet (copy-to-clipboard feature not built).</li>
+    <li>No "My Private Tournaments" history screen in Unity.</li>
+    <li>Invite code is permanent — no expiry or one-time use option yet.</li>
+  </ul>
+</div>
+
+<!-- SECTION 13 -->
+<div class="section">
+  <h1 class="sec">13. Prize Distribution Engine</h1>
+
+  <h2 class="sub">13.1 Formula</h2>
+  <div class="info-box">
+    <strong>Total Entry Pool</strong> = entry_fee × registered_human_players<br>
+    <strong>Platform Fee (20%)</strong> = Total Pool × 0.20<br>
+    <strong>Prize Pool (80%)</strong> = Total Pool × 0.80<br>
+    <strong>Position Prize</strong> = Prize Pool × (prize_pct / 100)
+  </div>
+
+  <h2 class="sub">13.2 Example — 8 players × ₹100 entry</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Item</th><th>Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Total Entry Pool</td><td>₹800</td></tr>
+      <tr><td>Platform Fee (20%)</td><td>₹160 → credited to platform wallet</td></tr>
+      <tr><td>Prize Pool (80%)</td><td>₹640</td></tr>
+      <tr><td>1st Place (60%)</td><td>₹384</td></tr>
+      <tr><td>2nd Place (30%)</td><td>₹192</td></tr>
+      <tr><td>3rd Place (10%)</td><td>₹64</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2 class="sub">13.3 Distribution Rules</h2>
+  <ul>
+    <li>Runs automatically in <code>distributePrizes()</code> when all tournament matches complete.</li>
+    <li>Winners ordered by: status=winner first → then eliminated ordered by <code>eliminated_at DESC</code> (last-eliminated = highest rank).</li>
+    <li>Bots are skipped — prize cascades to next real player.</li>
+    <li>Each winner gets wallet credited instantly via <code>Wallet</code> model update.</li>
+    <li>A <code>TournamentWalletTransaction</code> row is created for every payout and for the platform fee.</li>
+    <li>Prize row gets <code>payout_status = paid</code>, <code>winner_user_id</code>, and <code>paid_at</code>.</li>
+    <li>Registration row gets <code>final_position</code>, <code>prize_won</code>, and <code>completed_at</code>.</li>
+  </ul>
+</div>
+
+<!-- SECTION 14 -->
+<div class="section">
+  <h1 class="sec">14. Test &amp; Simulation Commands</h1>
+
+  <h2 class="sub">14.1 tournament:simulate</h2>
+  <pre># Run a 4-player knockout with free entry (bots only, no data kept)
+php artisan tournament:simulate --cleanup
+
+# 8-player knockout with ₹100 entry fee + print bracket
+php artisan tournament:simulate --players=8 --fee=100 --cleanup
+
+# 8-player 4-per-match knockout
+php artisan tournament:simulate --players=8 --per-match=4 --fee=50 --cleanup
+
+# 16-player round robin
+php artisan tournament:simulate --players=16 --format=round_robin --cleanup
+
+# Keep tournament data (don't delete after)
+php artisan tournament:simulate --players=4 --fee=50</pre>
+
+  <p>The simulation command:</p>
+  <ul>
+    <li>Creates a tournament + bot registrations</li>
+    <li>Generates the bracket</li>
+    <li>Simulates every match with random winners</li>
+    <li>Advances winners through each round</li>
+    <li>Marks tournament completed</li>
+    <li>Prints a full report: bracket, round results, final rankings</li>
+  </ul>
+
+  <h2 class="sub">14.2 Admin Panel Test</h2>
+  <ul>
+    <li>Visit <code>localhost:8000/admin/tournaments</code> to see all tournaments.</li>
+    <li>Create one manually, publish it, register via API, generate bracket, view results.</li>
+  </ul>
+
+  <h2 class="sub">14.3 Unity End-to-End Test</h2>
+  <ul>
+    <li>Open game → select CLASSIC mode → click Tournament tab.</li>
+    <li>Tournament list appears. If a public tournament is registration_open, click PLAY.</li>
+    <li>System registers → claims room → connects socket → waits for players / bots.</li>
+    <li>After 8s first bot joins, then another 8s, etc. until room full → game starts.</li>
+    <li>To test private: click "Join Private" → enter invite code + password from admin.</li>
+  </ul>
+</div>
+
+<!-- SECTION 15 -->
+<div class="section">
+  <h1 class="sec">15. What Is Working vs What Is Missing</h1>
+
+  <h2 class="sub">15.1 Fully Working ✅</h2>
+  <ul>
+    <li>Tournament CRUD (create, publish, close, cancel)</li>
+    <li>Registration flow (idempotent, wallet-aware)</li>
+    <li>Knockout bracket generation (2P and 4P per match)</li>
+    <li>Round Robin bracket generation</li>
+    <li>Queue-mode matchmaking (no bracket needed)</li>
+    <li>claim-room API (returns only humans, bot fill is server-driven)</li>
+    <li>Node.js socket claim flow (<code>ludo.tournament.claim_room</code>)</li>
+    <li>Bot fill (8s timer, one at a time, state: waiting_bot_fill)</li>
+    <li>Match result recording + bracket advancement</li>
+    <li>Prize distribution on tournament completion</li>
+    <li>Private tournament (invite code + optional password)</li>
+    <li>User-created tournaments via Unity (public &amp; private)</li>
+    <li>Tournament list panel in Unity (compact fee-table style)</li>
+    <li>Private join popup in Unity</li>
+    <li>Create Tournament form panel in Unity (instant + scheduled)</li>
+    <li>Simulation command (<code>php artisan tournament:simulate</code>)</li>
+    <li>Admin panel basic tournament management</li>
+  </ul>
+
+  <h2 class="sub">15.2 Partially Done / Needs More Work ⚠️</h2>
+  <ul>
+    <li><strong>Wallet deduction on register:</strong> Registration API exists and is idempotent, but actual wallet balance deduction and lock is not wired in <code>TournamentRegistrationController</code> yet (just records entry_fee_paid = 0).</li>
+    <li><strong>Refund job:</strong> <code>RefundTournamentRegistrations</code> job exists but wallet credit logic not implemented.</li>
+    <li><strong>Admin approve user tournaments:</strong> <code>is_approved</code> field exists but no admin approval UI or endpoint.</li>
+    <li><strong>Match result from Node.js:</strong> The socket event <code>ludo.tournament.match_complete</code> is handled in <code>LudoV2MatchmakingBridge.cs</code> but needs more testing with real player accounts (currently tested with bots only).</li>
+    <li><strong>Final position assignment:</strong> After prize distribution, <code>final_position</code> is set on the winner, but intermediate players (2nd/3rd) may not get their final_position correctly in all scenarios.</li>
+  </ul>
+
+  <h2 class="sub">15.3 Not Built Yet ❌</h2>
+  <ul>
+    <li>Visual bracket tree in Unity (BracketUI.cs)</li>
+    <li>"My Tournaments" history screen in Unity</li>
+    <li>Push notifications (FCM) for match reminders and prize credited</li>
+    <li>Admin manual bracket drag-drop UI in web admin panel</li>
+    <li>Match reschedule endpoint (<code>POST /matches/{id}/reschedule</code>)</li>
+    <li>KYC check for high-value entry fees (> ₹500)</li>
+    <li>TDS deduction on prizes above ₹10,000 (India compliance)</li>
+    <li>In-game invite link sharing (copy invite code button)</li>
+    <li>"Manage My Tournament" screen for user-created tournament creators</li>
+    <li>Double elimination format (format option exists, service not implemented)</li>
+    <li>Group Stage + Knockout format</li>
+    <li>Spectator mode for tournaments</li>
+  </ul>
+</div>
+
+<!-- SECTION 16 -->
+<div class="section">
+  <h1 class="sec">16. Implementation Roadmap — Next Steps</h1>
+
+  <div class="phase">
+    <h3>🔧 Sprint 1 — Fix Core Issues (1–2 days)</h3>
+    <ul>
+      <li>Wire wallet deduction in <code>TournamentRegistrationController::register()</code></li>
+      <li>Implement <code>RefundTournamentRegistrations</code> job wallet credit</li>
+      <li>Add admin approval endpoint <code>POST /{id}/approve</code></li>
+      <li>Test full end-to-end with real user account (not just bots)</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3>🎯 Sprint 2 — Unity Polish (2–3 days)</h3>
+    <ul>
+      <li>Add "My Tournaments" tab in tournament panel (registration history)</li>
+      <li>Add copy-to-clipboard for invite code in Create Tournament success screen</li>
+      <li>Show next match schedule after winning a round</li>
+      <li>Prize preview popup before joining (show 1st/2nd/3rd prizes)</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3>📊 Sprint 3 — Admin Panel (2–3 days)</h3>
+    <ul>
+      <li>Admin approval queue for user-created tournaments</li>
+      <li>Visual bracket view in admin panel</li>
+      <li>Match override UI (dispute resolution form)</li>
+      <li>Revenue dashboard with monthly summary</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3>🔔 Sprint 4 — Notifications (2 days)</h3>
+    <ul>
+      <li>FCM: match starts in 5 min reminder</li>
+      <li>FCM: prize credited notification</li>
+      <li>FCM: next round ready notification</li>
+      <li>In-game toast when a bot joins your room</li>
+    </ul>
+  </div>
+
+  <div class="phase">
+    <h3>🛡️ Sprint 5 — Compliance &amp; Security (2 days)</h3>
+    <ul>
+      <li>KYC check for entry fees above ₹500</li>
+      <li>TDS deduction on prizes above ₹10,000</li>
+      <li>Rate limiting on <code>/register</code> endpoint</li>
+      <li>Audit log for all wallet transactions</li>
+    </ul>
+  </div>
+
+  <div class="success-box">
+    ✅ <strong>Estimated to production-ready:</strong> ~10 working days total across all 5 sprints.<br>
+    Priority order: Sprint 1 (wallet) → Sprint 2 (UX) → Sprint 3 (admin) → Sprint 4 (notifications) → Sprint 5 (compliance)
+  </div>
+</div>
+
+</div><!-- /container -->
+<div class="footer">
+  — Ludo Tournament System Documentation v2.0 &nbsp;|&nbsp; Confidential &nbsp;|&nbsp; Last updated: March 2026 —<br>
+  Laravel + Node.js + Unity &nbsp;•&nbsp; As-built implementation reference
+</div>
+
+</body>
+</html>

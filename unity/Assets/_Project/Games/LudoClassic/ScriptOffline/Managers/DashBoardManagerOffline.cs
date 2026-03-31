@@ -137,6 +137,10 @@ public class DashBoardManagerOffline : MonoBehaviour
         public Button specialOfferBtn;
         private LudoV2MatchmakingBridge ludoV2Bridge;
         private LudoTournamentPanelOffline ludoTournamentPanel;
+        private LudoCreateTournamentPanelOffline ludoCreateTournamentPanel;
+        private LudoMyTournamentsPanelOffline ludoMyTournamentsPanel;
+        private LudoBracketViewerPanelOffline ludoBracketViewerPanel;
+        private LudoTournamentMatchNotificationOffline ludoMatchNotification;
         private RectTransform tournamentTab;
         private Button tournamentTabButton;
         private bool hasCachedTabPositions;
@@ -323,6 +327,9 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 specialOfferBtn.interactable = false;
             }
+
+            // Start tournament match-ready notification polling
+            ResolveMatchNotification();
 
             // CheckUSBDebugging();
             //  dashBoardAPIRequestHandler.RunningGameAPI();
@@ -893,15 +900,127 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void OpenTournamentPanel()
         {
+            // Hide game-mode overlay buttons (☰ and ✕) so they don't bleed through
+            selectGameModePanal?.SetActive(false);
+            backButton?.SetActive(false);
+            ludoMatchNotification?.Unsuppress();
             ResolveTournamentPanel().OpenPanel();
         }
 
         public void CloseTournamentPanel()
         {
             if (ludoTournamentPanel != null)
-            {
                 ludoTournamentPanel.ClosePanel();
+            // Restore the overlay panel that contains ☰ / ✕ buttons
+            selectGameModePanal?.SetActive(true);
+        }
+
+        // ── Create Tournament Panel ───────────────────────────────────────────
+
+        private LudoCreateTournamentPanelOffline ResolveCreateTournamentPanel()
+        {
+            if (ludoCreateTournamentPanel != null)
+            {
+                return ludoCreateTournamentPanel;
             }
+
+            ludoCreateTournamentPanel = GetComponent<LudoCreateTournamentPanelOffline>();
+            if (ludoCreateTournamentPanel == null)
+            {
+                ludoCreateTournamentPanel = gameObject.AddComponent<LudoCreateTournamentPanelOffline>();
+            }
+
+            ludoCreateTournamentPanel.Initialize(this);
+            return ludoCreateTournamentPanel;
+        }
+
+        public void OpenCreateTournamentPanel()
+        {
+            selectGameModePanal?.SetActive(false);
+            backButton?.SetActive(false);
+            ludoMatchNotification?.Suppress();
+            if (ludoTournamentPanel != null)
+                ludoTournamentPanel.HidePanel();
+            ResolveCreateTournamentPanel().OpenPanel();
+        }
+
+        public void CloseCreateTournamentPanel()
+        {
+            if (ludoCreateTournamentPanel != null)
+            {
+                ludoCreateTournamentPanel.ClosePanel();
+            }
+        }
+
+        // ── My Tournaments (history) ──────────────────────────────────────────
+
+        private LudoMyTournamentsPanelOffline ResolveMyTournamentsPanel()
+        {
+            if (ludoMyTournamentsPanel != null)
+                return ludoMyTournamentsPanel;
+
+            ludoMyTournamentsPanel = GetComponent<LudoMyTournamentsPanelOffline>();
+            if (ludoMyTournamentsPanel == null)
+                ludoMyTournamentsPanel = gameObject.AddComponent<LudoMyTournamentsPanelOffline>();
+
+            ludoMyTournamentsPanel.Initialize(this);
+            return ludoMyTournamentsPanel;
+        }
+
+        public void OpenMyTournamentsPanel()
+        {
+            selectGameModePanal?.SetActive(false);
+            backButton?.SetActive(false);
+            ludoMatchNotification?.Suppress();
+            if (ludoTournamentPanel != null)
+                ludoTournamentPanel.HidePanel();
+            ResolveMyTournamentsPanel().OpenPanel();
+        }
+
+        public void CloseMyTournamentsPanel()
+        {
+            if (ludoMyTournamentsPanel != null)
+                ludoMyTournamentsPanel.ClosePanel();
+        }
+
+        // ── Bracket Viewer ────────────────────────────────────────────────────
+
+        private LudoBracketViewerPanelOffline ResolveBracketViewerPanel()
+        {
+            if (ludoBracketViewerPanel != null)
+                return ludoBracketViewerPanel;
+
+            ludoBracketViewerPanel = GetComponent<LudoBracketViewerPanelOffline>();
+            if (ludoBracketViewerPanel == null)
+                ludoBracketViewerPanel = gameObject.AddComponent<LudoBracketViewerPanelOffline>();
+
+            ludoBracketViewerPanel.Initialize(this);
+            return ludoBracketViewerPanel;
+        }
+
+        public void OpenBracketViewerPanel(string tournamentId, string tournamentName)
+        {
+            selectGameModePanal?.SetActive(false);
+            backButton?.SetActive(false);
+            ludoMatchNotification?.Suppress();
+            if (ludoMyTournamentsPanel != null)
+                ludoMyTournamentsPanel.ClosePanel();
+            ResolveBracketViewerPanel().OpenPanel(tournamentId, tournamentName);
+        }
+
+        // ── Match Notification ────────────────────────────────────────────────
+
+        private LudoTournamentMatchNotificationOffline ResolveMatchNotification()
+        {
+            if (ludoMatchNotification != null)
+                return ludoMatchNotification;
+
+            ludoMatchNotification = GetComponent<LudoTournamentMatchNotificationOffline>();
+            if (ludoMatchNotification == null)
+                ludoMatchNotification = gameObject.AddComponent<LudoTournamentMatchNotificationOffline>();
+
+            ludoMatchNotification.Initialize(this);
+            return ludoMatchNotification;
         }
 
         private void EnsureTournamentClassicTab()

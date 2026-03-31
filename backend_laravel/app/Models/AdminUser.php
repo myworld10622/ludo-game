@@ -38,6 +38,11 @@ class AdminUser extends Authenticatable
         return $this->hasMany(AdminActionLog::class);
     }
 
+    public function supportMessages(): HasMany
+    {
+        return $this->hasMany(SupportTicketMessage::class, 'sender_admin_user_id');
+    }
+
     public function hasRole(string ...$roles): bool
     {
         return in_array($this->role, $roles, true);

@@ -3,9 +3,14 @@
 use App\Http\Controllers\Admin\TournamentReportController;
 use App\Http\Controllers\Admin\TournamentEntryController;
 use App\Http\Controllers\Admin\TournamentController;
+use App\Http\Controllers\Admin\Web\MatchMonitorController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware(['auth:admin'])->prefix('admin/tournaments')->group(function () {
+    // Literal routes MUST come before /{tournament} wildcard
+    Route::get('/matches', [MatchMonitorController::class, 'index']);
+    Route::post('/matches/{match}/force-winner', [MatchMonitorController::class, 'forceWinner']);
+
     Route::get('/', [TournamentController::class, 'index']);
     Route::post('/', [TournamentController::class, 'store']);
     Route::get('/{tournament}', [TournamentController::class, 'show']);

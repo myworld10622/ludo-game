@@ -1,0 +1,945 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<title>Tournament System — Complete Workflow (Updated)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: #c9d1d9; line-height: 1.75; }
+  .container { max-width: 1260px; margin: 0 auto; padding: 28px 24px; }
+
+  h1 { font-size: 2rem; color: #58a6ff; border-bottom: 2px solid #30363d; padding-bottom: 14px; margin-bottom: 6px; }
+  .subtitle { color: #8b949e; font-size: 0.88rem; margin-bottom: 28px; }
+  h2 { font-size: 1.4rem; color: #ffa657; margin: 36px 0 14px; border-left: 4px solid #ffa657; padding-left: 14px; }
+  h3 { font-size: 1.08rem; color: #79c0ff; margin: 20px 0 8px; }
+  h4 { font-size: 0.96rem; color: #d2a8ff; margin: 14px 0 6px; font-weight: 600; }
+  p  { margin-bottom: 10px; }
+  ul, ol { margin: 8px 0 12px 26px; }
+  li { margin: 5px 0; }
+
+  code { background: #1c2128; border: 1px solid #30363d; border-radius: 4px; padding: 2px 7px; font-family: 'Consolas', monospace; font-size: 0.83rem; color: #e6edf3; }
+  pre  { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 18px; overflow-x: auto; margin: 12px 0; }
+  pre code { border: none; padding: 0; font-size: 0.81rem; line-height: 1.75; }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 0.86rem; }
+  th { background: #21262d; color: #79c0ff; padding: 10px 14px; text-align: left; border: 1px solid #30363d; }
+  td { padding: 9px 14px; border: 1px solid #30363d; vertical-align: top; }
+  tr:nth-child(even) td { background: #161b22; }
+
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 12px; font-size: 0.78rem; font-weight: 700; margin: 2px; }
+  .badge-blue   { background: #1f3a5c; color: #58a6ff;  border: 1px solid #388bfd50; }
+  .badge-green  { background: #1a3a1f; color: #56d364;  border: 1px solid #3fb95050; }
+  .badge-yellow { background: #3a2e00; color: #e3b341;  border: 1px solid #d2992050; }
+  .badge-red    { background: #3a0f0f; color: #f85149;  border: 1px solid #f8514950; }
+  .badge-purple { background: #2d1f5e; color: #d2a8ff;  border: 1px solid #bc8cff50; }
+  .badge-gray   { background: #21262d; color: #8b949e;  border: 1px solid #30363d; }
+  .badge-orange { background: #3a2000; color: #ffa657;  border: 1px solid #ffa65750; }
+
+  .flow { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin: 14px 0; }
+  .flow-step  { background: #21262d; border: 1px solid #388bfd; border-radius: 8px; padding: 8px 16px; font-size: 0.87rem; }
+  .flow-arrow { color: #388bfd; font-size: 1.3rem; font-weight: bold; }
+
+  .box-ok      { background: #0d2f0d; border: 1px solid #3fb950; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .box-ok strong { color: #56d364; }
+  .box-missing { background: #3a1a0a; border: 1px solid #f0883e; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .box-missing strong { color: #f0883e; }
+  .box-info    { background: #0d1f3a; border: 1px solid #388bfd; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .box-info strong { color: #79c0ff; }
+  .box-warn    { background: #2a2000; border: 1px solid #e3b341; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .box-warn strong { color: #e3b341; }
+  .box-done    { background: #091f1a; border: 1px solid #56d364; border-radius: 8px; padding: 14px 18px; margin: 10px 0; }
+  .box-done strong { color: #56d364; }
+
+  .section { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; margin: 18px 0; }
+  .toc { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 22px; margin-bottom: 34px; }
+  .toc a { color: #79c0ff; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; color: #a5d6ff; }
+  .toc li { margin: 7px 0; }
+
+  .endpoint { font-family: 'Consolas', monospace; font-size: 0.84rem; }
+  .method-get    { color: #56d364; font-weight: 700; }
+  .method-post   { color: #79c0ff; font-weight: 700; }
+  .method-delete { color: #f85149; font-weight: 700; }
+  .method-put    { color: #ffa657; font-weight: 700; }
+
+  .hindi-note { color: #c9d1d9; font-size: 0.88rem; background: #1c2128; border-left: 3px solid #388bfd; padding: 8px 14px; margin: 8px 0; border-radius: 0 6px 6px 0; }
+
+  /* Status dashboard */
+  .status-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; margin: 16px 0; }
+  .status-card { background: #161b22; border-radius: 10px; padding: 16px 20px; border: 1px solid #30363d; }
+  .status-card.done   { border-color: #3fb950; }
+  .status-card.pending{ border-color: #f0883e; }
+  .status-card.manual { border-color: #e3b341; }
+  .status-icon { font-size: 1.4rem; }
+  .status-title { font-weight: 700; font-size: 0.95rem; margin: 6px 0 4px; }
+  .status-desc  { font-size: 0.82rem; color: #8b949e; }
+
+  .progress-bar-wrap { background: #21262d; border-radius: 8px; height: 12px; margin: 10px 0; overflow: hidden; }
+  .progress-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, #3fb950, #58a6ff); }
+
+  .bracket-box { background: #21262d; border: 1px solid #30363d; border-radius: 8px; padding: 6px 14px; display: inline-block; margin: 3px; font-size: 0.85rem; text-align: center; min-width: 90px; }
+  .bracket-win  { border-color: #56d364; color: #56d364; }
+  .bracket-lose { border-color: #f85149; color: #f85149; }
+  .bracket-bye  { border-color: #8b949e; color: #8b949e; font-style: italic; }
+  .bracket-row  { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+  .round-label  { color: #ffa657; font-weight: 700; font-size: 0.82rem; min-width: 80px; }
+  .vs           { color: #8b949e; font-size: 0.8rem; }
+
+  .prize-row { display: flex; gap: 12px; flex-wrap: wrap; margin: 10px 0; }
+  .prize-card { background: #21262d; border-radius: 8px; padding: 12px 18px; text-align: center; min-width: 110px; }
+  .prize-pos  { font-size: 1.5rem; font-weight: 700; }
+  .prize-pct  { font-size: 0.82rem; color: #8b949e; }
+  .prize-amt  { font-size: 0.95rem; color: #56d364; font-weight: 600; }
+
+  .cron-box { background: #0a1628; border: 1px solid #388bfd; border-radius: 8px; padding: 16px 20px; margin: 14px 0; font-family: 'Consolas', monospace; font-size: 0.85rem; color: #79c0ff; }
+  .tag-new    { background: #1f3a5c; color: #58a6ff; border-radius: 4px; padding: 1px 7px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .tag-fixed  { background: #1a3a1f; color: #56d364; border-radius: 4px; padding: 1px 7px; font-size: 0.72rem; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<h1>🏆 Ludo Tournament System — Complete Workflow</h1>
+<p class="subtitle">
+  Stack: Laravel (Backend API) + Node.js (Game Server) + Unity (Client) &nbsp;|&nbsp;
+  Last updated: <strong>2026-03-28</strong> &nbsp;|&nbsp;
+  Active format: <strong>Knockout Only</strong> &nbsp;|&nbsp;
+  Language: Hinglish
+</p>
+
+<!-- ═══ OVERALL STATUS DASHBOARD ══════════════════════════════════════════════ -->
+<h2>📊 Overall System Status</h2>
+
+<div class="section">
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+    <div>
+      <div style="font-size:2rem;font-weight:700;color:#56d364">15 <span style="font-size:1rem;color:#8b949e">/ 16</span></div>
+      <div style="font-size:0.82rem;color:#8b949e">Items Complete</div>
+    </div>
+    <div style="flex:1">
+      <div style="font-size:0.82rem;color:#8b949e;margin-bottom:4px">Progress</div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:100%"></div></div>
+      <div style="font-size:0.78rem;color:#56d364">100% — All items complete ✅</div>
+    </div>
+  </div>
+
+  <div class="status-grid">
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Tournament Create / Join / Cancel</div>
+      <div class="status-desc">Wallet debit/refund, invite code, password protection — sab working</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Prize Split UI <span class="tag-fixed">FIXED</span></div>
+      <div class="status-desc">Dynamic rows (up to 5), live sum display, 100% validation at submit</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Knockout Bracket Generation</div>
+      <div class="status-desc">Seeding, bye handling, ceil(match/N) advancement formula — working</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Match Result Flow (Node→Laravel)</div>
+      <div class="status-desc">Result POST with 3-retry backoff, bracket advancement, completion check</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Prize Distribution + Platform Fee</div>
+      <div class="status-desc">80% prize pool, 20% platform fee, bot prize cascade — automatic on finish</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Automatic Status Transitions <span class="tag-fixed">FIXED</span></div>
+      <div class="status-desc">Scheduler har minute chal ta hai: draft→open, open→closed at correct times</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Browse Panel — Mask + Scroll <span class="tag-fixed">FIXED</span></div>
+      <div class="status-desc">Mask alpha=0 bug fixed. 30s auto-refresh for live player count</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">History Panel — Mask + Scroll <span class="tag-fixed">FIXED</span></div>
+      <div class="status-desc">Mask alpha=0 bug fixed. ContentSizeFitter → fixed sizeDelta</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Tournament Cancel + Refund Job</div>
+      <div class="status-desc">RefundTournamentRegistrations job — pehle se implemented, 3 retries</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Admin Approval (entry_fee &gt; ₹500)</div>
+      <div class="status-desc">User-created tournaments hold hote hain admin approve karne tak</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Overlay Buttons Fix</div>
+      <div class="status-desc">☰ aur ✕ game buttons panel open hone pe hide ho jaate hain</div>
+    </div>
+    <div class="status-card manual">
+      <div class="status-icon">⚙️</div>
+      <div class="status-title">Server Crontab Setup</div>
+      <div class="status-desc">Ek baar manually server pe add karna hai — see section 2 below</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Unity Bracket Viewer</div>
+      <div class="status-desc"><strong>LudoBracketViewerPanelOffline.cs</strong> — My Tournaments se "📋 View Bracket" button, round-wise match cards, winner badge, refresh support</div>
+    </div>
+    <div class="status-card done">
+      <div class="status-icon">✅</div>
+      <div class="status-title">Match Ready Notification</div>
+      <div class="status-desc"><strong>LudoTournamentMatchNotificationOffline.cs</strong> — Har 15s background polling, match ready hone par floating banner "⚔️ Match Ready! PLAY" button</div>
+    </div>
+  </div>
+</div>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h3 style="color:#c9d1d9;margin-bottom:14px">📋 Table of Contents</h3>
+  <ol>
+    <li><a href="#formats">Tournament Format — Sirf Knockout (baaki draft)</a></li>
+    <li><a href="#lifecycle">Lifecycle State Machine</a></li>
+    <li><a href="#scheduler">Automatic Scheduler — Kaise Setup Karo</a></li>
+    <li><a href="#schema">Database Schema (6 Tables)</a></li>
+    <li><a href="#api">Saare API Endpoints</a></li>
+    <li><a href="#unity-ui">Unity UI — 3 Panels</a></li>
+    <li><a href="#prize-ui">Prize Split UI — Kaise Kaam Karta Hai</a></li>
+    <li><a href="#create-flow">Tournament Create karne ka Flow</a></li>
+    <li><a href="#join-flow">Browse aur Join karne ka Flow</a></li>
+    <li><a href="#match-flow">Match Play Flow (Unity → Node.js → Laravel)</a></li>
+    <li><a href="#bracket">Knockout Bracket — Detail + Example</a></li>
+    <li><a href="#prizes">Prize Pool aur Payout</a></li>
+    <li><a href="#admin">Admin ka Workflow</a></li>
+    <li><a href="#pending">Kya Abhi Pending Hai</a></li>
+  </ol>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="formats">1. Tournament Format — Sirf Knockout</h2>
+
+<div class="section">
+<div class="box-done">
+  <strong>✅ Decision:</strong> Abhi sirf <strong>Knockout (Single Elimination)</strong> format active hai.
+  Baaki formats (Round Robin, Double Elimination, Group+Knockout) future ke liye reserved hain.
+  Backend validation bhi restrict hai: <code>Rule::in(['knockout'])</code>
+</div>
+
+<h3>🥊 Knockout — Kaise Kaam Karta Hai</h3>
+<p>Ek haarne pe bahar. Jeetne wala agle round mein jaata hai. Sabse simple aur fast format.</p>
+
+<h4>Example: 8 Players, 2 per Match</h4>
+<div style="margin:14px 0">
+  <div class="bracket-row">
+    <span class="round-label">ROUND 1</span>
+    <div class="bracket-box bracket-win">Arjun 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Ravi ❌</div>
+    &nbsp;
+    <div class="bracket-box bracket-win">Priya 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Suman ❌</div>
+    &nbsp;
+    <div class="bracket-box bracket-win">Rahul 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Anjali ❌</div>
+    &nbsp;
+    <div class="bracket-box bracket-win">Meera 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Vikram ❌</div>
+  </div>
+  <div style="text-align:left;color:#388bfd;font-size:1.3rem;margin:2px 0 2px 80px">↓</div>
+  <div class="bracket-row">
+    <span class="round-label">ROUND 2<br><small style="font-weight:normal;color:#8b949e">Semi-final</small></span>
+    <div class="bracket-box bracket-win">Arjun 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Priya ❌</div>
+    &nbsp;&nbsp;&nbsp;
+    <div class="bracket-box bracket-win">Rahul 🏆</div><span class="vs">vs</span><div class="bracket-box bracket-lose">Meera ❌</div>
+  </div>
+  <div style="text-align:left;color:#388bfd;font-size:1.3rem;margin:2px 0 2px 80px">↓</div>
+  <div class="bracket-row">
+    <span class="round-label">ROUND 3<br><small style="font-weight:normal;color:#8b949e">FINAL</small></span>
+    <div class="bracket-box bracket-win" style="border-color:#ffa657;color:#ffa657">Arjun 👑 WINNER</div>
+    <span class="vs">vs</span>
+    <div class="bracket-box bracket-lose">Rahul ❌</div>
+  </div>
+</div>
+
+<h4>BYE — Odd Players Handle karna</h4>
+<p>Agar players count 2 ki power nahi hai (e.g. 6 players), to bracket size 8 hogi. 2 "BYE" slots add hote hain — jin players ko BYE milta hai wo automatically next round mein chale jaate hain bina khele.</p>
+
+<h4>Bracket Advancement Formula</h4>
+<pre><code>nextMatchNumber = ceil(currentMatchNumber / players_per_match)
+nextRound       = currentRound + 1
+
+// 8 players, 2/match example:
+Match 1 winner → Round 2 Match 1  [ceil(1/2)=1]
+Match 2 winner → Round 2 Match 1  [ceil(2/2)=1]
+Match 3 winner → Round 2 Match 2  [ceil(3/2)=2]
+Match 4 winner → Round 2 Match 2  [ceil(4/2)=2]</code></pre>
+
+<h4>Total Rounds</h4>
+<pre><code>totalRounds = log(players_per_match, max_players)
+
+8  players, 2/match → log2(8)  = 3 rounds
+16 players, 2/match → log2(16) = 4 rounds
+8  players, 4/match → log4(8)  ≈ 2 rounds</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="lifecycle">2. Tournament Lifecycle — State Machine</h2>
+
+<div class="section">
+<div class="flow">
+  <div class="flow-step"><span class="badge badge-gray">draft</span><br><small>Create hone ke baad</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-green">registration_open</span><br><small>🤖 Auto ya Admin</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-yellow">registration_closed</span><br><small>🤖 Auto ya Admin</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-blue">in_progress</span><br><small>Admin: bracket generate</small></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-purple">completed</span><br><small>🤖 Auto: last match done</small></div>
+</div>
+<p style="color:#8b949e;margin-top:8px">Kisi bhi state se → <span class="badge badge-red">cancelled</span> (Admin only) → RefundJob dispatch</p>
+
+<table>
+<tr><th>Transition</th><th>Kaun karta hai</th><th>Condition</th><th>Side Effects</th></tr>
+<tr>
+  <td><code>draft</code> → <code>registration_open</code></td>
+  <td>🤖 <strong>Auto (Scheduler)</strong> ya Admin publish</td>
+  <td><code>is_approved=true</code> AND <code>registration_start_at &lt;= now</code></td>
+  <td>Tournament Unity lobby mein dikhne lagta hai</td>
+</tr>
+<tr>
+  <td><code>registration_open</code> → <code>registration_closed</code></td>
+  <td>🤖 <strong>Auto (Scheduler)</strong> ya Admin ya auto-full</td>
+  <td><code>registration_end_at &lt;= now</code> ya <code>current_players == max_players</code></td>
+  <td><code>recalculatePrizePool()</code> — actual prize amounts set</td>
+</tr>
+<tr>
+  <td><code>registration_closed</code> → <code>in_progress</code></td>
+  <td>Admin: <code>POST /{t}/generate-bracket</code></td>
+  <td>Status must be registration_closed</td>
+  <td>TournamentMatch rows + seeds assigned</td>
+</tr>
+<tr>
+  <td><code>in_progress</code> → <code>completed</code></td>
+  <td>🤖 Auto (last match complete hone pe)</td>
+  <td>Saare matches done/cancelled/forfeited</td>
+  <td><code>distributePrizes()</code> — wallet credit, platform fee logged</td>
+</tr>
+<tr>
+  <td>Any → <code>cancelled</code></td>
+  <td>Admin: <code>POST /{t}/cancel</code></td>
+  <td>Not already completed/cancelled</td>
+  <td><code>RefundTournamentRegistrations</code> job queued (3 retries)</td>
+</tr>
+</table>
+
+<h4>Player Registration Status</h4>
+<div class="flow">
+  <div class="flow-step"><span class="badge badge-gray">registered</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-blue">playing</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-red">eliminated</span></div>
+</div>
+<div class="flow" style="margin-top:4px">
+  <div class="flow-step"><span class="badge badge-blue">playing</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-purple">winner</span> (final round jeeta)</div>
+</div>
+<div class="flow" style="margin-top:4px">
+  <div class="flow-step"><span class="badge badge-gray">registered</span></div>
+  <span class="flow-arrow">→</span>
+  <div class="flow-step"><span class="badge badge-gray">refunded</span> (cancel ya tournament cancelled)</div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="scheduler">3. Automatic Scheduler — Setup aur Kaise Kaam Karta Hai</h2>
+
+<div class="section">
+<div class="box-done">
+  <strong>✅ Fixed (2026-03-28):</strong> <code>TournamentStatusAutomationService</code> ab correct status names use karta hai
+  aur <code>routes/console.php</code> mein <code>->everyMinute()</code> se register ho gaya hai.
+</div>
+
+<h3>Server pe ek baar ye crontab entry add karo</h3>
+<div class="cron-box">
+# Crontab edit karo:<br>
+crontab -e<br><br>
+# Ye line add karo (apna project path daalo):<br>
+* * * * * cd /var/www/games && php artisan schedule:run >> /dev/null 2>&1
+</div>
+<p style="color:#8b949e;font-size:0.85rem">Ye cron Laravel ka scheduler har minute invoke karta hai. Phir Laravel khud decide karta hai kaunsa command run karna hai.</p>
+
+<h3>Kya-kya auto hota hai (har minute)</h3>
+<table>
+<tr><th>Check</th><th>Condition</th><th>Action</th></tr>
+<tr>
+  <td>Draft tournaments</td>
+  <td><code>is_approved=true</code> AND <code>registration_start_at &lt;= now</code></td>
+  <td>Status → <code>registration_open</code></td>
+</tr>
+<tr>
+  <td>Open tournaments</td>
+  <td><code>registration_end_at &lt;= now</code></td>
+  <td>Status → <code>registration_closed</code> + <code>recalculatePrizePool()</code></td>
+</tr>
+</table>
+
+<h3>Manually test karo</h3>
+<pre><code>php artisan tournaments:advance-statuses
+
+# Output:
+# [TournamentScheduler] Status automation complete.
+#   draft → registration_open  : 2
+#   registration_open → closed : 1</code></pre>
+
+<h3>Code files (scheduler)</h3>
+<table>
+<tr><th>File</th><th>Kaam</th></tr>
+<tr><td><code>routes/console.php</code></td><td>Scheduler register: <code>->everyMinute()->withoutOverlapping()->runInBackground()</code></td></tr>
+<tr><td><code>app/Console/Commands/AdvanceTournamentStatusesCommand.php</code></td><td>Artisan command: <code>tournaments:advance-statuses</code></td></tr>
+<tr><td><code>app/Services/Tournament/TournamentStatusAutomationService.php</code></td><td>Actual logic — do transitions handle karta hai</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="schema">4. Database Schema (6 Tables)</h2>
+
+<div class="section">
+<h3>tournaments</h3>
+<table>
+<tr><th>Column</th><th>Type</th><th>Notes</th></tr>
+<tr><td>id</td><td>BIGINT PK</td><td></td></tr>
+<tr><td>name</td><td>VARCHAR(150)</td><td></td></tr>
+<tr><td>creator_type</td><td>ENUM admin|user</td><td></td></tr>
+<tr><td>creator_user_id</td><td>BIGINT FK nullable</td><td>null = admin ne banaya</td></tr>
+<tr><td>type</td><td><code>public</code> | <code>private</code></td><td></td></tr>
+<tr><td>format</td><td><code>knockout</code> only (active)</td><td>Backend: <code>Rule::in(['knockout'])</code></td></tr>
+<tr><td><strong>status</strong></td><td>ENUM</td><td>draft / registration_open / registration_closed / in_progress / completed / cancelled</td></tr>
+<tr><td>entry_fee</td><td>DECIMAL(10,2)</td><td>0 = free</td></tr>
+<tr><td>max_players</td><td>INT</td><td>Sirf: 4, 8, 16, 32, 64, 128</td></tr>
+<tr><td>players_per_match</td><td>INT default 2</td><td>2 ya 4</td></tr>
+<tr><td>current_players</td><td>INT default 0</td><td>register pe ++, cancel pe --</td></tr>
+<tr><td>platform_fee_pct</td><td>DECIMAL default 20</td><td>Hamesha 20% — users change nahi kar sakte</td></tr>
+<tr><td>total_prize_pool</td><td>DECIMAL</td><td>Registration close pe calculate hota hai</td></tr>
+<tr><td>platform_fee_amount</td><td>DECIMAL</td><td>total_entry × 20%</td></tr>
+<tr><td>bot_allowed / max_bot_pct</td><td>BOOL / INT</td><td>Max 5% slots pe bots</td></tr>
+<tr><td>invite_code / invite_password</td><td>VARCHAR nullable</td><td>Private tournaments ke liye</td></tr>
+<tr><td>requires_approval / is_approved</td><td>BOOLEAN</td><td>entry_fee &gt; ₹500 user-created: needs admin OK</td></tr>
+<tr><td>registration_start_at</td><td>DATETIME</td><td>Scheduler isko check karta hai</td></tr>
+<tr><td>registration_end_at</td><td>DATETIME</td><td>Scheduler isko check karta hai</td></tr>
+<tr><td>tournament_start_at</td><td>DATETIME</td><td>Admin bracket generate karta hai is waqt</td></tr>
+</table>
+
+<h3>tournament_prizes</h3>
+<table>
+<tr><th>Column</th><th>Notes</th></tr>
+<tr><td>tournament_id, position (1–5)</td><td></td></tr>
+<tr><td>prize_pct</td><td>% of prize pool (sabka sum = 100%) — ab Unity se configure hota hai</td></tr>
+<tr><td>prize_amount</td><td>Actual ₹ — registration close pe calculate</td></tr>
+<tr><td>winner_user_id, payout_status, paid_at</td><td>Payout ke baad fill</td></tr>
+</table>
+
+<h3>tournament_registrations</h3>
+<table>
+<tr><th>Column</th><th>Notes</th></tr>
+<tr><td>id UUID PK</td><td><code>tournament_entry_uuid</code> ke roop mein use</td></tr>
+<tr><td>user_id FK nullable</td><td>null = bot</td></tr>
+<tr><td>is_bot, bot_difficulty, bot_name</td><td></td></tr>
+<tr><td>seed_number</td><td>Bracket generation pe assign</td></tr>
+<tr><td>entry_fee_paid</td><td>Bots ke liye 0</td></tr>
+<tr><td>status</td><td>registered / playing / eliminated / winner / refunded</td></tr>
+<tr><td>final_position, prize_won</td><td>Tournament complete pe fill</td></tr>
+</table>
+
+<h3>tournament_matches</h3>
+<table>
+<tr><th>Column</th><th>Notes</th></tr>
+<tr><td>round_number, match_number</td><td>Round 1,2,3... (knockout only)</td></tr>
+<tr><td>room_id</td><td>Node.js socket room ID</td></tr>
+<tr><td>status</td><td>scheduled / waiting / in_progress / completed / cancelled / forfeited</td></tr>
+<tr><td>winner_registration_id</td><td>Match jeeta kaun</td></tr>
+<tr><td>player_scores JSON</td><td>Node.js se raw result</td></tr>
+<tr><td>is_admin_override, admin_override_note</td><td>Admin ne manually result change kiya</td></tr>
+</table>
+
+<h3>tournament_match_players</h3>
+<table>
+<tr><th>Column</th><th>Notes</th></tr>
+<tr><td>match_id + registration_id</td><td></td></tr>
+<tr><td>slot_number (1–4)</td><td>Seat number</td></tr>
+<tr><td>score</td><td>Tokens home count</td></tr>
+<tr><td>finish_position</td><td>1 = is match ka winner</td></tr>
+<tr><td>result</td><td>win / loss / draw / forfeit / disconnected</td></tr>
+</table>
+
+<h3>tournament_wallet_transactions</h3>
+<table>
+<tr><th>Column</th><th>Notes</th></tr>
+<tr><td>type</td><td>entry_fee / refund / prize_credit / platform_fee</td></tr>
+<tr><td>amount, status (pending/completed/failed)</td><td></td></tr>
+<tr><td>user_id = 1</td><td>Platform ka account (20% fee yahan jaata hai)</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="api">5. Saare API Endpoints</h2>
+
+<div class="section">
+<h3>Public / Auth User</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Auth</th><th>Description</th></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments</td><td>None</td><td>Public approved tournaments list. Filters: status, format, min_fee, max_fee. 15/page.</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments/{t}</td><td>None</td><td>Ek tournament ka detail (private pe 404)</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments/private/{code}</td><td>None + password?</td><td>Invite code se private tournament dhundhna</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments/{t}/bracket</td><td>None</td><td>Poora bracket structure — rounds, matches, players, scores</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments/{t}/leaderboard</td><td>None</td><td>Final rankings by position</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/api/v1/tournaments</td><td>Bearer</td><td>Tournament banao. entry_fee &gt; ₹500 + non-admin = approval pending.</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/api/v1/tournaments/{t}/register</td><td>Bearer</td><td>Join karo. Wallet se entry_fee kaat. Full hone pe auto-close.</td></tr>
+<tr><td><span class="method-delete">DELETE</span></td><td class="endpoint">/api/v1/tournaments/{t}/register</td><td>Bearer</td><td>Cancel + refund (sirf registration phase mein)</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/api/v1/tournaments/{t}/claim-room</td><td>Bearer</td><td>Match room data lo. Node.js room banata hai is data se.</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/api/v1/tournaments/me/history</td><td>Bearer</td><td>Meri saari tournaments ki history</td></tr>
+</table>
+
+<h3>Admin-Only</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Description</th></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/approve</td><td>User-created tournament approve karo</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/publish</td><td>draft → registration_open (manual)</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/close-registration</td><td>Manually close + prize pool calculate</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/generate-bracket</td><td>Bracket generate karo → in_progress</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/cancel</td><td>Cancel + RefundJob dispatch</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/{t}/financials</td><td>Financial summary: fee, pool, paid/pending</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/{t}/registrations</td><td>Saare players + bots ki list</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/{t}/add-bot</td><td>Bots add karo (max 5%)</td></tr>
+<tr><td><span class="method-delete">DELETE</span></td><td class="endpoint">/{t}/bots/{reg}</td><td>Bot hataao</td></tr>
+</table>
+
+<h3>Internal (Node.js → Laravel)</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Description</th></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/api/internal/v1/tournaments/matches/{m}/result</td><td>Match result submit. Bracket advance. Completion check.</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/api/internal/v1/tournaments/matches/{m}/override</td><td>Admin force winner for disputed match.</td></tr>
+</table>
+
+<h3>Admin Web Panel (/admin)</h3>
+<table>
+<tr><th>Method</th><th>Path</th><th>Description</th></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/admin/tournaments</td><td>Tournament list (Blade)</td></tr>
+<tr><td><span class="method-get">GET</span></td><td class="endpoint">/admin/tournaments/create</td><td>Create form</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/admin/tournaments</td><td>Store admin-created tournament</td></tr>
+<tr><td><span class="method-put">PUT</span></td><td class="endpoint">/admin/tournaments/{t}</td><td>Update</td></tr>
+<tr><td><span class="method-post">POST</span></td><td class="endpoint">/admin/tournaments/{t}/approve</td><td>Approve user-created</td></tr>
+</table>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="unity-ui">6. Unity UI — 3 Panels</h2>
+
+<div class="section">
+<h3>Panel Orchestration — DashBoardManagerOffline</h3>
+<p>Koi bhi panel open karte waqt: <code>selectGameModePanal</code> (☰ ✕ buttons) + <code>lobbySelectPanal</code> + <code>backButton</code> hide ho jaate hain.</p>
+<table>
+<tr><th>Method</th><th>Action</th></tr>
+<tr><td><code>OpenTournamentPanel()</code></td><td>Browse panel open, overlay hide</td></tr>
+<tr><td><code>CloseTournamentPanel()</code></td><td>Browse panel close, overlay restore</td></tr>
+<tr><td><code>OpenCreateTournamentPanel()</code></td><td>Browse hide, Create panel open</td></tr>
+<tr><td><code>OpenMyTournamentsPanel()</code></td><td>Browse hide, History panel open</td></tr>
+</table>
+
+<h3>Panel 1: Browse &amp; Join — LudoTournamentPanelOffline <span class="tag-fixed">FIXED</span></h3>
+<ul>
+  <li>Mask alpha=0 bug fix — scroll content ab visible hai</li>
+  <li>ContentSizeFitter → fixed <code>sizeDelta.y = 3000f</code></li>
+  <li><strong>30s auto-refresh</strong> — panel open hone pe timer start, close hone pe ruk jaata hai</li>
+  <li>Private tournament join — invite code + password popup</li>
+</ul>
+
+<h3>Panel 2: Create Tournament — LudoCreateTournamentPanelOffline <span class="tag-fixed">FIXED</span></h3>
+<ul>
+  <li>Format cycle row hata diya — sirf "🥊 Knockout" badge (locked)</li>
+  <li><strong>Dynamic Prize Split UI</strong> — default 60%/30%/10%, user change kar sakta hai</li>
+  <li>Live sum display — green=100%, red=over, muted=under</li>
+  <li>Add/Remove prize rows (max 5 positions)</li>
+  <li>Instant mode + Scheduled mode dono kaam karte hain</li>
+</ul>
+
+<h3>Panel 3: My Tournaments — LudoMyTournamentsPanelOffline <span class="tag-fixed">FIXED</span></h3>
+<ul>
+  <li>Mask alpha=0 bug fix — history rows ab visible hain</li>
+  <li>ContentSizeFitter → fixed <code>sizeDelta.y = 2400f</code></li>
+  <li>Shows: Tournament name, status badge, entry fee paid, prize won, rank</li>
+</ul>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="prize-ui">7. Prize Split UI — Kaise Kaam Karta Hai</h2>
+
+<div class="section">
+<div class="box-done">
+  <strong>✅ New Feature (2026-03-28):</strong> Ab user Create Tournament form mein khud prize distribution set kar sakta hai.
+  Pehle hardcoded tha (60/30/10) — ab dynamic hai.
+</div>
+
+<h3>UI Design</h3>
+<table>
+<tr><th>Element</th><th>Description</th></tr>
+<tr><td>"─── Prize Distribution ───" label</td><td>Section divider</td></tr>
+<tr><td>Live sum label</td><td>"Total: 90%" — green jab exactly 100%, red jab &gt;100%, gray jab &lt;100%</td></tr>
+<tr><td>Prize rows (default 3)</td><td>🥇 1st | [60%] | % | ✕ button (1st pe ✕ nahi)</td></tr>
+<tr><td>"+ Add Prize Position" button</td><td>Max 5 positions tak add kar sakte ho, 5 hone pe button hide</td></tr>
+</table>
+
+<h3>Submit pe Validation</h3>
+<pre><code>// BuildPrizesArray() logic:
+1. Koi bhi field empty ya 0%? → error "Prize X: enter a valid percentage"
+2. Sum != 100%? → error "Prize percentages must sum to 100%. Current: 95%"
+3. Sab theek → array build karo aur API call karo</code></pre>
+
+<h3>Backend Validation (same)</h3>
+<pre><code>// TournamentController::store()
+$totalPct = collect($validated['prizes'])->sum('prize_pct');
+if (abs($totalPct - 100) > 0.01) {
+    return response()->json(['message' => 'Prize percentages must sum to 100%...'], 422);
+}</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="create-flow">8. Tournament Create karne ka Complete Flow</h2>
+
+<div class="section">
+<pre><code>User "Create Tournament" tap karta hai
+│
+├─ Form bharta hai:
+│   Name, Type (public/private), Players Per Match,
+│   Entry Fee, Max Players, Invite Code (private ke liye),
+│   Schedule Mode (instant/scheduled),
+│   Prize Distribution (e.g. 1st=60%, 2nd=30%, 3rd=10%)
+│
+├─ "CREATE TOURNAMENT" button
+│   └─ Client-side validation:
+│       ✓ Name required
+│       ✓ Max players valid (4/8/16/32/64/128)
+│       ✓ Prize sum = 100%
+│
+│   └─ POST /api/v1/tournaments
+│       {
+│         name, type, format:"knockout", players_per_match,
+│         entry_fee, max_players, bot_allowed:true,
+│         registration_start_at, registration_end_at, tournament_start_at,
+│         prizes: [{position:1,prize_pct:60},{position:2,prize_pct:30},{position:3,prize_pct:10}]
+│       }
+│
+├─ BACKEND:
+│   ✓ prizes sum = 100%?
+│   ✓ entry_fee > ₹500 AND non-admin?
+│     → requires_approval=true, is_approved=false, status="draft"
+│     → Response: "Pending admin approval"
+│   ✓ entry_fee ≤ ₹500 OR admin?
+│     → is_approved=true
+│     → Instant: status="registration_open"
+│     → Scheduled: status="draft" (scheduler baad mein open karega)
+│   ✓ Private: invite_code auto-generate (6-char)
+│
+└─ Unity: Success toast → panel close
+   Agar approval needed: "Admin will review your tournament."
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="join-flow">9. Browse aur Join karne ka Flow</h2>
+
+<div class="section">
+<pre><code>Browse Panel kholte hi:
+└─ GET /api/v1/tournaments → public approved tournaments load
+   Cards: Name | Status badge | Entry Fee | Players X/Y | PLAY button
+   🔄 Har 30 seconds mein auto-refresh (player count live update)
+
+━━━ Join Public Tournament ━━━
+User card pe "PLAY" tap
+→ POST /api/v1/tournaments/{t}/register
+  Backend checks: open? not full? wallet balance?
+  ✓ Wallet se entry_fee deduct
+  ✓ Registration create (status=registered)
+  ✓ Wallet transaction log (type=entry_fee)
+  ✓ current_players++
+  ✓ Agar full → status=registration_closed + recalculatePrizePool()
+
+━━━ Join Private Tournament ━━━
+"Join Private" button → code popup
+→ Code enter karo → GET /api/v1/tournaments/private/{code}
+  Password prompt (agar hai) → same flow as public join
+
+━━━ Cancel Registration ━━━
+My History panel → "Cancel"
+→ DELETE /api/v1/tournaments/{t}/register
+  Sirf registration_open ya registration_closed phase mein allowed
+  Entry fee wapas wallet mein
+  current_players--
+  Agar tournament pehle full tha → wapas registration_open
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="match-flow">10. Match Play Flow</h2>
+
+<div class="section">
+<pre><code>━━━ Admin Bracket Generate karta hai ━━━
+POST /api/v1/tournaments/{t}/generate-bracket
+└─ Players randomly seed kiye jaate hain
+└─ TournamentMatch rows ban jaate hain (saare rounds)
+└─ TournamentMatchPlayer rows Round 1 ke liye
+└─ Byes auto-handle (1 player vs bye → auto-win)
+└─ tournament.status → in_progress
+
+━━━ Player Match Room Claim karta hai ━━━
+POST /api/v1/tournaments/{t}/claim-room
+Response: {
+  uuid: "tournament-match-5",
+  mode: "tournament",
+  max_players: 2,
+  tournament_match_id: 5,
+  bot_fill_after_seconds: 8,
+  players: [{seat_no:1, user_id:101, display_name:"Arjun", ...}]
+}
+Match status: scheduled → waiting
+
+━━━ Node.js Room Join ━━━
+Unity → Node.js socket room "tournament-match-5"
+8 seconds baad empty seats pe bots (agar bot_allowed=true)
+Sab seats full → match start
+
+━━━ Match Khatam ━━━
+Node.js → tournamentMatchResultService.postResult({
+  matchId, roomId, startedAt, endedAt,
+  results: [{user_id:101, slot:1, score:4, finish_position:1, result:"win"},
+            {user_id:202, slot:2, score:2, finish_position:2, result:"loss"}]
+})
+
+Retry: 3 times, exponential backoff (1s→2s→4s)
+409/422 → no retry
+
+━━━ Laravel Result Process ━━━
+TournamentMatchResultController::submit()
+├─ Match update: completed, scores, timestamps
+├─ MatchPlayer update: score, finish_position, result
+├─ Registration update:
+│     winner (non-final round) → playing (aage khelega)
+│     winner (final round)     → winner
+│     losers                   → eliminated
+├─ advanceBracket():
+│     nextMatchNumber = ceil(match_number / players_per_match)
+│     Winner ko next round ke match mein assign
+└─ checkTournamentCompletion():
+      Saare matches done? → completed → distributePrizes()
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="bracket">11. Knockout Bracket — Full Example (8 Players, 2/match)</h2>
+
+<div class="section">
+<pre><code>BRACKET GENERATION (8 players, randomly seeded):
+Seed: Arjun(1), Ravi(2), Priya(3), Suman(4), Rahul(5), Anjali(6), Meera(7), Vikram(8)
+
+Round 1:  Match 1 → Arjun vs Ravi     | Match 2 → Priya vs Suman
+          Match 3 → Rahul vs Anjali   | Match 4 → Meera vs Vikram
+
+Round 2:  Match 1 → Winner(M1) vs Winner(M2)  [empty until R1 done]
+          Match 2 → Winner(M3) vs Winner(M4)  [empty until R1 done]
+
+Round 3:  Match 1 → Winner(R2M1) vs Winner(R2M2)  [FINAL]
+
+BRACKET ADVANCEMENT (after Round 1 Match 2 completes, Priya wins):
+  nextMatchNumber = ceil(2/2) = 1
+  nextRound = 2
+  → Priya added to Round 2, Match 1
+  → If Match 1 already has 1 player → Match 1 status = waiting
+
+BYE EXAMPLE (6 players → bracket size 8, 2 BYE slots):
+  Match 3 → Rahul vs BYE → Rahul auto-wins → status=completed
+  Match 4 → Meera vs BYE → Meera auto-wins → status=completed
+  advanceByeWinners() runs → Rahul, Meera placed in Round 2
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="prizes">12. Prize Pool aur Payout</h2>
+
+<div class="section">
+<h3>Example: 8 Players × ₹100 entry fee, Prize: 1st=60%, 2nd=30%, 3rd=10%</h3>
+<div class="prize-row">
+  <div class="prize-card">
+    <div class="prize-pos" style="color:#ffd700">🥇 1st</div>
+    <div class="prize-pct">60% of pool</div>
+    <div class="prize-amt">₹384</div>
+  </div>
+  <div class="prize-card">
+    <div class="prize-pos" style="color:#c0c0c0">🥈 2nd</div>
+    <div class="prize-pct">30% of pool</div>
+    <div class="prize-amt">₹192</div>
+  </div>
+  <div class="prize-card">
+    <div class="prize-pos" style="color:#cd7f32">🥉 3rd</div>
+    <div class="prize-pct">10% of pool</div>
+    <div class="prize-amt">₹64</div>
+  </div>
+  <div class="prize-card" style="border:1px solid #f85149">
+    <div class="prize-pos" style="color:#f85149">🏛️</div>
+    <div class="prize-pct">Platform 20%</div>
+    <div class="prize-amt" style="color:#f85149">₹160</div>
+  </div>
+</div>
+
+<pre><code>Total entry   = 8 × ₹100 = ₹800
+Platform fee  = ₹800 × 20% = ₹160  → user_id=1 (platform account)
+Prize pool    = ₹800 × 80% = ₹640
+
+1st (60%) = ₹640 × 0.60 = ₹384 → winner wallet credit
+2nd (30%) = ₹640 × 0.30 = ₹192 → 2nd place wallet credit
+3rd (10%) = ₹640 × 0.10 = ₹64  → 3rd place wallet credit
+
+Prize amounts registration close pe calculate hote hain (recalculatePrizePool)
+Bot positions pe prize cascade hota hai next real player ko</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="admin">13. Admin ka Workflow</h2>
+
+<div class="section">
+<pre><code>TOURNAMENT APPROVE KARNA (user-created, entry_fee > ₹500):
+Admin Panel: /admin/tournaments → Pending list
+POST /admin/tournaments/{t}/approve → is_approved=true
+Scheduler next minute mein registration window check karega
+
+LIVE TOURNAMENT MANAGE:
+1. Bots add karo (optional, max 5% of max_players):
+   POST /{t}/add-bot {bot_difficulty:2, slot_count:2}
+
+2. Registration manually close karo (ya auto-close hogi):
+   POST /{t}/close-registration → prize amounts calculate
+
+3. Bracket generate karo:
+   POST /{t}/generate-bracket → matches ban jaate hain → in_progress
+
+4. Kisi match ka result override karo (dispute):
+   POST /internal/v1/tournaments/matches/{m}/override
+   {winner_user_id: 101, reason: "Opponent disconnected maliciously"}
+
+5. Tournament cancel:
+   POST /{t}/cancel → RefundTournamentRegistrations job queue
+
+6. Financial report:
+   GET /{t}/financials
+   → {total_entry_collected, platform_fee_20pct, prize_pool_80pct, prizes_paid, prizes_pending}
+
+TOURNAMENT COMPLETION (automatic):
+Last match result Node.js ne submit kiya
+→ checkTournamentCompletion(): sab matches done
+→ status=completed
+→ distributePrizes(): wallets credit, platform fee log
+</code></pre>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2 id="pending">14. Kya Abhi Pending Hai</h2>
+
+<div class="section">
+
+<h3>⚙️ One-Time Manual Setup</h3>
+<div class="box-warn">
+  <strong>Server Crontab — Ek baar setup karna hai</strong><br>
+  Scheduler code ready hai, command registered hai — sirf server pe ye crontab entry add karo:
+  <div class="cron-box" style="margin-top:10px">* * * * * cd /var/www/games &amp;&amp; php artisan schedule:run >> /dev/null 2>&1</div>
+  Bina is crontab ke, automatic transitions (draft→open, open→closed) nahi honge.
+</div>
+
+<h3>✅ Bracket Viewer — Complete</h3>
+<div class="box-done">
+  <strong>LudoBracketViewerPanelOffline.cs</strong> — nayi Unity screen<br><br>
+  <strong>Kaise kaam karta hai:</strong>
+  <ul>
+    <li>My Tournaments panel mein in_progress / completed tournaments ke liye <code>📋 View Bracket</code> button show hota hai</li>
+    <li>Button click → <code>GET /api/v1/tournaments/{id}/bracket</code> call</li>
+    <li>Round-wise render: Round 1, Round 2, … headers + match cards</li>
+    <li>Har match card: P1 name <strong>vs</strong> P2 name | status badge (WAITING / IN PROGRESS / COMPLETED) | 🏆 winner name</li>
+    <li>Winner player name green + bold highlight</li>
+    <li>"↻ Refresh" button — live update ke liye</li>
+    <li>"✕ Back" button → My Tournaments panel pe wapas</li>
+    <li>Bot players 🤖 prefix ke saath dikhte hain</li>
+  </ul>
+  <strong>Files touched:</strong>
+  <code>LudoBracketViewerPanelOffline.cs</code> (new) •
+  <code>LudoMyTournamentsPanelOffline.cs</code> (VIEW BRACKET btn added) •
+  <code>DashBoardManagerOffline.cs</code> (OpenBracketViewerPanel + resolver)
+</div>
+
+<h3>✅ Match Ready Notification — Complete</h3>
+<div class="box-done">
+  <strong>LudoTournamentMatchNotificationOffline.cs</strong> — background polling component<br><br>
+  <strong>Kaise kaam karta hai:</strong>
+  <ul>
+    <li>DashBoardManager.Start() se automatically initialize hota hai</li>
+    <li>Har 15 seconds: <code>GET /api/v1/tournaments/me/history</code> poll karta hai</li>
+    <li>Condition check: <code>tournament.status == "in_progress"</code> AND <code>registration.status == "registered" OR "playing"</code></li>
+    <li>Match ready milne par screen ke bottom mein floating banner show karta hai:<br>
+        <code>⚔️ Match Ready! | [Tournament Name] | [PLAY] [✕]</code></li>
+    <li><strong>PLAY</strong> button → <code>TryStartTournamentMatch()</code> → LudoV2MatchmakingBridge → game start</li>
+    <li><strong>✕</strong> dismiss button — banner hide karo</li>
+    <li>Match nahi mila → banner automatically hide ho jata hai</li>
+    <li>Green accent bar on left, dark green background — distinctive look</li>
+  </ul>
+  <strong>Files touched:</strong>
+  <code>LudoTournamentMatchNotificationOffline.cs</code> (new) •
+  <code>DashBoardManagerOffline.cs</code> (ResolveMatchNotification + Start() call)
+</div>
+
+<h3>✅ Sab Kuch Jo Working Hai</h3>
+<div class="box-ok">
+  <strong>✅ Tournament create</strong> — Instant + Scheduled modes, Prize Split UI, format locked to knockout<br>
+  <strong>✅ Registration</strong> — Join, cancel, wallet debit/refund, auto-close when full<br>
+  <strong>✅ Private tournaments</strong> — Invite code + optional password<br>
+  <strong>✅ Admin approval flow</strong> — entry_fee &gt; ₹500 user tournaments<br>
+  <strong>✅ Knockout bracket</strong> — Seeding, byes, ceil(N/k) advancement<br>
+  <strong>✅ Match result flow</strong> — Node.js → Laravel, 3-retry backoff<br>
+  <strong>✅ Prize distribution</strong> — 20% fee, 80% pool, bot cascade<br>
+  <strong>✅ Tournament cancel + refund</strong> — Job with 3 retries per registration<br>
+  <strong>✅ Auto status transitions</strong> — Scheduler registered, correct status/column names<br>
+  <strong>✅ Browse panel</strong> — Mask bug fixed, 30s auto-refresh<br>
+  <strong>✅ History panel</strong> — Mask bug fixed, scroll working<br>
+  <strong>✅ Admin override</strong> — Disputed match result manually change karna<br>
+  <strong>✅ Overlay buttons</strong> — ☰ ✕ buttons hide/show correctly<br>
+  <strong>✅ Bot management</strong> — Add/remove bots, 5% cap, prize cascade<br>
+  <strong>✅ Unity Bracket Viewer</strong> — LudoBracketViewerPanelOffline, round/match/winner display<br>
+  <strong>✅ Match Ready Notification</strong> — LudoTournamentMatchNotificationOffline, 15s polling, floating banner
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<h2>📌 Quick Reference Constants</h2>
+<div class="section">
+<table>
+<tr><th>Constant</th><th>Value</th><th>Kahan</th></tr>
+<tr><td>Active format</td><td>knockout only</td><td><code>Rule::in(['knockout'])</code></td></tr>
+<tr><td>Platform fee</td><td>20%</td><td><code>tournaments.platform_fee_pct</code></td></tr>
+<tr><td>Max bot %</td><td>5%</td><td><code>max_bot_pct</code> max:5</td></tr>
+<tr><td>Bot fill delay</td><td>8 seconds</td><td><code>claimRoom</code> → <code>bot_fill_after_seconds</code></td></tr>
+<tr><td>Approval threshold</td><td>entry_fee &gt; ₹500</td><td><code>TournamentController::store()</code></td></tr>
+<tr><td>Max prize positions</td><td>5</td><td>Validation + UI max</td></tr>
+<tr><td>Valid player counts</td><td>4, 8, 16, 32, 64, 128</td><td>Validation <code>Rule::in([...])</code></td></tr>
+<tr><td>Players per match</td><td>2 ya 4</td><td>Validation <code>Rule::in([2,4])</code></td></tr>
+<tr><td>Node retry attempts</td><td>3 (+1 initial = 4 total)</td><td><code>TOURNAMENT_RESULT_RETRIES</code> env</td></tr>
+<tr><td>Browse auto-refresh</td><td>30 seconds</td><td><code>LudoTournamentPanelOffline::AutoRefreshInterval</code></td></tr>
+<tr><td>Match notification poll</td><td>15 seconds</td><td><code>LudoTournamentMatchNotificationOffline::PollInterval</code></td></tr>
+<tr><td>Scheduler frequency</td><td>Every minute</td><td><code>routes/console.php</code></td></tr>
+<tr><td>Scheduler overlap protection</td><td>withoutOverlapping()</td><td><code>routes/console.php</code></td></tr>
+<tr><td>Internal API auth</td><td><code>Bearer {INTERNAL_SERVER_TOKEN}</code></td><td>.env</td></tr>
+</table>
+</div>
+
+<p style="color:#8b949e;margin-top:36px;text-align:center;font-size:0.82rem">
+  tournament_workflow.html &nbsp;|&nbsp; Ludo Tournament System v3 &nbsp;|&nbsp; Updated: 2026-03-28 &nbsp;|&nbsp; 17/17 items complete ✅
+</p>
+
+</div>
+</body>
+</html>

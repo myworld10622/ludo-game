@@ -49,7 +49,7 @@ class UserCompatibilityController extends Controller
         return response()->json([
             'code' => 200,
             'message' => 'Guest login successful.',
-            'user_id' => (string) $user->id,
+            'user_id' => (string) $user->user_code,
             'token' => $token,
         ]);
     }
@@ -126,7 +126,7 @@ class UserCompatibilityController extends Controller
         }
 
         $referrer = $referralCode !== ''
-            ? User::query()->where('referral_code', $referralCode)->first()
+            ? $this->resolveReferrer($referralCode)
             : null;
 
         $user = DB::transaction(function () use ($mobile, $password, $name, $referrer) {
@@ -157,7 +157,7 @@ class UserCompatibilityController extends Controller
 
         return response()->json([
             'message' => 'Registered Successfully',
-            'user_id' => (string) $user->id,
+            'user_id' => (string) $user->user_code,
             'token' => $token,
             'code' => 200,
         ]);
@@ -168,7 +168,12 @@ class UserCompatibilityController extends Controller
         $mobile = (string) $request->input('mobile');
         $password = (string) $request->input('password');
 
-        $user = User::query()->where('mobile', $mobile)->first();
+        $user = User::query()
+            ->where('mobile', $mobile)
+            ->orWhere('email', $mobile)
+            ->orWhere('username', $mobile)
+            ->orWhere('user_code', $mobile)
+            ->first();
 
         if (! $user || ! Hash::check($password, $user->password)) {
             return response()->json([
@@ -372,11 +377,22 @@ class UserCompatibilityController extends Controller
 
         $accessToken = PersonalAccessToken::findToken((string) $token);
 
-        if (! $accessToken || (string) $accessToken->tokenable_id !== (string) $id) {
+        if (! $accessToken) {
             return null;
         }
 
-        return User::query()->find($id);
+        $user = User::query()->find($accessToken->tokenable_id);
+
+        if (! $user) {
+            return null;
+        }
+
+        $publicId = (string) $id;
+        if ($publicId !== '' && $publicId !== (string) $user->id && $publicId !== (string) $user->user_code) {
+            return null;
+        }
+
+        return $user;
     }
 
     protected function ensureWallets(User $user): Wallet
@@ -403,7 +419,8 @@ class UserCompatibilityController extends Controller
         return [
             'message' => $message,
             'user_data' => [[
-                'id' => (string) $user->id,
+                'id' => (string) $user->user_code,
+                'user_id' => (string) $user->user_code,
                 'name' => (string) ($user->profile?->first_name ?: $user->username),
                 'user_type' => 'user',
                 'bank_detail' => '',
@@ -415,8 +432,8 @@ class UserCompatibilityController extends Controller
                 'source' => 'laravel',
                 'gender' => (string) ($user->profile?->gender ?? ''),
                 'profile_pic' => '',
-                'referral_code' => (string) ($user->referral_code ?? ''),
-                'referred_by' => (string) ($user->referred_by_user_id ?? ''),
+                'referral_code' => (string) ($user->user_code ?? ''),
+                'referred_by' => (string) ($user->referrer?->user_code ?? ''),
                 'wallet' => (string) $wallet->balance,
                 'unutilized_wallet' => (string) $wallet->balance,
                 'winning_wallet' => '0',
@@ -517,5 +534,20 @@ class UserCompatibilityController extends Controller
         $suffix = substr(preg_replace('/\D+/', '', $mobile), -4) ?: random_int(1000, 9999);
 
         return Str::limit($base.'_'.$suffix.'_'.Str::lower(Str::random(4)), 50, '');
+    }
+
+    protected function resolveReferrer(string $referralCode): ?User
+    {
+        $normalizedCode = strtoupper(trim($referralCode));
+        $normalizedCode = preg_replace('/^777-/i', '', $normalizedCode);
+
+        if ($normalizedCode === '') {
+            return null;
+        }
+
+        return User::query()
+            ->where('referral_code', $normalizedCode)
+            ->orWhere('user_code', $normalizedCode)
+            ->first();
     }
 }

@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan:*)",
+      "Bash(mysql -u root -e \"USE games_backend; SHOW TABLES LIKE ''%tournament%'';\")",
+      "Bash(php -r \":*)",
+      "Bash(grep -r \"class PrizeRowUI\\\\|class ResultRowUI\\\\|class TournamentData\\\\|class PrizeData\\\\|class BracketData\\\\|class MatchPlayer\\\\b\" D:/Live-Code/games/unity/Assets/ --include=*.cs -l)",
+      "Bash(grep -r \"\\\\.On\\\\|\\\\.Once\\\\|\\\\.Emit\\\\|SocketManager\\\\|SocketIOEventTypes\" D:/Live-Code/games/unity/Assets/_Project/ --include=*.cs -l)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl -s http://localhost:8000/admin/tournaments)",
+      "Bash(find D:/Live-Code/games/backend_laravel -path */Admin* -name *.php)",
+      "Bash(xargs ls:*)",
+      "Bash(curl -s -c /tmp/admin_cookies.txt -b /tmp/admin_cookies.txt http://localhost:8000/admin/login -I)",
+      "Bash(mysql -u root -e \"SELECT id, name, type, format, status, entry_fee, max_players, invite_code FROM games_backend.tournaments ORDER BY id;\")",
+      "Bash(mysql -u root -e \"SELECT tournament_id, position, prize_pct, prize_amount FROM games_backend.tournament_prizes ORDER BY tournament_id, position;\")",
+      "Bash(curl -s http://localhost:8000/api/v1/tournaments)",
+      "Bash(curl -s http://localhost:8000/api/v1/tournaments -H \"Accept: application/json\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s http://localhost:8000/api/v1/tournaments -H 'Accept: application/json')"
+    ]
+  }
+}

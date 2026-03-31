@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using DG.Tweening;
 using EasyUI.Toast;
 using JetBrains.Annotations;
@@ -369,12 +370,7 @@ namespace AndroApps
             Mobile = LogInDetail.MobileInputfield.text;
             if (Mobile == string.Empty)
             {
-                showtoastmessage("Please Enter Your Mobile Number");
-                return;
-            }
-            else if (Mobile.Length < 5)
-            {
-                showtoastmessage("Please Enter Valid Mobile Number");
+                showtoastmessage("Please Enter Your Login ID or Username");
                 return;
             }
             else if (Password == string.Empty)
@@ -516,41 +512,139 @@ namespace AndroApps
         #endregion
 
         #region Signup
+
         public void OnClickSignUp()
         {
             CommonUtil.CheckLog("signup click");
-            number = 1;
-            Mobile = SignUpDetail.MobileInputfield.text;
+            number   = 1;
             Password = SignUpDetail.PasswordInputfield.text;
-            Name = SignUpDetail.NameInputfield.text;
-            Referral = SignUpDetail.ReferralCodeInputfield.text;
+            Referral = SignUpDetail.ReferralCodeInputfield != null
+                ? SignUpDetail.ReferralCodeInputfield.text : string.Empty;
 
-            if (Name == string.Empty)
+            string emailText  = SignUpDetail.EmailInputfield  != null
+                ? SignUpDetail.EmailInputfield.text.Trim()  : string.Empty;
+            string mobileText = SignUpDetail.MobileInputfield != null
+                ? SignUpDetail.MobileInputfield.text.Trim() : string.Empty;
+
+            bool hasEmail  = !string.IsNullOrEmpty(emailText);
+            bool hasMobile = !string.IsNullOrEmpty(mobileText);
+
+            if (!hasEmail && !hasMobile)
             {
-                showtoastmessage("Please Enter Your Name");
+                showtoastmessage("Please Enter Mobile Number or Email Address");
                 return;
             }
-            else if (Mobile == string.Empty)
-            {
-                showtoastmessage("Please Enter Your Mobile Number");
-                return;
-            }
-            else if (Mobile.Length < 10)
-            {
-                showtoastmessage("Please Enter Valid Mobile Number");
-                return;
-            }
-            else if (Password == string.Empty)
+
+            if (string.IsNullOrEmpty(Password))
             {
                 showtoastmessage("Please Enter Your Password");
                 return;
             }
+
+            if (!registertoggle.isOn)
+            {
+                showtoastmessage("Please agree with our terms & conditions to continue");
+                return;
+            }
+
+            if (hasEmail)
+            {
+                // ── Email mode ─────────────────────────────────────────────────
+                if (!emailText.Contains("@") || !emailText.Contains("."))
+                {
+                    showtoastmessage("Please Enter a Valid Email Address");
+                    return;
+                }
+
+                Mobile = string.Empty;
+                // Auto-generate name from email prefix (Name field is hidden)
+                Name = emailText.Split('@')[0];
+
+                PostSignupWithEmail(emailText, Name, Password, Referral);
+            }
             else
             {
-                if (registertoggle.isOn)
-                    PostUserSendOtp(Mobile, "register");
+                // ── Mobile mode ────────────────────────────────────────────────
+                if (mobileText.Length < 10)
+                {
+                    showtoastmessage("Please Enter Valid Mobile Number");
+                    return;
+                }
+
+                Mobile = mobileText;
+                // Auto-generate name from mobile number (Name field is hidden)
+                Name = "User" + mobileText.Substring(mobileText.Length - 4);
+
+                PostUserSendOtp(Mobile, "register");
+            }
+        }
+
+        // ── Email signup — direct register via new API (no OTP flow) ─────────
+        private async void PostSignupWithEmail(
+            string email,
+            string name,
+            string password,
+            string referral
+        )
+        {
+            string Url = Configuration.BaseUrl + "api/v1/auth/register";
+
+            // Backend validation requires `username` to be alpha_dash (A-Z a-z 0-9 _ -).
+            // Email local-part can contain dots/symbols, so sanitize it.
+            string emailPrefix = email.Split('@')[0];
+            string safePrefix =
+                Regex.Replace(emailPrefix, @"[^A-Za-z0-9_-]", "_").Trim('_', '-');
+            if (string.IsNullOrEmpty(safePrefix))
+                safePrefix = "user";
+
+            string username = safePrefix.ToLower();
+            if (username.Length > 50)
+                username = username.Substring(0, 50);
+
+            var formData = new Dictionary<string, string>
+            {
+                { "username", username },
+                { "email", email },
+                { "password", password },
+                { "device_name", Application.productName },
+                // Laravel dot validation expects `profile.first_name` -> send as nested array.
+                { "profile[first_name]", name },
+            };
+
+            // Avoid sending empty referral_code (exists validation will fail for empty string).
+            if (!string.IsNullOrEmpty(referral))
+                formData.Add("referral_code", referral);
+
+            var v1Response = await APIManager.Instance.Post<AuthRegisterV1Response>(Url, formData);
+
+            if (
+                v1Response != null
+                && v1Response.success
+                && v1Response.data != null
+                && v1Response.data.user != null
+                && !string.IsNullOrEmpty(v1Response.data.user.user_code)
+                && !string.IsNullOrEmpty(v1Response.data.token)
+            )
+            {
+                PlayerPrefs.SetString("id", v1Response.data.user.user_code);
+                PlayerPrefs.SetString("token", v1Response.data.token);
+                PlayerPrefs.SetString("MyEmail", email);
+                PlayerPrefs.Save();
+
+                SignUpDetail?.Clear();
+                if (SignUpDetail?.SignUpPnl  != null) SignUpDetail.SignUpPnl.SetActive(false);
+                if (LogInDetail?.LogInPnl    != null) LogInDetail.LogInPnl.SetActive(false);
+
+                showtoastmessage("Registered Successfully");
+
+                if (SceneLoader.Instance != null)
+                    SceneLoader.Instance.LoadScene("HomePage");
                 else
-                    showtoastmessage("Please agree with our terms & conditions to continue");
+                    UnityEngine.SceneManagement.SceneManager.LoadScene("HomePage");
+            }
+            else
+            {
+                showtoastmessage(v1Response?.message ?? "Registration failed. Please try again.");
             }
         }
 
@@ -701,7 +795,13 @@ namespace AndroApps
         {
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
             ClosePanel();
-            SignUpDetail.ReferralCodeInputfield.text = PlayerPrefs.GetString("Reffral-ID");
+            ConfigureLoginIdentifierField();
+            if (SignUpDetail.ReferralCodeInputfield != null)
+                SignUpDetail.ReferralCodeInputfield.text = PlayerPrefs.GetString("Reffral-ID");
+
+            // Patch signup panel with Email/Mobile toggle buttons (code-driven, no scene edit)
+            var patcher = gameObject.AddComponent<SignupTogglePatcher>();
+            patcher.Initialize(this);
 
             // Add listeners to each button
             // for (int i = 0; i < buttons.Length; i++)
@@ -709,6 +809,27 @@ namespace AndroApps
             //     int index = i; // Required to capture the correct value of i in lambda expression
             //     buttons[i].onClick.AddListener(() => AnimatePanel(panels[index]));
             // }
+        }
+
+        private void ConfigureLoginIdentifierField()
+        {
+            if (LogInDetail == null || LogInDetail.MobileInputfield == null)
+                return;
+
+            var loginField = LogInDetail.MobileInputfield;
+            loginField.contentType = TMP_InputField.ContentType.Standard;
+            loginField.characterValidation = TMP_InputField.CharacterValidation.None;
+            loginField.lineType = TMP_InputField.LineType.SingleLine;
+            loginField.keyboardType = TouchScreenKeyboardType.Default;
+
+            if (loginField.placeholder != null)
+            {
+                var placeholder = loginField.placeholder.GetComponent<TMP_Text>();
+                if (placeholder != null)
+                    placeholder.text = "Enter User ID / Username / Email / Mobile";
+            }
+
+            loginField.ForceLabelUpdate();
         }
 
         private void AnimatePanel(RectTransform panel)

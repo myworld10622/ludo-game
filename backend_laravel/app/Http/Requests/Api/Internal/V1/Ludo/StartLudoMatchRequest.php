@@ -20,7 +20,7 @@ class StartLudoMatchRequest extends FormRequest
             'server_seed' => ['nullable', 'string', 'max:120'],
             'prize_pool' => ['nullable', 'numeric', 'min:0'],
             'turn_state' => ['nullable', 'array'],
-            'seats' => ['required', 'array', 'min:1'],
+            'seats' => ['nullable', 'array'],
             'seats.*.seat_no' => ['nullable', 'integer', 'min:1', 'max:8'],
             'seats.*.seatNo' => ['nullable', 'integer', 'min:1', 'max:8'],
             'seats.*.user_id' => ['nullable', 'integer', 'min:1'],

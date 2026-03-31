@@ -3,6 +3,7 @@ const LudoRoomEngineService = require("../services/ludoRoomEngineService");
 const LudoLaravelSyncService = require("../services/ludoLaravelSyncService");
 const tournamentLudoLaravelSyncService = require("../services/tournamentLudoLaravelSyncService");
 const tournamentLudoRoomService = require("../services/tournamentLudoRoomService");
+const tournamentMatchResultService = require("../services/tournamentMatchResultService");
 const { roomStates, playerTypes, socketEvents } = require("../constants/ludoRoom");
 
 module.exports = function (namespace) {
@@ -253,6 +254,7 @@ module.exports = function (namespace) {
 
       room.startRetryCount = 0;
       room.state = roomStates.PLAYING;
+      room.startedAt = new Date();
       namespace.to(room.roomId).emit(socketEvents.server.STARTING, {
         room_id: room.roomId,
         started_with_bots: startedWithBots,
@@ -273,8 +275,11 @@ module.exports = function (namespace) {
   function buildTournamentRoomFromClaim(claimData, userId, tournamentUuid, tournamentEntryUuid) {
     const roomData = claimData && claimData.data ? claimData.data : claimData;
     const players = Array.isArray(roomData.players) ? roomData.players : [];
+    // allow_bots from Laravel response (tournament.bot_allowed) takes priority
     const allowBotsInTournaments =
-      process.env.LUDO_ALLOW_BOTS_IN_TOURNAMENTS !== "false";
+      roomData.allow_bots !== undefined
+        ? Boolean(roomData.allow_bots)
+        : process.env.LUDO_ALLOW_BOTS_IN_TOURNAMENTS !== "false";
     const botFillAfterSeconds = Number(
       roomData.bot_fill_after_seconds ??
         process.env.LUDO_BOT_FILL_AFTER_SECONDS ??
@@ -319,14 +324,19 @@ module.exports = function (namespace) {
       realPlayers: Number(roomData.current_real_players || seats.filter((seat) => seat.playerType === playerTypes.HUMAN).length),
       botPlayers: Number(roomData.current_bot_players || 0),
       allowBots: allowBotsInTournaments,
+      minRealPlayers: 1,
       botFillAfterSeconds: Math.max(0, botFillAfterSeconds),
       fillBotsAt: null,
       entryFee: Number(roomData.entry_fee || 0),
       matchUuid: roomData.match_uuid ?? null,
+      // New: Laravel tournament_matches.id for result posting
+      tournamentMatchId: roomData.tournament_match_id ?? null,
+      tournamentId: roomData.tournament_id ?? null,
       tournamentUuid,
       tournamentEntryUuid,
       players,
       seats,
+      startedAt: null,
       queueKey: `ludo:tournament:${tournamentUuid}`,
     };
   }
@@ -651,6 +661,34 @@ module.exports = function (namespace) {
               rankings
             )
           );
+
+          // ── NEW: Post result to new tournament match result endpoint ──────────
+          if (room.tournamentMatchId) {
+            const resultsList = tournamentMatchResultService.buildResultsFromSeatState(
+              serializeRoom(room),
+              placements.map((p) => ({
+                seatNo:         p.seat_no ?? p.seatNo,
+                userId:         p.user_id ?? p.userId ?? null,
+                score:          p.score ?? 0,
+                finishPosition: p.finish_position ?? p.finishPosition,
+                result:         p.result ?? (p.finish_position === 1 ? "win" : "loss"),
+              }))
+            );
+
+            await runSettlementSync(() =>
+              tournamentMatchResultService.postResult({
+                matchId:    room.tournamentMatchId,
+                roomId:     room.roomId,
+                startedAt:  room.startedAt ?? new Date(),
+                endedAt:    new Date(),
+                results:    resultsList,
+                gameLog:    payload.gameLog ?? null,
+              })
+            ).catch((err) => {
+              // Non-blocking: log but don't fail the settlement
+              console.error(`[TournamentMatchResult] Failed to post result for match ${room.tournamentMatchId}:`, err.message);
+            });
+          }
         } catch (error) {
           console.error(error.message);
           socket.emit(socketEvents.server.ERROR, {

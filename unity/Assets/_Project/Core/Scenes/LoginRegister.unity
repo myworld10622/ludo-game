@@ -728,11 +728,14 @@ MonoBehaviour:
   SignUpDetail:
     PasswordInputfield: {fileID: 5983599971964649872}
     MobileInputfield: {fileID: 1179112194661803768}
+    EmailInputfield: {fileID: 0}
     NameInputfield: {fileID: 1329992248502802589}
     ReferralCodeInputfield: {fileID: 607506354308180761}
     _Toggle: {fileID: 0}
     OtpPanel: {fileID: 6483212423579852789}
     SignUpPnl: {fileID: 6535348860342967388}
+    MobileGroup: {fileID: 0}
+    EmailGroup: {fileID: 0}
   LogInOutput:
     message: 
     user_data: []
@@ -4846,7 +4849,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: -104, y: 67.56799}
+  m_AnchoredPosition: {x: -104, y: -35}
   m_SizeDelta: {x: 551.96, y: 62.824}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!222 &395796751982736310
@@ -6631,7 +6634,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 1}
   m_AnchorMax: {x: 0.5, y: 1}
-  m_AnchoredPosition: {x: 0, y: -65.7}
+  m_AnchoredPosition: {x: 0, y: 10}
   m_SizeDelta: {x: 288.9849, y: 86.752}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!222 &1502683661870723694
@@ -8900,7 +8903,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4281165490
-  m_fontColor: {r: 0.6981132, g: 0.40094337, b: 0.1745283, a: 1}
+  m_fontColor: {r: 0.9622642, g: 0.94255203, b: 0.9277679, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -11955,7 +11958,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4281165490
-  m_fontColor: {r: 0.6981132, g: 0.40094337, b: 0.1745283, a: 1}
+  m_fontColor: {r: 0.93962264, g: 0.9082175, b: 0.8846636, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -13444,7 +13447,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -100}
   m_SizeDelta: {x: 180, y: 49.616302}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!222 &7795139298981647778
@@ -14151,7 +14154,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
-  m_AnchoredPosition: {x: 4.6865234, y: 134}
+  m_AnchoredPosition: {x: 4.6865234, y: 25}
   m_SizeDelta: {x: 791, y: 132}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!224 &8617597323534447361
@@ -14264,7 +14267,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4281165490
-  m_fontColor: {r: 0.6981132, g: 0.40094337, b: 0.1745283, a: 1}
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -14757,7 +14760,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4283058876
-  m_fontColor: {r: 0.7372549, g: 0.2901961, b: 0.2901961, a: 1}
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -14848,7 +14851,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4283058876
-  m_fontColor: {r: 0.7372549, g: 0.2901961, b: 0.2901961, a: 1}
+  m_fontColor: {r: 0.93962264, g: 0.89884657, b: 0.89884657, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
