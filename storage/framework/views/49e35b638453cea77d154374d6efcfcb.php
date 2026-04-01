@@ -319,7 +319,8 @@
     <aside class="sidebar">
         <div class="brand">Gaming Admin</div>
         <a class="nav-link <?php echo e(request()->routeIs('admin.dashboard') ? 'active' : ''); ?>" href="<?php echo e(route('admin.dashboard')); ?>">Dashboard</a>
-        <a class="nav-link <?php echo e(request()->routeIs('admin.games.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.games.index')); ?>">Games</a>
+        <a class="nav-link <?php echo e(request()->routeIs('admin.games.index') ? 'active' : ''); ?>" href="<?php echo e(route('admin.games.index')); ?>">Games</a>
+        <a class="nav-link <?php echo e(request()->routeIs('admin.games.ludo-tables.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.games.ludo-tables.index')); ?>" style="padding-left:24px;font-size:13px;">↳ Classic Ludo Tables</a>
         <a class="nav-link <?php echo e(request()->routeIs('admin.tournaments.index') || request()->routeIs('admin.tournaments.create') ? 'active' : ''); ?>" href="<?php echo e(route('admin.tournaments.index')); ?>">Tournaments</a>
         <a class="nav-link <?php echo e(request()->routeIs('admin.tournaments.matches') ? 'active' : ''); ?>" href="<?php echo e(route('admin.tournaments.matches')); ?>" style="padding-left:24px;font-size:13px;">↳ Match Monitor</a>
         <a class="nav-link <?php echo e(request()->routeIs('admin.users.*') ? 'active' : ''); ?>" href="<?php echo e(route('admin.users.index')); ?>">Users</a>

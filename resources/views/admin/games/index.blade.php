@@ -5,6 +5,16 @@
 @section('subheading', 'Manage game availability, routing, and tournament support')
 
 @section('content')
+    <div class="panel" style="margin-bottom:16px;">
+        <div class="header-row">
+            <div>
+                <strong>Classic Ludo Fee Tables</strong>
+                <div class="muted" style="margin-top:4px;">2 Player aur 4 Player classic lobby ke fee cards, active rooms, aur monitoring ko yahan se manage karo.</div>
+            </div>
+            <a href="{{ route('admin.games.ludo-tables.index') }}" class="btn">Open Classic Ludo Tables</a>
+        </div>
+    </div>
+
     <div class="panel">
         <div class="header-row">
             <strong>Game Catalog</strong>

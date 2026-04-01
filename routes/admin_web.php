@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\Auth\AdminAuthController;
 use App\Http\Controllers\Admin\Web\AuditLogController;
+use App\Http\Controllers\Admin\Web\ClassicLudoTableController;
 use App\Http\Controllers\Admin\Web\DashboardController;
 use App\Http\Controllers\Admin\Web\GameController;
 use App\Http\Controllers\Admin\Web\MatchMonitorController;
@@ -21,6 +22,10 @@ Route::middleware('web')->group(function () {
             Route::get('/dashboard', DashboardController::class);
             Route::get('/games', [GameController::class, 'index'])->name('games.index');
             Route::post('/games/{game}', [GameController::class, 'update'])->name('games.update');
+            Route::get('/games/ludo-tables', [ClassicLudoTableController::class, 'index'])->name('games.ludo-tables.index');
+            Route::post('/games/ludo-tables', [ClassicLudoTableController::class, 'store'])->name('games.ludo-tables.store');
+            Route::put('/games/ludo-tables/{classicLudoTable}', [ClassicLudoTableController::class, 'update'])->name('games.ludo-tables.update');
+            Route::delete('/games/ludo-tables/{classicLudoTable}', [ClassicLudoTableController::class, 'destroy'])->name('games.ludo-tables.destroy');
             Route::get('/tournaments/create', [TournamentController::class, 'create'])->name('tournaments.create');
             Route::get('/tournaments/matches', [MatchMonitorController::class, 'index'])->name('tournaments.matches');
             Route::post('/tournaments/run-scheduler', [TournamentController::class, 'runScheduler'])->name('tournaments.run-scheduler');

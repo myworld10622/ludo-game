@@ -55,4 +55,9 @@ class Game extends Model
     {
         return $this->hasMany(GameMatch::class);
     }
+
+    public function classicLudoTables(): HasMany
+    {
+        return $this->hasMany(ClassicLudoTable::class);
+    }
 }
