@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Api\Legacy\UserCompatibilityController;
+use App\Http\Controllers\Api\Legacy\LudoCompatibilityController;
 use App\Http\Controllers\Api\Internal\V1\LudoMatchController as InternalLudoMatchController;
 use App\Http\Controllers\Api\Internal\V1\TournamentMatchResultController as InternalTournamentMatchResult;
 use App\Http\Controllers\Api\V1\AppConfigController;
@@ -48,6 +49,11 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/update_password', [UserCompatibilityController::class, 'updatePassword']);
     });
 }
+
+Route::prefix('ludo')->group(function () {
+    Route::post('/get_table_master', [LudoCompatibilityController::class, 'getTableMaster']);
+    Route::post('/get_table_master_bachpan', [LudoCompatibilityController::class, 'getTableMasterBachpan']);
+});
 
 // ── API v1 Routes ─────────────────────────────────────────────────────────────
 Route::prefix($version)

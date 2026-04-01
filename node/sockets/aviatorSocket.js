@@ -17,26 +17,54 @@ module.exports = function (aviator_socket, Sequelize, sequelize, dateTime) {
     var game_id = 0;
     var interval_id;
     var game_created = false;
+    var isTimerRunning = false;
     aviator_socket.on('connection', (socket) => {
         console.log('aviator connected')
-        // setInterval(aviator_timer_function, 15000);
+        ensureTimer();
+
+        socket.on('disconnect', () => {
+            if (aviator_socket.sockets.size === 0) {
+                stopTimer();
+            }
+        });
     });
 
     function randomNumber(min, max) {
         return (Math.random() * (max - min) + min).toFixed(2);
     }
 
-    // if(user_count>0){
-    interval_id = setInterval(aviator_timer_function, 1000);
-    // }
+    function ensureTimer() {
+        if (isTimerRunning) {
+            return;
+        }
+
+        interval_id = setInterval(aviator_timer_function, 1000);
+        isTimerRunning = true;
+    }
+
+    function stopTimer() {
+        if (!isTimerRunning) {
+            return;
+        }
+
+        clearInterval(interval_id);
+        interval_id = null;
+        isTimerRunning = false;
+        timer = avaitor_timer;
+    }
 
 
     async function aviator_timer_function() {
         var user_count = aviator_socket.sockets.size;
+
+        if (user_count <= 0) {
+            return;
+        }
+
         if (timer <= 0) {
             clearInterval(interval_id);
+            isTimerRunning = false;
             // if (user_count > 0) {
-            console.log("user count " + user_count)
             const game_data = await getActiveGame();
             //  console.log('game_date',game_data);
             if (game_data) {
@@ -171,6 +199,7 @@ module.exports = function (aviator_socket, Sequelize, sequelize, dateTime) {
             });*/
             // setTimeout(function () {
             interval_id = setInterval(aviator_timer_function, 1000);
+            isTimerRunning = true;
             // }, 5000);
             timer = avaitor_timer;
             // }

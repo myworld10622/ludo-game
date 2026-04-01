@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using DG.Tweening;
 using Mkey;
+using Newtonsoft.Json;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Networking;
@@ -149,6 +150,14 @@ public class DashBoardManagerOffline : MonoBehaviour
         private Vector2 cachedPlayer4Position;
         private Vector2 cachedPlayer2Size;
         private Vector2 cachedPlayer4Size;
+        private Coroutine classicLobbyTablesCoroutine;
+        private int classicLobbyTablesRequestVersion;
+        private readonly Dictionary<int, HashSet<int>> classicLobbyAllowedFees =
+            new Dictionary<int, HashSet<int>>()
+            {
+                { 2, new HashSet<int>() },
+                { 4, new HashSet<int>() },
+            };
         private readonly List<GameObject> hiddenTournamentMenuObjects = new List<GameObject>();
         private bool suppressTournamentSideMenu;
 
@@ -465,6 +474,8 @@ public class DashBoardManagerOffline : MonoBehaviour
                 lobbySelectPanal.SetActive(true);
                 if (gameMode == "CLASSIC")
                 {
+                    PrepareClassicLobbyVisibility();
+                    RefreshClassicLobbyVisibilityFromAdmin();
                     ResolveTournamentPanel().ShowLauncherButton(false);
                     EnsureTournamentClassicTab();
                 }
@@ -691,6 +702,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 2;
                     fourPlayerLobby.SetActive(false);
                     twoPlayerLobby.SetActive(true);
+                    ApplyClassicLobbyVisibility(2);
                     UpdateClassicModeTabSelection(2);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
@@ -702,6 +714,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 4;
                     fourPlayerLobby.SetActive(true);
                     twoPlayerLobby.SetActive(false);
+                    ApplyClassicLobbyVisibility(4);
                     UpdateClassicModeTabSelection(4);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
@@ -750,6 +763,308 @@ public class DashBoardManagerOffline : MonoBehaviour
             //player4.DOAnchorPosY(oldPostion, 0f);
             player4.sizeDelta = smallSize;
             player4Button.sprite = unSelectSprite;
+        }
+
+        private void PrepareClassicLobbyVisibility()
+        {
+            HideClassicLobbyFeeCards(twoPlayerLobby);
+            HideClassicLobbyFeeCards(fourPlayerLobby);
+        }
+
+        private void RefreshClassicLobbyVisibilityFromAdmin()
+        {
+            classicLobbyTablesRequestVersion++;
+
+            if (classicLobbyTablesCoroutine != null)
+            {
+                StopCoroutine(classicLobbyTablesCoroutine);
+            }
+
+            classicLobbyTablesCoroutine = StartCoroutine(
+                LoadClassicLobbyVisibilityFromAdmin(classicLobbyTablesRequestVersion)
+            );
+        }
+
+        private IEnumerator LoadClassicLobbyVisibilityFromAdmin(int requestVersion)
+        {
+            yield return FetchClassicLobbyFees(2, requestVersion);
+            yield return FetchClassicLobbyFees(4, requestVersion);
+
+            if (requestVersion != classicLobbyTablesRequestVersion)
+            {
+                yield break;
+            }
+
+            ApplyClassicLobbyVisibility(ResolveSelectedPlayerCount());
+            classicLobbyTablesCoroutine = null;
+        }
+
+        private IEnumerator FetchClassicLobbyFees(int playerCount, int requestVersion)
+        {
+            string userId = Configuration.GetId();
+            string userToken = Configuration.GetToken();
+
+            if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(userToken))
+            {
+                Debug.LogWarning("Classic Ludo table visibility skipped: missing user session.");
+                yield break;
+            }
+
+            WWWForm form = new WWWForm();
+            form.AddField("user_id", userId);
+            form.AddField("no_of_players", playerCount.ToString());
+            form.AddField("token", userToken);
+
+            using (UnityWebRequest request = UnityWebRequest.Post(Configuration.LudoGettablemaster, form))
+            {
+                if (!string.IsNullOrWhiteSpace(Configuration.TokenLoginHeader))
+                {
+                    request.SetRequestHeader("Token", Configuration.TokenLoginHeader);
+                }
+
+                yield return request.SendWebRequest();
+
+                if (requestVersion != classicLobbyTablesRequestVersion)
+                {
+                    yield break;
+                }
+
+                if (request.result == UnityWebRequest.Result.ConnectionError
+                    || request.result == UnityWebRequest.Result.ProtocolError)
+                {
+                    Debug.LogWarning(
+                        "Classic Ludo table visibility request failed for "
+                        + playerCount
+                        + "P: "
+                        + request.error
+                    );
+                    yield break;
+                }
+
+                string response = request.downloadHandler.text;
+                ClassicLobbyTableResponse payload = null;
+
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<ClassicLobbyTableResponse>(response);
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogWarning(
+                        "Classic Ludo table visibility parse failed for "
+                        + playerCount
+                        + "P: "
+                        + ex.Message
+                    );
+                }
+
+                if (payload?.table_data == null)
+                {
+                    Debug.LogWarning(
+                        "Classic Ludo table visibility returned no table_data for "
+                        + playerCount
+                        + "P."
+                    );
+                    yield break;
+                }
+
+                HashSet<int> allowedFees = new HashSet<int>();
+                for (int i = 0; i < payload.table_data.Count; i++)
+                {
+                    if (TryParseLobbyFeeValue(payload.table_data[i]?.boot_value, out int fee))
+                    {
+                        allowedFees.Add(fee);
+                    }
+                }
+
+                classicLobbyAllowedFees[playerCount] = allowedFees;
+                ApplyClassicLobbyVisibility(playerCount);
+                Debug.Log("Classic Ludo active " + playerCount + "P fees: " + string.Join(",", allowedFees));
+            }
+        }
+
+        private void ApplyClassicLobbyVisibility(int playerCount)
+        {
+            GameObject lobbyRoot = playerCount == 4 ? fourPlayerLobby : twoPlayerLobby;
+            if (lobbyRoot == null)
+            {
+                return;
+            }
+
+            HashSet<int> allowedFees = classicLobbyAllowedFees.ContainsKey(playerCount)
+                ? classicLobbyAllowedFees[playerCount]
+                : null;
+
+            bool hasServerConfig = allowedFees != null && allowedFees.Count > 0;
+            foreach (GameObject card in ResolveClassicLobbyCards(lobbyRoot))
+            {
+                if (card == null)
+                {
+                    continue;
+                }
+
+                if (CardContainsText(card.transform, "Pass N Play"))
+                {
+                    card.SetActive(true);
+                    continue;
+                }
+
+                int fee = ResolveClassicLobbyCardFee(card.transform);
+                if (fee <= 0)
+                {
+                    continue;
+                }
+
+                bool shouldShow = hasServerConfig && allowedFees.Contains(fee);
+                card.SetActive(shouldShow);
+            }
+        }
+
+        private void HideClassicLobbyFeeCards(GameObject lobbyRoot)
+        {
+            if (lobbyRoot == null)
+            {
+                return;
+            }
+
+            foreach (GameObject card in ResolveClassicLobbyCards(lobbyRoot))
+            {
+                if (card == null)
+                {
+                    continue;
+                }
+
+                if (CardContainsText(card.transform, "Pass N Play"))
+                {
+                    card.SetActive(true);
+                    continue;
+                }
+
+                card.SetActive(false);
+            }
+        }
+
+        private List<GameObject> ResolveClassicLobbyCards(GameObject lobbyRoot)
+        {
+            List<GameObject> cards = new List<GameObject>();
+            if (lobbyRoot == null)
+            {
+                return cards;
+            }
+
+            GridLayoutGroup[] grids = lobbyRoot.GetComponentsInChildren<GridLayoutGroup>(true);
+            for (int i = 0; i < grids.Length; i++)
+            {
+                GridLayoutGroup grid = grids[i];
+                if (grid == null || grid.transform == null)
+                {
+                    continue;
+                }
+
+                for (int j = 0; j < grid.transform.childCount; j++)
+                {
+                    Transform child = grid.transform.GetChild(j);
+                    if (child == null)
+                    {
+                        continue;
+                    }
+
+                    if (CardContainsText(child, "Pass N Play") || CardContainsText(child, "Entry Fees"))
+                    {
+                        cards.Add(child.gameObject);
+                    }
+                }
+            }
+
+            return cards;
+        }
+
+        private bool TryParseLobbyFeeValue(string rawValue, out int fee)
+        {
+            fee = 0;
+            if (string.IsNullOrWhiteSpace(rawValue))
+            {
+                return false;
+            }
+
+            string sanitized = rawValue
+                .Replace("₹", string.Empty)
+                .Replace(",", string.Empty)
+                .Trim();
+
+            if (int.TryParse(sanitized, out fee))
+            {
+                return fee > 0;
+            }
+
+            if (float.TryParse(sanitized, out float floatFee))
+            {
+                fee = Mathf.RoundToInt(floatFee);
+                return fee > 0;
+            }
+
+            return false;
+        }
+
+        private bool CardContainsText(Transform root, string value)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            Text[] texts = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(texts[i].text)
+                    && texts[i].text.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            TextMeshProUGUI[] tmpTexts = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < tmpTexts.Length; i++)
+            {
+                if (!string.IsNullOrWhiteSpace(tmpTexts[i].text)
+                    && tmpTexts[i].text.IndexOf(value, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private int ResolveClassicLobbyCardFee(Transform root)
+        {
+            List<int> numericValues = new List<int>();
+
+            Text[] texts = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                if (TryParseLobbyFeeValue(texts[i].text, out int value))
+                {
+                    numericValues.Add(value);
+                }
+            }
+
+            TextMeshProUGUI[] tmpTexts = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < tmpTexts.Length; i++)
+            {
+                if (TryParseLobbyFeeValue(tmpTexts[i].text, out int value))
+                {
+                    numericValues.Add(value);
+                }
+            }
+
+            if (numericValues.Count == 0)
+            {
+                return 0;
+            }
+
+            numericValues.Sort();
+            return numericValues[numericValues.Count - 1];
         }
 
         public void ClickOnPLayButton(int value)
@@ -1297,6 +1612,20 @@ public class DashBoardManagerOffline : MonoBehaviour
                 }
                 socketNumberEventReceiver.PlayerJoinData();
             }
+        }
+
+        [Serializable]
+        private class ClassicLobbyTableResponse
+        {
+            public string message;
+            public List<ClassicLobbyTableData> table_data;
+            public int code;
+        }
+
+        [Serializable]
+        private class ClassicLobbyTableData
+        {
+            public string boot_value;
         }
 
         private void ChangeLobbyId()

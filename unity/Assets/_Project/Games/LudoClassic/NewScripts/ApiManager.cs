@@ -6,14 +6,7 @@ using UnityEngine.Networking;
 
 public class ApiManager : MonoBehaviour
 {
-    public const string ludoLobbyUrl = "https://games.androappstech.in/api/ludo/get_table_master";
-    public const string userid = "155";
     public string noOfPlayers;
-    public const string token = "91c595b94b2bf6ee794111a431ecd05d";
-    public const string TokenLoginHeader =
-         "c7d3965d49d4a59b0da80e90646aee77548458b3377ba3c0fb43d5ff91d54ea28833080e3de6ebd4fde36e2fb7175cddaf5d8d018ac1467c3d15db21c11b6909";
-
-
     public ReciveTableClass reciveTableClass;
     public List<GameObject> listofroom;
     public RoomPrefabController roomPrefabController;
@@ -25,7 +18,7 @@ public class ApiManager : MonoBehaviour
     public void ClickOnGetLobbyBtn(string no_of_players)
     {
         noOfPlayers = no_of_players;
-        StartCoroutine(LudoPostRequest(ludoLobbyUrl));
+        StartCoroutine(LudoPostRequest(Configuration.LudoGettablemaster));
     }
 
     IEnumerator LudoPostRequest(string url)
@@ -39,16 +32,25 @@ public class ApiManager : MonoBehaviour
             listofroom.Clear();
         }
 
+        string userId = Configuration.GetId();
+        string userToken = Configuration.GetToken();
+
+        if (string.IsNullOrWhiteSpace(userId) || string.IsNullOrWhiteSpace(userToken))
+        {
+            Debug.LogError("RES_Check + Ludo table list aborted: missing logged-in user id/token.");
+            yield break;
+        }
+
         WWWForm form = new WWWForm();
-        form.AddField("user_id", userid);
+        form.AddField("user_id", userId);
         form.AddField("no_of_players", noOfPlayers);
-        form.AddField("token", token);
+        form.AddField("token", userToken);
 
         using (UnityWebRequest request = UnityWebRequest.Post(url, form))
         {
-            if (TokenLoginHeader != null)
+            if (!string.IsNullOrWhiteSpace(Configuration.TokenLoginHeader))
             {
-                request.SetRequestHeader("Token", TokenLoginHeader);
+                request.SetRequestHeader("Token", Configuration.TokenLoginHeader);
             }
             else
             {
@@ -69,6 +71,12 @@ public class ApiManager : MonoBehaviour
                 string response = request.downloadHandler.text;
                 Debug.Log("RES_Check + Ludo table_list Response: " + response);
                 reciveTableClass = JsonConvert.DeserializeObject<ReciveTableClass>(response);
+
+                if (reciveTableClass?.table_data == null)
+                {
+                    Debug.LogWarning("RES_Check + Ludo table_list returned no table_data.");
+                    yield break;
+                }
 
                 for (int i = 0; i < reciveTableClass.table_data.Count; i++)
                 {
