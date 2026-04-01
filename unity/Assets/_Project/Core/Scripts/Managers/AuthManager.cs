@@ -452,7 +452,6 @@ namespace AndroApps
                 }
                 else
                 {
-                    Debug.LogWarning("SpriteManager.Instance is null during login. Skipping pre-home data sync.");
                 }
             }
             catch (Exception ex)
@@ -466,7 +465,6 @@ namespace AndroApps
             }
             else
             {
-                Debug.LogWarning("SceneLoader.Instance is null after login. Falling back to SceneManager.LoadScene.");
                 SceneManager.LoadScene("HomePage");
             }
             //SceneManager.LoadSceneAsync("HomePage");

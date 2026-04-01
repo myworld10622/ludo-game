@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 163554270340421780}
   - component: {fileID: 1350629352217541317}
   m_Layer: 5
-  m_Name: close-green
+  m_Name: gameoption-close-green
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -244,7 +244,7 @@ GameObject:
   - component: {fileID: 1083112624603480902}
   - component: {fileID: 34656276164047010}
   m_Layer: 5
-  m_Name: Option
+  m_Name: gameoption-root
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -338,7 +338,7 @@ GameObject:
   - component: {fileID: 5606135725321088562}
   - component: {fileID: 4413597467979418807}
   m_Layer: 5
-  m_Name: exit
+  m_Name: gameoption-exit-shell
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -507,7 +507,7 @@ GameObject:
   - component: {fileID: 3276342141296622291}
   - component: {fileID: 3830116189038284826}
   m_Layer: 5
-  m_Name: exit
+  m_Name: gameoption-exit-label
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -752,7 +752,7 @@ GameObject:
   - component: {fileID: 3410601887604383591}
   - component: {fileID: 2495502007861739618}
   m_Layer: 5
-  m_Name: info
+  m_Name: gameoption-info
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -827,7 +827,7 @@ GameObject:
   - component: {fileID: 2610714294086603247}
   - component: {fileID: 1625261159666346235}
   m_Layer: 5
-  m_Name: Rule text
+  m_Name: gameoption-rule-text
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1652,7 +1652,7 @@ GameObject:
   - component: {fileID: 6071338536038922567}
   - component: {fileID: 5282983852186272496}
   m_Layer: 5
-  m_Name: setting
+  m_Name: gameoption-setting
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

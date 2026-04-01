@@ -247,18 +247,18 @@ SpriteAtlas:
   - 10
   - dragon-text-1-2
   - t-history
-  - mask
+  - dragontiger-mask
   - wallet-pannel
   - tie-panel
   - vs-red
   - tiger
   - 1000
-  - Chip
+  - dragontiger-Chip
   - table-top
   - Ribbon
   - guest-pannel
   - history-pannel-1
-  - Menu iconns
+  - dragontiger-Menu-iconns
   - tietext
   - Table-Bg
   - history-blue
@@ -269,7 +269,7 @@ SpriteAtlas:
   - Vs_00019
   - Table
   - tiger-logo
-  - close-green
+  - dragontiger-close-green
   m_RenderDataMap: {}
   m_Tag: DragonTigerNewAtlas
   m_IsVariant: 0

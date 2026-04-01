@@ -1,23 +1,13 @@
-// using System.Collections;
-// using System.Collections.Generic;
-// using System.Data;
-// using EasyButtons;
-// using TMPro;
-// using UnityEngine;
-// using UnityEngine.AddressableAssets;
-// using UnityEngine.EventSystems;
-// using UnityEngine.ResourceManagement.AsyncOperations;
-// using UnityEngine.ResourceManagement.ResourceProviders;
-// using UnityEngine.SceneManagement;
-// using UnityEngine.UI;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
 
-// public class AddressableDownload : MonoBehaviour
-// {
-//     public Slider progressBar;
-//     public GameObject panel,
-//         prefab;
-//     public TextMeshProUGUI progress_text;
-//     public GameSelection select;
+public class AddressableDownload : MonoBehaviour
+{
+    public Slider progressBar;
+    public GameObject panel, prefab;
+    public TextMeshProUGUI progress_text;
+    public GameSelection select;
 
 //     // private Dictionary<string, string> sceneDictionary = new Dictionary<string, string>
 //     // {
@@ -246,5 +236,18 @@
 //             Debug.LogError($"Failed to load scene: {finalscene}");
 //         }
 //     }
-// }
+    public void CheckAndDownload(string scenename)
+    {
+        var clickedObject = UnityEngine.EventSystems.EventSystem.current?.currentSelectedGameObject;
+        if (clickedObject == null)
+        {
+            return;
+        }
 
+        var loader = clickedObject.GetComponent<LoaderScript>();
+        if (loader != null)
+        {
+            loader.loaddynamicscenebyname(scenename);
+        }
+    }
+}

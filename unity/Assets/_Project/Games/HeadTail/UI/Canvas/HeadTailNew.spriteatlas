@@ -175,11 +175,11 @@ SpriteAtlas:
   - {fileID: 21300000, guid: c8c2252f79b05e743ae85c3d56bde996, type: 3}
   - {fileID: 21300000, guid: 3dd21bff70b6a70408d814f83b56701b, type: 3}
   m_PackedSpriteNamesToIndex:
-  - Rule text
-  - profile-ring
-  - Option
+  - headtail-Rule-text
+  - headtail-profile-ring
+  - headtail-Option
   - 50
-  - setting
+  - headtail-setting
   - clock
   - logo
   - vs
@@ -188,27 +188,27 @@ SpriteAtlas:
   - head
   - close
   - coin-toss-pannel
-  - exit
+  - headtail-exit
   - head-history-icon
   - 100
   - 10
   - headtial-bg
   - tail_history_icon
-  - mask
-  - info
+  - headtail-mask
+  - headtail-info
   - tail
   - Off Toggle
   - 1000
-  - Chip
+  - headtail-Chip
   - On Toggel
   - table-new
-  - Profile
-  - Menu iconns
+  - headtail-Profile
+  - headtail-Menu-iconns
   - Table-Bg
   - guest-name-pannel-icon
   - coin-02-head
   - 5000
-  - close-green
+  - headtail-close-green
   m_RenderDataMap: {}
   m_Tag: HeadTailNew
   m_IsVariant: 0

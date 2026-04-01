@@ -7037,7 +7037,6 @@ GameObject:
   - component: {fileID: 187005546}
   - component: {fileID: 187005545}
   - component: {fileID: 187005544}
-  - component: {fileID: 187005542}
   m_Layer: 5
   m_Name: Take Photo
   m_TagString: Untagged
@@ -7065,18 +7064,6 @@ RectTransform:
   m_AnchoredPosition: {x: 476.5, y: -250.21875}
   m_SizeDelta: {x: 460, y: 87}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &187005542
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 187005540}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7e8b9dc5faf40e74fae48572bac39f42, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &187005544
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7120,19 +7107,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 187005545}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 187005542}
-        m_TargetAssemblyTypeName: TestScript, Assembly-CSharp
-        m_MethodName: openCamera
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &187005545
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7696,7 +7671,6 @@ GameObject:
   - component: {fileID: 203477770}
   - component: {fileID: 203477769}
   - component: {fileID: 203477768}
-  - component: {fileID: 203477767}
   m_Layer: 5
   m_Name: Main Scroll View
   m_TagString: Untagged
@@ -7726,18 +7700,6 @@ RectTransform:
   m_AnchoredPosition: {x: -11.885018, y: -57.191135}
   m_SizeDelta: {x: 23.769964, y: -123.6177}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &203477767
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 203477765}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81ceb149cdc21f844b05288f56a60b2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &203477768
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9170,7 +9132,6 @@ GameObject:
   - component: {fileID: 244820048}
   - component: {fileID: 244820051}
   - component: {fileID: 244820050}
-  - component: {fileID: 244820049}
   m_Layer: 5
   m_Name: Ticket
   m_TagString: Untagged
@@ -9200,18 +9161,6 @@ RectTransform:
   m_AnchoredPosition: {x: -43.00006, y: 3}
   m_SizeDelta: {x: 233.05762, y: 17.653824}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &244820049
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 244820047}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d47b2c7e60f6554ea0a1e239cb04230, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &244820050
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -12659,7 +12608,6 @@ GameObject:
   - component: {fileID: 339207712}
   - component: {fileID: 339207717}
   - component: {fileID: 339207716}
-  - component: {fileID: 339207715}
   - component: {fileID: 339207714}
   - component: {fileID: 339207718}
   - component: {fileID: 339207719}
@@ -12748,18 +12696,6 @@ MonoBehaviour:
           m_StringArgument: Baccarat.unity
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &339207715
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 339207711}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b280ab4dacc05b45862f683475a5b41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &339207716
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -14943,19 +14879,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 380918023}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 244820049}
-        m_TargetAssemblyTypeName: GenerateTicket, Assembly-CSharp
-        m_MethodName: GenerateoneTicket
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &380918023
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -18711,7 +18635,6 @@ GameObject:
   - component: {fileID: 489679679}
   - component: {fileID: 489679678}
   - component: {fileID: 489679677}
-  - component: {fileID: 489679681}
   m_Layer: 0
   m_Name: ImageManager
   m_TagString: Untagged
@@ -18798,18 +18721,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &489679681
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 489679676}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1bcef0a5ad1a6c547bee5527029347de, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &494531931
 GameObject:
   m_ObjectHideFlags: 0
@@ -19802,7 +19713,6 @@ GameObject:
   - component: {fileID: 530198397}
   - component: {fileID: 530198399}
   - component: {fileID: 530198398}
-  - component: {fileID: 530198400}
   m_Layer: 5
   m_Name: Notification_Banner
   m_TagString: Untagged
@@ -19868,18 +19778,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 530198396}
   m_CullTransparentMesh: 1
---- !u!114 &530198400
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 530198396}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 319f1a10f876c004cb7ca00c97cab243, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &530436100
 GameObject:
   m_ObjectHideFlags: 0
@@ -20545,19 +20443,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 547369270}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 530198400}
-        m_TargetAssemblyTypeName: Notificationbannerurl, Assembly-CSharp
-        m_MethodName: openurl
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!1 &548821271
 GameObject:
   m_ObjectHideFlags: 0
@@ -24460,7 +24346,6 @@ GameObject:
   - component: {fileID: 648928084}
   - component: {fileID: 648928083}
   - component: {fileID: 648928082}
-  - component: {fileID: 648928081}
   - component: {fileID: 648928080}
   - component: {fileID: 648928085}
   m_Layer: 5
@@ -24548,18 +24433,6 @@ MonoBehaviour:
           m_StringArgument: RedBlack.unity
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &648928081
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 648928078}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b280ab4dacc05b45862f683475a5b41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!95 &648928082
 Animator:
   serializedVersion: 7
@@ -33165,19 +33038,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 866077897}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls:
-      - m_Target: {fileID: 1460929147}
-        m_TargetAssemblyTypeName: GenerateTicket, Assembly-CSharp
-        m_MethodName: GenerateoneTicket
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
+      m_Calls: []
 --- !u!114 &866077897
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -53774,7 +53635,6 @@ GameObject:
   - component: {fileID: 1460929146}
   - component: {fileID: 1460929149}
   - component: {fileID: 1460929148}
-  - component: {fileID: 1460929147}
   m_Layer: 5
   m_Name: Ticket (1)
   m_TagString: Untagged
@@ -53804,18 +53664,6 @@ RectTransform:
   m_AnchoredPosition: {x: -43.000366, y: 3}
   m_SizeDelta: {x: 116.52783, y: 79.45491}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1460929147
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1460929145}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0d47b2c7e60f6554ea0a1e239cb04230, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1460929148
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -60408,7 +60256,6 @@ GameObject:
   - component: {fileID: 1686781700}
   - component: {fileID: 1686781705}
   - component: {fileID: 1686781704}
-  - component: {fileID: 1686781703}
   - component: {fileID: 1686781702}
   - component: {fileID: 1686781701}
   - component: {fileID: 1686781706}
@@ -60519,18 +60366,6 @@ MonoBehaviour:
           m_StringArgument: TeenPatti_JoinTable.unity
           m_BoolArgument: 1
         m_CallState: 2
---- !u!114 &1686781703
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1686781699}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b280ab4dacc05b45862f683475a5b41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1686781704
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -72878,7 +72713,6 @@ GameObject:
   - component: {fileID: 2041731787}
   - component: {fileID: 2041731792}
   - component: {fileID: 2041731791}
-  - component: {fileID: 2041731790}
   - component: {fileID: 2041731789}
   - component: {fileID: 2041731788}
   - component: {fileID: 2041731793}
@@ -72989,18 +72823,6 @@ MonoBehaviour:
           m_StringArgument: LudoClassicModeOffline
           m_BoolArgument: 0
         m_CallState: 2
---- !u!114 &2041731790
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2041731786}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b280ab4dacc05b45862f683475a5b41, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &2041731791
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -95059,7 +94881,6 @@ GameObject:
   - component: {fileID: 5616729699203701622}
   - component: {fileID: 6190084105091948187}
   - component: {fileID: 5964947871858839210}
-  - component: {fileID: 7749344254242668153}
   m_Layer: 5
   m_Name: Main Scroll View
   m_TagString: Untagged
@@ -107206,18 +107027,6 @@ RectTransform:
   m_AnchoredPosition: {x: -11.885018, y: -57.191135}
   m_SizeDelta: {x: 23.769964, y: -123.6177}
   m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &7749344254242668153
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4571764020606253549}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 81ceb149cdc21f844b05288f56a60b2a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!224 &7749344254840987624
 RectTransform:
   m_ObjectHideFlags: 0

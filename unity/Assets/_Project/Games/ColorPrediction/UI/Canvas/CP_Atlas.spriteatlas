@@ -116,14 +116,14 @@ SpriteAtlas:
   - join_violet
   - 100
   - 10
-  - mask
+  - colorprediction-mask
   - wallet-pannel
   - join_green
   - red
   - 1000
-  - Chip
+  - colorprediction-Chip
   - join_red
-  - Menu iconns
+  - colorprediction-Menu-iconns
   - pink_green
   - 5000
   - green
