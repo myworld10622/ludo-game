@@ -20,6 +20,7 @@ Route::middleware('web')->group(function () {
             Route::get('/', DashboardController::class)->name('dashboard');
             Route::get('/dashboard', DashboardController::class);
             Route::get('/games', [GameController::class, 'index'])->name('games.index');
+            Route::post('/games/{game}', [GameController::class, 'update'])->name('games.update');
             Route::get('/tournaments/create', [TournamentController::class, 'create'])->name('tournaments.create');
             Route::get('/tournaments/matches', [MatchMonitorController::class, 'index'])->name('tournaments.matches');
             Route::post('/tournaments/run-scheduler', [TournamentController::class, 'runScheduler'])->name('tournaments.run-scheduler');

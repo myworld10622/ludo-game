@@ -68,6 +68,9 @@
             <div class="panel"><div class="stat-label">Platform Fee %</div><div>{{ number_format((float) $tournament->platform_fee_pct, 2) }}%</div></div>
             <div class="panel"><div class="stat-label">Bots Allowed</div><div>{{ $tournament->bot_allowed ? 'Yes' : 'No' }}</div></div>
             <div class="panel"><div class="stat-label">Max Bot %</div><div>{{ number_format((float) $tournament->max_bot_pct, 2) }}%</div></div>
+            <div class="panel"><div class="stat-label">Bot Start Policy</div><div>{{ ucwords(str_replace('_', ' ', $tournament->resolveBotStartPolicy())) }}</div></div>
+            <div class="panel"><div class="stat-label">Min Real Players</div><div>{{ $tournament->resolveMinRealPlayersToStart() }}</div></div>
+            <div class="panel"><div class="stat-label">Bot Fill Delay</div><div>{{ $tournament->resolveBotFillAfterSeconds() }} sec</div></div>
             <div class="panel"><div class="stat-label">Registration Start</div><div>{{ $tournament->registration_start_at?->format('d M Y, h:i A') ?? '—' }}</div></div>
             <div class="panel"><div class="stat-label">Registration End</div><div>{{ $tournament->registration_end_at?->format('d M Y, h:i A') ?? '—' }}</div></div>
             <div class="panel"><div class="stat-label">Tournament Start</div><div>{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</div></div>

@@ -19,7 +19,7 @@ class Tournament extends Model
         'entry_fee', 'max_players', 'current_players', 'fake_registrations_count', 'players_per_match',
         'total_prize_pool', 'platform_fee_pct', 'platform_fee_amount',
         'turn_time_limit', 'match_timeout', 'disconnect_grace',
-        'bot_allowed', 'max_bot_pct',
+        'bot_allowed', 'max_bot_pct', 'bot_start_policy', 'min_real_players_to_start', 'bot_fill_after_seconds',
         'invite_code', 'invite_password',
         'requires_approval', 'is_approved',
         'approved_at', 'approval_note', 'rejected_at', 'rejection_reason',
@@ -38,6 +38,8 @@ class Tournament extends Model
         'platform_fee_pct'      => 'float',
         'platform_fee_amount'   => 'float',
         'bot_allowed'           => 'boolean',
+        'min_real_players_to_start' => 'integer',
+        'bot_fill_after_seconds' => 'integer',
         'requires_approval'     => 'boolean',
         'is_approved'           => 'boolean',
         'play_slots'            => 'array',
@@ -193,6 +195,45 @@ class Tournament extends Model
     public function canAddBot(): bool
     {
         return $this->bot_allowed && $this->currentBotCount() < $this->maxBotsAllowed();
+    }
+
+    public function resolveBotStartPolicy(): string
+    {
+        if (! $this->bot_allowed) {
+            return 'disabled';
+        }
+
+        $policy = (string) ($this->bot_start_policy ?: 'hybrid');
+
+        return in_array($policy, ['disabled', 'fill_missing', 'replace_offline', 'hybrid'], true)
+            ? $policy
+            : 'hybrid';
+    }
+
+    public function resolveMinRealPlayersToStart(): int
+    {
+        $matchSize = in_array((int) $this->players_per_match, [2, 4], true)
+            ? (int) $this->players_per_match
+            : 4;
+
+        $minRealPlayers = (int) ($this->min_real_players_to_start ?: 1);
+
+        return max(1, min($matchSize, $minRealPlayers));
+    }
+
+    public function resolveBotFillAfterSeconds(): int
+    {
+        return max(0, min(300, (int) ($this->bot_fill_after_seconds ?? 8)));
+    }
+
+    public function tournamentBotsCanFillMissingSeats(): bool
+    {
+        return in_array($this->resolveBotStartPolicy(), ['fill_missing', 'hybrid'], true);
+    }
+
+    public function tournamentBotsCanReplaceOfflinePlayers(): bool
+    {
+        return in_array($this->resolveBotStartPolicy(), ['replace_offline', 'hybrid'], true);
     }
 
     /**

@@ -1,0 +1,1655 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎲 Ludo Tournament Handbook — Hinglish</title>
+<style>
+/* ════════════════════════════════════════════════
+   RESET & BASE
+════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #080c14;
+  --bg2:       #0d1220;
+  --card:      #111827;
+  --card2:     #1a2235;
+  --border:    #1f2d42;
+  --border2:   #2a3a54;
+  --text:      #e8eef8;
+  --muted:     #7a8fa8;
+  --dim:       #4a5e78;
+  --gold:      #f5a623;
+  --gold2:     #ffc94d;
+  --teal:      #22d3a8;
+  --blue:      #60a5fa;
+  --purple:    #a78bfa;
+  --pink:      #f472b6;
+  --green:     #4ade80;
+  --red:       #f87171;
+  --orange:    #fb923c;
+  --yellow:    #facc15;
+  --sidebar-w: 260px;
+  --radius:    12px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+/* ════════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ════════════════════════════════════════════════
+   LAYOUT
+════════════════════════════════════════════════ */
+.layout { display: flex; min-height: 100vh; }
+
+/* ════════════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 0 0 32px;
+  flex-shrink: 0;
+}
+.sidebar-brand {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.sidebar-brand .logo { font-size: 22px; margin-bottom: 4px; }
+.sidebar-brand .title { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 0.04em; }
+.sidebar-brand .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-group { padding: 10px 0 4px; }
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 20px 6px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 20px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); border-left-color: var(--gold); }
+.nav-link .n {
+  background: var(--border2);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-link .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ════════════════════════════════════════════════
+   MAIN CONTENT
+════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 0 48px 80px 48px;
+  max-width: 880px;
+}
+
+/* ════════════════════════════════════════════════
+   HERO HEADER
+════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  padding: 52px 0 44px;
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.hero::before {
+  content: '🎲';
+  position: absolute;
+  right: -10px;
+  top: 20px;
+  font-size: 160px;
+  opacity: 0.04;
+  pointer-events: none;
+  user-select: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245,166,35,0.12);
+  border: 1px solid rgba(245,166,35,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.hero h1 span { color: var(--gold); }
+.hero p { color: var(--muted); font-size: 15px; max-width: 560px; line-height: 1.7; }
+.hero-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.hero-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.hero-pill strong { color: var(--text); }
+
+/* ════════════════════════════════════════════════
+   SECTIONS
+════════════════════════════════════════════════ */
+.section { margin-bottom: 60px; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-num {
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+.sec-icon { font-size: 22px; flex-shrink: 0; }
+
+/* ════════════════════════════════════════════════
+   CARDS
+════════════════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 16px; }
+.mini-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.mini-card .mc-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.mini-card .mc-value { font-size: 13.5px; color: var(--text); line-height: 1.5; }
+
+/* ════════════════════════════════════════════════
+   TYPOGRAPHY
+════════════════════════════════════════════════ */
+.section p { font-size: 15px; color: var(--text); margin-bottom: 12px; line-height: 1.75; }
+.section p .hl { color: var(--gold2); font-weight: 600; }
+.section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--teal);
+  margin: 28px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section h3::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  background: var(--teal);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.section ul, .section ol { padding-left: 0; list-style: none; margin-bottom: 12px; }
+.section ul li, .section ol li {
+  padding: 5px 0 5px 22px;
+  position: relative;
+  font-size: 14.5px;
+  color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.section ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 4px;
+  color: var(--gold);
+  font-size: 11px;
+  top: 7px;
+}
+.section ol { counter-reset: ol; }
+.section ol li { counter-increment: ol; }
+.section ol li::before {
+  content: counter(ol);
+  position: absolute;
+  left: 0;
+  background: var(--border2);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 6px;
+}
+
+/* ════════════════════════════════════════════════
+   CODE
+════════════════════════════════════════════════ */
+code {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 13px;
+  color: #ff9d6b;
+}
+.code-block {
+  background: #060c18;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 22px;
+  margin: 12px 0 16px;
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.8;
+  overflow-x: auto;
+  position: relative;
+}
+.code-block .cb-label {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-family: sans-serif;
+}
+.code-block .cmd { color: var(--green); }
+.code-block .flag { color: var(--blue); }
+.code-block .val { color: var(--gold); }
+.code-block .cmt { color: var(--dim); font-style: italic; }
+.code-block .path { color: var(--teal); }
+
+/* ════════════════════════════════════════════════
+   BADGES / PILLS
+════════════════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.b-gold   { background: rgba(245,166,35,0.15);  color: var(--gold);   border: 1px solid rgba(245,166,35,0.3); }
+.b-teal   { background: rgba(34,211,168,0.12);  color: var(--teal);   border: 1px solid rgba(34,211,168,0.25); }
+.b-blue   { background: rgba(96,165,250,0.12);  color: var(--blue);   border: 1px solid rgba(96,165,250,0.25); }
+.b-purple { background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+.b-green  { background: rgba(74,222,128,0.12);  color: var(--green);  border: 1px solid rgba(74,222,128,0.25); }
+.b-red    { background: rgba(248,113,113,0.12); color: var(--red);    border: 1px solid rgba(248,113,113,0.25); }
+.b-orange { background: rgba(251,146,60,0.12);  color: var(--orange); border: 1px solid rgba(251,146,60,0.25); }
+.b-dim    { background: rgba(74,94,120,0.2);    color: var(--muted);  border: 1px solid var(--border2); }
+
+/* ════════════════════════════════════════════════
+   ALERT BOXES
+════════════════════════════════════════════════ */
+.alert {
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 14px 0;
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.alert .al-icon { font-size: 18px; margin-top: 1px; flex-shrink: 0; }
+.alert-warn   { background: rgba(250,204,21,0.07);  border: 1px solid rgba(250,204,21,0.2);  color: #f0d060; }
+.alert-info   { background: rgba(96,165,250,0.07);  border: 1px solid rgba(96,165,250,0.2);  color: #90c4ff; }
+.alert-danger { background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); color: #ffaaaa; }
+.alert-success{ background: rgba(74,222,128,0.07);  border: 1px solid rgba(74,222,128,0.2);  color: #90ff90; }
+.alert strong { font-weight: 700; }
+
+/* ════════════════════════════════════════════════
+   FLOW STEPS
+════════════════════════════════════════════════ */
+.flow { margin: 16px 0; }
+.flow-step {
+  display: flex;
+  gap: 16px;
+  padding: 4px 0 16px;
+  position: relative;
+}
+.flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 36px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border2);
+}
+.fs-num {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  background: linear-gradient(135deg, var(--gold), #e08800);
+  color: #000;
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 4px rgba(245,166,35,0.12);
+}
+.fs-body { padding-top: 6px; font-size: 14.5px; line-height: 1.65; flex: 1; }
+.fs-body strong { color: var(--gold2); }
+
+/* ════════════════════════════════════════════════
+   STATUS TABLE
+════════════════════════════════════════════════ */
+.status-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+.status-table th {
+  background: var(--card2);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 11px 16px;
+  border-bottom: 2px solid var(--border2);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.status-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.status-table tr:last-child td { border-bottom: none; }
+.status-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ════════════════════════════════════════════════
+   FILE LIST
+════════════════════════════════════════════════ */
+.file-group { margin-bottom: 20px; }
+.file-group-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.file-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: var(--card2);
+  border: 1px solid var(--border);
+  transition: border-color 0.15s;
+}
+.file-item:hover { border-color: var(--border2); }
+.file-item .fi-icon { font-size: 14px; margin-top: 1px; flex-shrink: 0; }
+.file-item code { background: none; border: none; padding: 0; color: var(--teal); font-size: 12.5px; word-break: break-all; }
+
+/* ════════════════════════════════════════════════
+   SCENARIO CARDS
+════════════════════════════════════════════════ */
+.scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.scenario-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  border-top: 3px solid var(--teal);
+}
+.scenario-card.warn { border-top-color: var(--orange); }
+.scenario-card.danger { border-top-color: var(--red); }
+.scenario-card.success { border-top-color: var(--green); }
+.sc-num { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+.sc-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.sc-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.sc-body li::before { display: none; }
+.sc-body li { padding-left: 12px; }
+.sc-body li::after { content: ''; }
+
+/* ════════════════════════════════════════════════
+   DIVIDER
+════════════════════════════════════════════════ */
+.divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+/* ════════════════════════════════════════════════
+   TAG CLOUD
+════════════════════════════════════════════════ */
+.tag-cloud { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+
+/* ════════════════════════════════════════════════
+   SUMMARY BLOCK
+════════════════════════════════════════════════ */
+.summary-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 14px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 10px;
+}
+.summary-icon { font-size: 22px; flex-shrink: 0; margin-top: 2px; }
+.summary-body .sb-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.summary-body .sb-text { font-size: 13.5px; color: var(--muted); line-height: 1.6; }
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .main { padding: 24px 20px 60px; max-width: 100%; }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+  .scenario-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 600px) {
+  .grid-3, .grid-2 { grid-template-columns: 1fr; }
+  .hero-meta { gap: 10px; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════ -->
+<nav class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">🎲</div>
+    <div class="title">Ludo Tournament</div>
+    <div class="sub">Handbook — Hinglish Guide</div>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Overview</div>
+    <a class="nav-link" href="#s1"><span class="n">01</span><span class="lbl">Project Overview</span></a>
+    <a class="nav-link" href="#s2"><span class="n">02</span><span class="lbl">Main Modules</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Tournament</div>
+    <a class="nav-link" href="#s3"><span class="n">03</span><span class="lbl">Lifecycle &amp; Statuses</span></a>
+    <a class="nav-link" href="#s4"><span class="n">04</span><span class="lbl">Creation Rules</span></a>
+    <a class="nav-link" href="#s5"><span class="n">05</span><span class="lbl">Submission Review</span></a>
+    <a class="nav-link" href="#s6"><span class="n">06</span><span class="lbl">Join / Register Flow</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Rules</div>
+    <a class="nav-link" href="#s7"><span class="n">07</span><span class="lbl">Wallet Rules</span></a>
+    <a class="nav-link" href="#s8"><span class="n">08</span><span class="lbl">Bot Rules</span></a>
+    <a class="nav-link" href="#s9"><span class="n">09</span><span class="lbl">Real User Conditions</span></a>
+    <a class="nav-link" href="#s10"><span class="n">10</span><span class="lbl">Play Slot Rules</span></a>
+    <a class="nav-link" href="#s11"><span class="n">11</span><span class="lbl">Match / Table Behavior</span></a>
+  </div>
+
+  <div class="nav-group">
+    <div class="nav-group-label">Reference</div>
+    <a class="nav-link" href="#s12"><span class="n">12</span><span class="lbl">Scenarios</span></a>
+    <a class="nav-link" href="#s13"><span class="n">13</span><span class="lbl">User Panel</span></a>
+    <a class="nav-link" href="#s14"><span class="n">14</span><span class="lbl">Admin Panel</span></a>
+    <a class="nav-link" href="#s15"><span class="n">15</span><span class="lbl">Reports</span></a>
+    <a class="nav-link" href="#s16"><span class="n">16</span><span class="lbl">Unity UX</span></a>
+    <a class="nav-link" href="#s17"><span class="n">17</span><span class="lbl">Tests Run</span></a>
+    <a class="nav-link" href="#s18"><span class="n">18</span><span class="lbl">Issues &amp; Gaps</span></a>
+    <a class="nav-link" href="#s19"><span class="n">19</span><span class="lbl">Recommendations</span></a>
+    <a class="nav-link" href="#s20"><span class="n">20</span><span class="lbl">File Map</span></a>
+    <a class="nav-link" href="#s21"><span class="n">21</span><span class="lbl">Final Summary</span></a>
+  </div>
+</nav>
+
+<!-- ══════════════════════════════════════
+     MAIN
+══════════════════════════════════════ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">📖 Hinglish Documentation</div>
+    <h1>🎲 Ludo Tournament <span>Handbook</span></h1>
+    <p>Is document me Ludo Tournament System ka complete reference hai — architecture, rules, flows, bot behavior, play slots, admin controls, aur sabhi edge-case scenarios — Hinglish me.</p>
+    <div class="hero-meta">
+      <div class="hero-pill">🖥 <strong>Laravel</strong> Backend API</div>
+      <div class="hero-pill">⚡ <strong>Node.js</strong> Realtime Sockets</div>
+      <div class="hero-pill">📱 <strong>Unity</strong> Mobile Client</div>
+      <div class="hero-pill">📄 <strong>21</strong> Sections</div>
+    </div>
+  </div>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 1 — PROJECT OVERVIEW
+  ═══════════════════════════════════ -->
+  <section class="section" id="s1">
+    <div class="section-header">
+      <span class="sec-num">01</span>
+      <span class="sec-icon">🏗</span>
+      <h2>Project Overview</h2>
+    </div>
+
+    <p>Ye project <span class="hl">3 major parts</span> me split hai, jo milke ek complete tournament platform banate hain:</p>
+
+    <div class="grid-3">
+      <div class="mini-card">
+        <div class="mc-label">🖥 Laravel Backend</div>
+        <div class="mc-value">REST API, Admin Panel, User Panel, Tournament Engine, Reports, Support/Tickets system</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">⚡ Node.js</div>
+        <div class="mc-value">Socket / Realtime layer — Ludo room events aur live gameplay connectivity handle karta hai</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">📱 Unity</div>
+        <div class="mc-value">Player-facing mobile game app — Login, Wallet, Tournament browse, Register, aur Play flow</div>
+      </div>
+    </div>
+
+    <h3>🔄 Simple Flow — End to End</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="fs-num">1</div>
+        <div class="fs-body">User <strong>Unity app</strong> me login karta hai</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">2</div>
+        <div class="fs-body">Unity <strong>Laravel API</strong> se tournament list aur user data fetch karti hai</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">3</div>
+        <div class="fs-body">Tournament <strong>join/register</strong> Laravel me hota hai — wallet deduction bhi isi step me</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">4</div>
+        <div class="fs-body">Jab match/table assign hoti hai to Unity <strong>Socket/Node flow</strong> se room join karti hai</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">5</div>
+        <div class="fs-body">Match ka <strong>result backend</strong> me settle hota hai — prize distribute hota hai</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">6</div>
+        <div class="fs-body"><strong>Admin aur User</strong> dono panels me reports show hoti hain</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 2 — MAIN MODULES
+  ═══════════════════════════════════ -->
+  <section class="section" id="s2">
+    <div class="section-header">
+      <span class="sec-num">02</span>
+      <span class="sec-icon">📦</span>
+      <h2>Current Main Modules</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">👤</span> User / Auth</div>
+        <ul>
+          <li>Signup by <strong>email</strong> ya <strong>mobile</strong> — dono supported hain</li>
+          <li>Email verification required <strong>nahi</strong> hai</li>
+          <li>Login possible via: <code>user_id</code>, <code>username</code>, <code>email</code>, <code>mobile</code></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💰</span> Wallet</div>
+        <ul>
+          <li>Register karte time entry fee wallet se <strong>instantly deduct</strong> hoti hai</li>
+          <li>Cancel-eligible phase me <strong>refund</strong> possible hai</li>
+          <li>Tournament complete hone par winner ke wallet me <strong>prize credit</strong> hota hai</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🏆</span> Tournament</div>
+        <ul>
+          <li><strong>Public</strong> aur <strong>private</strong> tournaments dono supported</li>
+          <li><strong>Knockout</strong> format active hai</li>
+          <li><strong>2-player</strong> aur <strong>4-player</strong> match size supported</li>
+          <li>Admin-created aur <strong>user-created</strong> tournaments</li>
+          <li>User-created tournament <strong>admin approval queue</strong> se guzarta hai</li>
+          <li><strong>Play slots</strong> support available hai</li>
+          <li>Reports user panel aur admin panel <strong>dono me</strong> available</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🛡</span> Admin Controls</div>
+        <ul>
+          <li><strong>Approve</strong> / <strong>Reject</strong> with reason</li>
+          <li>Edit tournament <strong>before approval</strong></li>
+          <li>Full reports aur <strong>match monitoring</strong></li>
+          <li><strong>Manual winner</strong> set karna</li>
+          <li>User panel <strong>permissions matrix</strong></li>
+          <li><strong>Support/ticket</strong> chat with user</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🖥</span> User Panel Features</div>
+      <ul>
+        <li>Own <strong>dashboard</strong> — live tournament highlights</li>
+        <li>Own <strong>tournament list</strong> — sirf apne create kiye hue</li>
+        <li>Own <strong>match monitor</strong> — match progress dekhna</li>
+        <li><strong>Support chat</strong> / ticket system</li>
+        <li><strong>Tournament reports</strong> — registrations, results, financials</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 3 — LIFECYCLE
+  ═══════════════════════════════════ -->
+  <section class="section" id="s3">
+    <div class="section-header">
+      <span class="sec-num">03</span>
+      <span class="sec-icon">♻️</span>
+      <h2>Tournament Lifecycle &amp; Statuses</h2>
+    </div>
+
+    <p>Laravel me tournament ka ek defined <span class="hl">status flow</span> hai. Har status ka ek specific matlab hai:</p>
+
+    <table class="status-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Matlab (Meaning)</th>
+          <th>Kab aata hai</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-purple">draft</span></td>
+          <td>Tournament create hua hai, lekin live nahi — registration ke liye open nahi</td>
+          <td>Tournament create hone par by default</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-green">registration_open</span></td>
+          <td>User register kar sakta hai — entry fee accept ho rahi hai</td>
+          <td>Approved ho aur registration start time aa jaye</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-gold">registration_closed</span></td>
+          <td>New registration band — existing players next stage ke liye wait ya claim kar sakte hain</td>
+          <td>Registration end time cross ho jaye</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-blue">in_progress</span></td>
+          <td>Matches chal rahe hain — tournament live hai</td>
+          <td>Match/play phase shuru ho</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-teal">completed</span></td>
+          <td>Tournament finish — winners/payout/report final ho gaye</td>
+          <td>Last match complete ho</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-red">cancelled</span></td>
+          <td>Tournament cancel — eligible phase me refund ho sakta hai</td>
+          <td>Admin manually cancel kare</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>⚙️ Scheduler Automation</h3>
+    <div class="card">
+      <ul>
+        <li><span class="badge b-purple">draft</span> → <span class="badge b-green">registration_open</span> &nbsp; jab tournament <strong>approved</strong> ho aur <strong>registration start time</strong> aa jaye</li>
+        <li><span class="badge b-green">registration_open</span> → <span class="badge b-gold">registration_closed</span> &nbsp; jab <strong>registration end time</strong> cross ho jaye</li>
+        <li>No-show users ko slot miss hone par <strong>disqualify</strong> kiya ja sakta hai</li>
+      </ul>
+    </div>
+
+    <h3>📄 Code References</h3>
+    <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Models/Tournament.php</code></div>
+    <div class="file-item"><span class="fi-icon">⚙️</span><code>backend_laravel/app/Services/Tournament/TournamentStatusAutomationService.php</code></div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 4 — CREATION RULES
+  ═══════════════════════════════════ -->
+  <section class="section" id="s4">
+    <div class="section-header">
+      <span class="sec-num">04</span>
+      <span class="sec-icon">🆕</span>
+      <h2>Tournament Creation Rules</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">🛡</span> Admin Tournament — Full Control</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Admin ke paas sabhi advanced options available hain:</p>
+        <div class="tag-cloud">
+          <span class="badge b-blue">Name</span>
+          <span class="badge b-blue">Type</span>
+          <span class="badge b-blue">Format</span>
+          <span class="badge b-blue">Bracket Mode</span>
+          <span class="badge b-blue">Entry Fee</span>
+          <span class="badge b-blue">Max Players</span>
+          <span class="badge b-blue">Players/Match</span>
+          <span class="badge b-blue">Platform Fee %</span>
+          <span class="badge b-blue">Dates</span>
+          <span class="badge b-blue">Description</span>
+          <span class="badge b-blue">Terms</span>
+          <span class="badge b-blue">Prize Split</span>
+          <span class="badge b-blue">Play Slots</span>
+          <span class="badge b-blue">Bot Options</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><span class="icon">👤</span> User Tournament — Restricted Flow</div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">Intentionally restricted — fraud prevention ke liye:</p>
+        <ul>
+          <li>Tournament create kar sakta hai ✅</li>
+          <li>Self-approve <strong>nahi</strong> kar sakta ❌</li>
+          <li>Fake registrations add <strong>nahi</strong> kar sakta ❌</li>
+          <li>Force live <strong>nahi</strong> kar sakta ❌</li>
+          <li>Bot options direct <strong>nahi</strong> use kar sakta ❌</li>
+          <li>Real tournament setup karta hai mostly ✅</li>
+        </ul>
+        <div class="alert alert-warn" style="margin-top:10px;">
+          <span class="al-icon">⚠️</span>
+          <span>User-created tournament <strong>admin review queue</strong> me jata hai — admin detail review, edit, approve ya reject with reason kar sakta hai</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>🔍 Admin Review Actions (User Tournament ke liye)</h3>
+    <div class="card">
+      <ul>
+        <li>Tournament <strong>detail review</strong> — sab fields dekhna</li>
+        <li>Tournament <strong>edit</strong> karna — incorrect fee/timing/prize fix karna</li>
+        <li><strong>Approve</strong> karna — tournament live queue me daalna</li>
+        <li><strong>Reject with reason</strong> — user ko message ke saath reject karna</li>
+        <li><strong>Support thread</strong> me user ko directly message karna</li>
+      </ul>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 5 — SUBMISSION REVIEW
+  ═══════════════════════════════════ -->
+  <section class="section" id="s5">
+    <div class="section-header">
+      <span class="sec-num">05</span>
+      <span class="sec-icon">🔍</span>
+      <h2>Tournament Submission Review</h2>
+    </div>
+
+    <p>Admin ko review page par <span class="hl">ye sabhi details dikhni chahiye</span> / currently available hain — taaki admin properly validate kar sake:</p>
+
+    <div class="grid-3">
+      <div class="mini-card">
+        <div class="mc-label">🏷 Basic Info</div>
+        <div class="mc-value">Tournament Name, Type, Format, Bracket Mode</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">💰 Fees</div>
+        <div class="mc-value">Entry Fee, Platform Fee %, Prize Split details</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">👥 Players</div>
+        <div class="mc-value">Max Players allowed, Players per Match</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🤖 Bot Settings</div>
+        <div class="mc-value">Bot Allowed (yes/no), Max Bot Percentage</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">📅 Timing</div>
+        <div class="mc-value">Registration Start/End, Tournament Start Time</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🔐 Access</div>
+        <div class="mc-value">Invite Code, Password (private tournament ke liye)</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">📝 Content</div>
+        <div class="mc-value">Description, Terms &amp; Conditions</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🕐 Play Slots</div>
+        <div class="mc-value">Defined slots — time windows when users can play</div>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">ℹ️</span>
+      <div><strong>Review ka purpose:</strong> Admin check kare user ne kya submit kiya → incorrect fee/timing/prize/content ho to edit kare → then approve ya reject kare</div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 6 — JOIN / REGISTER
+  ═══════════════════════════════════ -->
+  <section class="section" id="s6">
+    <div class="section-header">
+      <span class="sec-num">06</span>
+      <span class="sec-icon">🎯</span>
+      <h2>Tournament Join / Register Flow</h2>
+    </div>
+
+    <h3>📋 6.1 Unity Tournament List — Kaunse Tournaments Dikhte Hain</h3>
+    <div class="card">
+      <p style="font-size:14px;color:var(--muted);margin-bottom:10px;">Unity tournament panel me current <strong>approved public tournaments</strong> show hote hain:</p>
+      <div class="tag-cloud">
+        <span class="badge b-green">registration_open</span>
+        <span class="badge b-gold">registration_closed</span>
+        <span class="badge b-blue">in_progress</span>
+      </div>
+    </div>
+
+    <h3>📲 6.2 Registration Open Tournament — User kya Karta Hai</h3>
+    <div class="card">
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:14px;"><strong>Important:</strong> Direct table par nahi jata — pehle details popup open hota hai</p>
+      <p style="font-size:13px;color:var(--dim);margin-bottom:10px;font-weight:700;">Popup me show hota hai:</p>
+      <div class="grid-2" style="margin-bottom:14px;">
+        <div style="font-size:13px;color:var(--muted);">• Tournament status<br>• Current players count<br>• Entry fee amount<br>• Prize pool</div>
+        <div style="font-size:13px;color:var(--muted);">• Registration close time<br>• Tournament start time<br>• Play slots schedule<br>• User's wallet balance</div>
+      </div>
+    </div>
+
+    <p style="font-weight:700;color:var(--text);margin:16px 0 8px;">Agar user <code>Register</code> click karta hai — ye steps hote hain:</p>
+    <div class="flow">
+      <div class="flow-step"><div class="fs-num">1</div><div class="fs-body">Backend <strong>registration API</strong> hit hoti hai</div></div>
+      <div class="flow-step"><div class="fs-num">2</div><div class="fs-body">Wallet <strong>balance check</strong> hota hai — insufficient balance par fail</div></div>
+      <div class="flow-step"><div class="fs-num">3</div><div class="fs-body">Entry <strong>fee deduct</strong> hoti hai — same transaction me</div></div>
+      <div class="flow-step"><div class="fs-num">4</div><div class="fs-body"><strong>Registration record</strong> create hota hai — user registered state me</div></div>
+      <div class="flow-step"><div class="fs-num">5</div><div class="fs-body">Unity ka <strong>local wallet balance</strong> update hoti hai</div></div>
+    </div>
+
+    <h3>⏳ 6.3 Already Registered — Tournament Not Live Yet</h3>
+    <div class="card">
+      <ul>
+        <li>User ko detail popup me clearly indicate hota hai: <strong>"You are already registered"</strong></li>
+        <li>Message: <strong>"Wait for tournament to go live"</strong></li>
+        <li>User double-register nahi kar sakta — idempotent registration logic hai</li>
+      </ul>
+    </div>
+
+    <h3>▶️ 6.4 Tournament In Progress</h3>
+    <div class="card">
+      <ul>
+        <li>Agar user <strong>registered</strong> hai aur tournament <span class="badge b-blue">in_progress</span> hai</li>
+        <li>Unity <strong>"Play Now"</strong> button allow karti hai</li>
+        <li><strong>Claim room / match flow</strong> trigger hota hai</li>
+      </ul>
+    </div>
+
+    <h3>🔒 6.5 Full Tournament</h3>
+    <div class="card">
+      <ul>
+        <li>Jab <strong>max players</strong> limit reach ho jaye — new registration <strong>blocked</strong></li>
+        <li>User tournament <strong>details dekh</strong> sakta hai</li>
+        <li><strong>Register button disabled</strong> / unavailable ho jata hai</li>
+      </ul>
+    </div>
+
+    <h3>📄 Code References</h3>
+    <div class="file-item"><span class="fi-icon">📱</span><code>unity/.../LudoTournamentPanelOffline.cs</code></div>
+    <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Http/Controllers/Api/V1/TournamentRegistrationController.php</code></div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 7 — WALLET
+  ═══════════════════════════════════ -->
+  <section class="section" id="s7">
+    <div class="section-header">
+      <span class="sec-num">07</span>
+      <span class="sec-icon">💰</span>
+      <h2>Wallet Rules</h2>
+    </div>
+
+    <div class="card">
+      <ul>
+        <li>Registration time par wallet se entry fee <strong>instantly deduct</strong> hoti hai</li>
+        <li>Duplicate registration <strong>idempotent</strong> hai — same registration return hoti hai, double deduction nahi</li>
+        <li><strong>Insufficient balance</strong> par registration fail hota hai — koi partial deduction nahi</li>
+        <li>Cancel registration ke case me <strong>eligible phase me refund</strong> hota hai</li>
+        <li>Tournament complete hone par winners ke wallet me <strong>prize amount credit</strong> hota hai</li>
+        <li><strong>Platform fee transaction</strong> bhi alag se record hoti hai</li>
+      </ul>
+    </div>
+
+    <div class="alert alert-warn">
+      <span class="al-icon">⚠️</span>
+      <div><strong>Critical Point:</strong> Tournament register API wallet deduction <strong>same transaction</strong> me karti hai — isliye successful register ka matlab entry fee <strong>already deduct ho chuki hai</strong>. Agar user register confirm ho gaya to fee gai.</div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 8 — BOT RULES
+  ═══════════════════════════════════ -->
+  <section class="section" id="s8">
+    <div class="section-header">
+      <span class="sec-num">08</span>
+      <span class="sec-icon">🤖</span>
+      <h2>Bot Rules</h2>
+    </div>
+
+    <h3>🎮 8.1 Public Normal Ludo Queue (Non-Tournament)</h3>
+    <div class="card">
+      <ul>
+        <li>Bots <strong>allowed ho sakte hain</strong> — configuration ke hisaab se</li>
+        <li><strong>Bot fill after timeout</strong> ka logic available hai</li>
+        <li>Room me minimum real players meet ho jaye to <strong>remaining seats bots se fill</strong> ho sakti hain</li>
+      </ul>
+
+      <h3 style="margin-top:16px;">Bot Decision Logic:</h3>
+      <div class="flow">
+        <div class="flow-step"><div class="fs-num" style="background:var(--green);color:#000;">✓</div><div class="fs-body">Room <strong>full real players</strong> se ho gaya → <strong>Start immediately</strong></div></div>
+        <div class="flow-step"><div class="fs-num" style="background:var(--blue);color:#000;">?</div><div class="fs-body">Bots allowed hain <strong>AND</strong> minimum real player count meet hua → <strong>Bots fill karke start</strong></div></div>
+        <div class="flow-step"><div class="fs-num" style="background:var(--orange);color:#000;">⏳</div><div class="fs-body">Conditions meet nahi hui → <strong>Wait karo</strong></div></div>
+      </div>
+
+      <h3>Code References:</h3>
+      <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Services/Match/LudoBotSeatPolicy.php</code></div>
+      <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Services/Match/LudoMatchmakingService.php</code></div>
+      <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Services/Match/LudoRoomLifecycleService.php</code></div>
+    </div>
+
+    <h3>🏆 8.2 Tournament Bot Rules — Do Alag Concepts</h3>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Concept 1: Registration-Level Bots</div>
+        <ul>
+          <li>Admin tournament me bots ko <strong>registered participants</strong> ke roop me add kar sakta hai</li>
+          <li><strong>Max bot percentage</strong> rule hai</li>
+          <li>User panel se bots add <strong>nahi hote</strong></li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🔴</span> Concept 2: Live Room Fill Bots</div>
+        <ul>
+          <li>Current tournament room provisioning: <code>allow_bots = false</code></li>
+          <li>Live room auto bot fill <strong>active nahi hai</strong></li>
+          <li>Provisioned tournament rooms real-human seats hi use kar rahe hain</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert alert-danger">
+      <span class="al-icon">🚨</span>
+      <div>
+        <strong>Critical Gap — Bot Intent vs Room Reality:</strong><br>
+        Tournament model me <code>bot_allowed = true</code> ho sakta hai — but <strong>current provisioned tournament Ludo room code</strong> real-human seats hi use kar raha hai.<br><br>
+        Matlab: <strong>Room creation time par tournament room me live bot auto-fill active nahi hai.</strong><br>
+        Agar business requirement hai ki missing players ki jagah bots fill ho to — yeh currently implement nahi hai.
+      </div>
+    </div>
+
+    <h3>📄 Code References</h3>
+    <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Http/Controllers/Api/V1/TournamentRegistrationController.php</code></div>
+    <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Services/Tournament/TournamentLudoRoomProvisionService.php</code></div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 9 — REAL USER CONDITIONS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s9">
+    <div class="section-header">
+      <span class="sec-num">09</span>
+      <span class="sec-icon">✅</span>
+      <h2>Real User Join Conditions</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📝</span> Tournament Register ke liye — Sabhi Conditions</div>
+        <ul>
+          <li>Tournament <span class="badge b-green">approved</span> ho</li>
+          <li>Status: <span class="badge b-green">registration_open</span> ho</li>
+          <li>Tournament <strong>full na ho</strong> (max players reached nahi)</li>
+          <li>Wallet me <strong>sufficient balance</strong> ho (entry fee cover karne ke liye)</li>
+          <li>User already <strong>refunded registration</strong> state me na ho</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">▶️</span> Room/Table Claim ke liye — Sabhi Conditions</div>
+        <ul>
+          <li>User <strong>registered</strong> ho us tournament me</li>
+          <li><strong>Active play slot</strong> chal rahi ho (agar slots defined hain)</li>
+          <li>Claim request <strong>valid tournament/entry</strong> ke liye ho</li>
+        </ul>
+        <div class="alert alert-warn" style="margin-top:12px;">
+          <span class="al-icon">⚠️</span>
+          <span>Active slot nahi chal rahi → Claim reject: <br><code>"Tournament can only be played during scheduled play slots."</code></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 10 — PLAY SLOTS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s10">
+    <div class="section-header">
+      <span class="sec-num">10</span>
+      <span class="sec-icon">🕐</span>
+      <h2>Play Slot Rules</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">🎯</span> Play Slots ka Purpose</div>
+      <ul>
+        <li>Users ko pehle se bata diya jaye ki <strong>kis time online rehna hai</strong></li>
+        <li>Table fill aur play coordination <strong>better</strong> ho</li>
+        <li>Random late play <strong>avoid</strong> ho</li>
+        <li>Tournament schedule <strong>disciplined</strong> rahe</li>
+      </ul>
+    </div>
+
+    <h3>⚙️ Configuration</h3>
+    <div class="card">
+      <ul>
+        <li>Tournament create/edit form me <strong>1 se 5 slots</strong> define ho sakte hain</li>
+        <li>Slot details <strong>report pages</strong> par visible hain</li>
+        <li>Unity <strong>tournament popup</strong> me visible hain</li>
+        <li>Claim room ke waqt <strong>active slot validation</strong> hoti hai</li>
+      </ul>
+    </div>
+
+    <h3>❌ 10.1 Agar User Slot Me Play Nahi Karta</h3>
+    <div class="flow">
+      <div class="flow-step"><div class="fs-num">1</div><div class="fs-body">Scheduler <strong>every minute</strong> run ho sakta hai</div></div>
+      <div class="flow-step"><div class="fs-num">2</div><div class="fs-body">Slot end hone ke baad — <strong>registered/checked_in players inspect</strong> hote hain</div></div>
+      <div class="flow-step"><div class="fs-num">3</div><div class="fs-body">Jin logon ne us slot me <strong>check-in/claim nahi kiya</strong> — unka registration status:</div></div>
+      <div class="flow-step"><div class="fs-num">4</div><div class="fs-body">Status update: <span class="badge b-gold">registered</span> ya <span class="badge b-teal">checked_in</span> → <span class="badge b-red">disqualified</span></div></div>
+    </div>
+
+    <h3>📍 10.2 Check-in Tracking — Kya Save Hota Hai</h3>
+    <div class="card">
+      <p style="font-size:14px;margin-bottom:10px;">Claim room successful hone par registration record me ye fields save hote hain:</p>
+      <ul>
+        <li><code>last_checked_in_at</code> — exact timestamp jab user ne room claim kiya</li>
+        <li><code>last_checked_in_slot_index</code> — kaunse slot number me aaya</li>
+      </ul>
+      <div class="alert alert-info" style="margin-top:12px;">
+        <span class="al-icon">ℹ️</span>
+        <span>Iska fayda: Admin dekh sakta hai ki <strong>user slot me aaya ya nahi</strong> aur <strong>kaunse slot me aaya</strong> — disqualification decisions is data par based hote hain</span>
+      </div>
+    </div>
+
+    <h3>📄 Code References</h3>
+    <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Models/Tournament.php</code></div>
+    <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Models/TournamentRegistration.php</code></div>
+    <div class="file-item" style="margin-bottom:4px;"><span class="fi-icon">📄</span><code>backend_laravel/app/Services/Tournament/TournamentStatusAutomationService.php</code></div>
+    <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Http/Controllers/Api/V1/TournamentController.php</code></div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 11 — MATCH BEHAVIOR
+  ═══════════════════════════════════ -->
+  <section class="section" id="s11">
+    <div class="section-header">
+      <span class="sec-num">11</span>
+      <span class="sec-icon">⚔️</span>
+      <h2>Tournament Match / Table Behavior</h2>
+    </div>
+
+    <h3>🔧 11.1 Current Provisioning Logic — Kaise Kaam Karta Hai</h3>
+    <div class="card">
+      <ul>
+        <li>Tournament entries/registrations se <strong>bracket generate</strong> hota hai</li>
+        <li>Bracket ke basis par <strong>match entries assign</strong> hote hain</li>
+        <li>Room provisioning service <strong>round-wise rooms create</strong> karti hai</li>
+        <li>Provisioned room me <strong>all seeded human entries mapped</strong> hote hain</li>
+        <li>Tournament room me: <code>allow_bots = false</code></li>
+      </ul>
+    </div>
+
+    <div class="alert alert-danger">
+      <span class="al-icon">🚨</span>
+      <div>
+        <strong>11.2 Important Consequence — Attendance vs Provisioning Gap:</strong><br><br>
+        Current backend ke hisaab se room creation ka decision sirf <strong>"is match me kaunse seeded entries hain"</strong> par based hai — <strong>"abhi exactly kitne users online hain"</strong> par nahi.<br><br>
+        Matlab: Agar 4-player match ke <strong>4 seeded participants</strong> hain → room provision ho sakta hai — <strong>chahe us moment sirf 1 ya 2 users actually online hon</strong>.<br><br>
+        Missing players ke liye current room provisioning <strong>live bot fill nahi karti</strong>. Practical match success online attendance par depend karega.
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 12 — SCENARIOS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s12">
+    <div class="section-header">
+      <span class="sec-num">12</span>
+      <span class="sec-icon">📋</span>
+      <h2>Scenario Explanations</h2>
+    </div>
+
+    <p>Ye sabhi real-world scenarios hain jo tournament flow me encounter ho sakte hain:</p>
+
+    <div class="scenario-grid">
+      <div class="scenario-card success">
+        <div class="sc-num">Scenario 12.1</div>
+        <div class="sc-title">🔍 Registration Open — User Details Dekhta Hai</div>
+        <div class="sc-body">User tournament card click karta hai → details popup open hota hai → fee, prize, slots, timing check karta hai → wallet sufficient hai to register kar sakta hai</div>
+      </div>
+      <div class="scenario-card success">
+        <div class="sc-num">Scenario 12.2</div>
+        <div class="sc-title">✅ User Register Karta Hai</div>
+        <div class="sc-body">Wallet deduction instantly → registration create → user registered state me chala jata hai → Unity wallet update hoti hai</div>
+      </div>
+      <div class="scenario-card">
+        <div class="sc-num">Scenario 12.3</div>
+        <div class="sc-title">⏳ Registered Hai, Tournament Start Nahi Hua</div>
+        <div class="sc-body">User wait karega → details me registered state dekh sakta hai → tournament live hone par "Play Now" option aayega</div>
+      </div>
+      <div class="scenario-card warn">
+        <div class="sc-num">Scenario 12.4</div>
+        <div class="sc-title">❌ Play Slot Me User Online Nahi Aaya</div>
+        <div class="sc-body">User room claim nahi karega → slot end hone ke baad scheduler inspect karega → disqualify kar sakta hai → tournament se effectively out</div>
+      </div>
+      <div class="scenario-card warn">
+        <div class="sc-num">Scenario 12.5</div>
+        <div class="sc-title">🤖 Bots Allowed Nahi Hain</div>
+        <div class="sc-body">Tournament room me current code bots disable kar raha hai → missing real players ki jagah live room auto-bot fill nahi hoti → user attendance bahut important ho jati hai</div>
+      </div>
+      <div class="scenario-card danger">
+        <div class="sc-num">Scenario 12.6</div>
+        <div class="sc-title">⚠️ 4-Player Tournament, Sirf 1 User Online</div>
+        <div class="sc-body">Bracket/provisioning attendance se pehle ho sakti hai → room pre-created → but actual gameplay sabke online hone par dependent → absent users disqualification risk me</div>
+      </div>
+      <div class="scenario-card danger">
+        <div class="sc-num">Scenario 12.7</div>
+        <div class="sc-title">⚠️ 4-Player Tournament, Sirf 2 Users Online</div>
+        <div class="sc-body">Same as 12.6 — tournament-specific live bot fill active nahi → absent players ka no-show outcome scheduler / later match handling par depend karega</div>
+      </div>
+      <div class="scenario-card">
+        <div class="sc-num">Scenario 12.8</div>
+        <div class="sc-title">🔒 Tournament Full Ho Gaya</div>
+        <div class="sc-body">New user register nahi kar sakta → existing participants tournament wait / live stage ke liye continue karte hain</div>
+      </div>
+    </div>
+
+    <div class="scenario-card success" style="margin-top:0;">
+      <div class="sc-num">Scenario 12.9</div>
+      <div class="sc-title">🏆 Tournament Completed</div>
+      <div class="sc-body">Final match complete → winners ranked → prize payout real users ke wallet me credit → reports user/admin panel me visible ho jati hain</div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 13 — USER PANEL
+  ═══════════════════════════════════ -->
+  <section class="section" id="s13">
+    <div class="section-header">
+      <span class="sec-num">13</span>
+      <span class="sec-icon">🖥</span>
+      <h2>User Panel Features</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">✅</span> Available Features</div>
+        <ul>
+          <li><strong>Dashboard</strong> — overview with live tournament highlights</li>
+          <li><strong>Own tournament list</strong> — sirf apne create kiye hue</li>
+          <li><strong>Create tournament</strong> — web panel via browser</li>
+          <li><strong>Tournament reports</strong> — registrations, results, financials</li>
+          <li><strong>Match monitor</strong> — own match progress dekhna</li>
+          <li><strong>Support chat / ticket</strong> — admin se baat karna</li>
+          <li><strong>Mobile responsive</strong> layout — kisi bhi device se</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🚫</span> User Panel Restrictions</div>
+        <ul>
+          <li>Self-approve <strong>nahi kar sakta</strong></li>
+          <li>Force live <strong>nahi kar sakta</strong></li>
+          <li>Fake registration add <strong>nahi kar sakta</strong></li>
+          <li>Bot control <strong>nahi hai</strong></li>
+          <li>Sirf <strong>own tournaments</strong> / own reports dekh sakta hai</li>
+          <li>Dusre users ki data <strong>nahi dekh sakta</strong></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 14 — ADMIN PANEL
+  ═══════════════════════════════════ -->
+  <section class="section" id="s14">
+    <div class="section-header">
+      <span class="sec-num">14</span>
+      <span class="sec-icon">🛡</span>
+      <h2>Admin Panel Features</h2>
+    </div>
+
+    <div class="grid-3">
+      <div class="mini-card">
+        <div class="mc-label">📊 Dashboard</div>
+        <div class="mc-value">Colorful dashboard, pending approval alerts, recent tournament reports at-a-glance</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🔍 Tournament Review</div>
+        <div class="mc-value">Full list, review details, edit before approval, approve, reject with reason</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🏆 Results Control</div>
+        <div class="mc-value">Reports, match monitor, manual winner override</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">💬 Support</div>
+        <div class="mc-value">Tickets/chat with individual users</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">👥 Permissions</div>
+        <div class="mc-value">User-specific permission matrix — control kya dekh sakta hai</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">👑 Super Scope</div>
+        <div class="mc-value">Admin <strong>sab user tournaments</strong> dekh sakta hai. User panel sirf apna data dekhta hai.</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 15 — REPORTS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s15">
+    <div class="section-header">
+      <span class="sec-num">15</span>
+      <span class="sec-icon">📊</span>
+      <h2>Reports Available</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> User &amp; Admin Dono Ke Liye</div>
+        <ul>
+          <li><strong>Overview</strong> — tournament summary</li>
+          <li><strong>Winners</strong> — final rankings &amp; payouts</li>
+          <li><strong>Registrations</strong> — all registered participants</li>
+          <li><strong>Round-wise matches</strong> — har round ke results</li>
+          <li><strong>Financials</strong> — entry fees, payouts, platform fee</li>
+          <li><strong>Export</strong> — Excel/CSV, Print, Browser Save as PDF</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🛡</span> Admin Extra Reports</div>
+        <ul>
+          <li><strong>Pending approval queue</strong> — review karne wale tournaments</li>
+          <li><strong>Review details</strong> before approve — full submission data</li>
+          <li><strong>Edit tournament form</strong> — approval se pehle kuch bhi change</li>
+          <li><strong>All users' tournaments</strong> — not just own</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 16 — UNITY UX
+  ═══════════════════════════════════ -->
+  <section class="section" id="s16">
+    <div class="section-header">
+      <span class="sec-num">16</span>
+      <span class="sec-icon">📱</span>
+      <h2>Unity Tournament UX Summary</h2>
+    </div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">📱</span> Current Unity UX Behavior</div>
+      <ul>
+        <li><strong>Tournament lobby list</strong> — status-aware button labels</li>
+        <li><span class="badge b-green">registration_open</span> tournament → <strong>details popup</strong> (direct table par nahi jata)</li>
+        <li><span class="badge b-blue">in_progress</span> + registered → <strong>"Play Now"</strong> button</li>
+        <li><strong>Slot details</strong> popup me visible</li>
+        <li><strong>Wallet balance</strong> popup me visible</li>
+        <li>Register success par <strong>wallet update</strong></li>
+        <li>Popup design <strong>cleaned and improved</strong></li>
+      </ul>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">ℹ️</span>
+      <div><strong>Key Unity Behavior:</strong> Registration-open tournament direct table par nahi jata — pehle user ko <strong>details aur register decision</strong> diya jata hai. Ye intentional UX hai.</div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 17 — TESTS RUN
+  ═══════════════════════════════════ -->
+  <section class="section" id="s17">
+    <div class="section-header">
+      <span class="sec-num">17</span>
+      <span class="sec-icon">🧪</span>
+      <h2>Confirmed Tests Run</h2>
+    </div>
+
+    <h3>✅ 17.1 Successfully Run Commands</h3>
+    <div class="code-block">
+      <div class="cb-label">bash</div>
+<span class="cmt"># 4-player tournament simulation</span>
+<span class="cmd">php artisan tournament:simulate</span> <span class="flag">--players</span>=<span class="val">4</span> <span class="flag">--real-users</span>=<span class="val">4</span> <span class="flag">--per-match</span>=<span class="val">4</span> <span class="flag">--fee</span>=<span class="val">100</span> <span class="flag">--creator-user</span>=<span class="val">abc4943161</span>
+
+<span class="cmt"># 8-player tournament simulation</span>
+<span class="cmd">php artisan tournament:simulate</span> <span class="flag">--players</span>=<span class="val">8</span> <span class="flag">--real-users</span>=<span class="val">8</span> <span class="flag">--per-match</span>=<span class="val">2</span> <span class="flag">--fee</span>=<span class="val">50</span>  <span class="flag">--creator-user</span>=<span class="val">abc4943161</span></div>
+
+    <div class="card">
+      <div class="card-title"><span class="icon">✅</span> Confirm Hua</div>
+      <ul>
+        <li>Tournament create hua &amp; owner user assign hua ✅</li>
+        <li>Players register hue &amp; bracket generate hui ✅</li>
+        <li>Matches simulate hue &amp; tournament <span class="badge b-teal">completed</span> hua ✅</li>
+        <li>Prizes real users ke wallet me paid hui ✅</li>
+        <li>Wallet balances properly update hui ✅</li>
+        <li>Sample preserved IDs: <code>#17</code> (4-player test) &amp; <code>#18</code> (8-player test) ✅</li>
+      </ul>
+    </div>
+
+    <h3>⚙️ 17.2 Scheduler Command</h3>
+    <div class="code-block">
+      <div class="cb-label">bash</div>
+<span class="cmd">php artisan tournaments:advance-statuses</span></div>
+    <div class="card">
+      <ul>
+        <li>Command successfully execute hua ✅</li>
+        <li>Registration close transition count show hua ✅</li>
+      </ul>
+    </div>
+
+    <h3>⚠️ 17.3 Is Pass Me Fully Execute Nahi Hue</h3>
+    <div class="alert alert-warn">
+      <span class="al-icon">⚠️</span>
+      <div>
+        <strong>Code-review verified, lekin full interactive live run nahi hua:</strong>
+        <ul style="margin-top:8px;padding-left:0;">
+          <li>Unity full Play Mode execution</li>
+          <li>Browser click-through on every panel page</li>
+          <li>Node socket live multiplayer attendance edge cases</li>
+          <li>Exact no-show slot disqualification live DB scenario</li>
+        </ul>
+        <br><strong>Reason:</strong> <code>artisan tinker</code> available nahi tha; Unity editor automation yahan se execute nahi hui.
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 18 — ISSUES / GAPS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s18">
+    <div class="section-header">
+      <span class="sec-num">18</span>
+      <span class="sec-icon">⚠️</span>
+      <h2>Issues / Gaps Found During Review</h2>
+    </div>
+
+    <div class="card" style="border-left: 3px solid var(--orange);">
+      <div class="card-title"><span class="icon">🔴</span> 18.1 Outdated Smoke Test Command</div>
+      <div class="code-block" style="margin-bottom:8px;">
+        <div class="cb-label">OUTDATED</div>
+<span class="cmd">php artisan tournaments:smoke-runtime</span>  <span class="cmt">← Current schema ke saath FAIL ho raha hai</span></div>
+      <p>Current project schema ke saath fail hua kyunki command <strong>old tournament schema/statuses</strong> use kar raha hai. Production behavior ka trusted test path currently <code>tournament:simulate</code> zyada suitable hai.</p>
+    </div>
+
+    <div class="card" style="border-left: 3px solid var(--yellow);">
+      <div class="card-title"><span class="icon">🟡</span> 18.2 Scheduler Output Gap</div>
+      <p>Service no-show disqualification count return karti hai, lekin pehle command output usse <strong>print nahi</strong> kar raha tha.</p>
+      <div class="alert alert-success" style="margin-top:10px;">
+        <span class="al-icon">✅</span>
+        <span>Ab <code>missed-slot disqualified</code> count CLI output me properly <strong>show hoga</strong> — fix implemented</span>
+      </div>
+    </div>
+
+    <div class="card" style="border-left: 3px solid var(--red);">
+      <div class="card-title"><span class="icon">🔴</span> 18.3 Tournament Bot Intent vs Room Reality — Critical Gap</div>
+      <p>Tournament model me <code>bot_allowed</code> field exist karta hai, lekin current tournament Ludo room provisioning:</p>
+      <ul>
+        <li><code>allow_bots = false</code> ke saath rooms create kar rahi hai</li>
+        <li>Live room auto bot fill <strong>disable</strong> hai</li>
+      </ul>
+      <div class="alert alert-danger" style="margin-top:12px;">
+        <span class="al-icon">🚨</span>
+        <div><strong>Business expectation aur actual room behavior clearly alag hain.</strong><br>
+        Agar requirement hai "real users kam ho to bots fill karke match start ho" — to tournament room provisioning me additional implementation chahiye hogi.</div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 19 — RECOMMENDATIONS
+  ═══════════════════════════════════ -->
+  <section class="section" id="s19">
+    <div class="section-header">
+      <span class="sec-num">19</span>
+      <span class="sec-icon">💡</span>
+      <h2>Practical Recommendations</h2>
+    </div>
+
+    <div class="grid-2">
+      <div class="card" style="border-top: 3px solid var(--green);">
+        <div class="card-title"><span class="icon">✅</span> Real-Player-First Approach (Current — Safer)</div>
+        <p style="font-size:13.5px;color:var(--muted);margin-bottom:10px;">Agar aap real-player-first tournament chalana chahte ho:</p>
+        <ul>
+          <li>User ko <strong>slots clearly dikhaye</strong> jaye</li>
+          <li>Slot miss karne par <strong>disqualification rahe</strong></li>
+          <li>Tournament room me <strong>bots default off</strong> rahein</li>
+          <li>Admin <strong>special cases manually monitor</strong> kare</li>
+        </ul>
+        <div class="alert alert-success" style="margin-top:10px;">
+          <span class="al-icon">✅</span>
+          <span>Current system is approach ke liye <strong>already ready</strong> hai</span>
+        </div>
+      </div>
+      <div class="card" style="border-top: 3px solid var(--orange);">
+        <div class="card-title"><span class="icon">🤖</span> Auto-Bot-Fill Approach (Needs New Build)</div>
+        <p style="font-size:13.5px;color:var(--muted);margin-bottom:10px;">Agar chahte ho ki 4-player table me 1-2 real users aayein aur baaki bots se start ho:</p>
+        <ul>
+          <li>Ye abhi <strong>fully active behavior nahi</strong> hai</li>
+          <li>Dedicated <strong>tournament-bot-start policy</strong> implement karni hogi</li>
+          <li>Room provisioning service me <strong>additional logic</strong> chahiye</li>
+        </ul>
+        <div class="alert alert-warn" style="margin-top:10px;">
+          <span class="al-icon">⚠️</span>
+          <span>Ye feature <strong>alag explicitly build</strong> karna padega — current code me nahi hai</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 20 — FILE MAP
+  ═══════════════════════════════════ -->
+  <section class="section" id="s20">
+    <div class="section-header">
+      <span class="sec-num">20</span>
+      <span class="sec-icon">🗺</span>
+      <h2>Important File Map</h2>
+    </div>
+
+    <div class="file-group">
+      <div class="file-group-title">🖥 Laravel Backend</div>
+      <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Models/Tournament.php</code></div>
+      <div class="file-item"><span class="fi-icon">📄</span><code>backend_laravel/app/Models/TournamentRegistration.php</code></div>
+      <div class="file-item"><span class="fi-icon">🎮</span><code>backend_laravel/app/Http/Controllers/Api/V1/TournamentRegistrationController.php</code></div>
+      <div class="file-item"><span class="fi-icon">🎮</span><code>backend_laravel/app/Http/Controllers/Api/V1/TournamentController.php</code></div>
+      <div class="file-item"><span class="fi-icon">⚙️</span><code>backend_laravel/app/Services/Tournament/TournamentStatusAutomationService.php</code></div>
+      <div class="file-item"><span class="fi-icon">⚙️</span><code>backend_laravel/app/Services/Tournament/TournamentLudoExecutionService.php</code></div>
+      <div class="file-item"><span class="fi-icon">⚙️</span><code>backend_laravel/app/Services/Tournament/TournamentLudoRoomProvisionService.php</code></div>
+      <div class="file-item"><span class="fi-icon">⚙️</span><code>backend_laravel/app/Services/Tournament/TournamentLudoMatchLinkService.php</code></div>
+      <div class="file-item"><span class="fi-icon">🤖</span><code>backend_laravel/app/Services/Match/LudoBotSeatPolicy.php</code></div>
+      <div class="file-item"><span class="fi-icon">🤖</span><code>backend_laravel/app/Services/Match/LudoMatchmakingService.php</code></div>
+      <div class="file-item"><span class="fi-icon">🤖</span><code>backend_laravel/app/Services/Match/LudoRoomLifecycleService.php</code></div>
+    </div>
+
+    <div class="file-group">
+      <div class="file-group-title">📱 Unity Client</div>
+      <div class="file-item"><span class="fi-icon">🎮</span><code>unity/Assets/_Project/Games/LudoClassic/ScriptOffline/Managers/LudoTournamentPanelOffline.cs</code></div>
+      <div class="file-item"><span class="fi-icon">🎮</span><code>unity/Assets/_Project/Games/LudoClassic/ScriptOffline/Managers/DashBoardManagerOffline.cs</code></div>
+      <div class="file-item"><span class="fi-icon">🎮</span><code>unity/Assets/_Project/Games/LudoClassic/ScriptOffline/Socket/LudoV2MatchmakingBridge.cs</code></div>
+    </div>
+
+    <div class="file-group">
+      <div class="file-group-title">📝 Documentation</div>
+      <div class="file-item"><span class="fi-icon">📝</span><code>backend_laravel/docs/tournament-system-spec.md</code></div>
+      <div class="file-item"><span class="fi-icon">📝</span><code>backend_laravel/docs/ludo-tournament-handbook-hinglish.md</code></div>
+    </div>
+  </section>
+
+
+  <!-- ═══════════════════════════════════
+       SECTION 21 — FINAL SUMMARY
+  ═══════════════════════════════════ -->
+  <section class="section" id="s21">
+    <div class="section-header">
+      <span class="sec-num">21</span>
+      <span class="sec-icon">🏁</span>
+      <h2>Final Summary</h2>
+    </div>
+
+    <h3>✅ Kya Strong State Me Hai</h3>
+    <div class="summary-row"><div class="summary-icon">🔐</div><div class="summary-body"><div class="sb-title">Auth System</div><div class="sb-text">Email + mobile signup, login multiple ways — sab kuch properly work kar raha hai</div></div></div>
+    <div class="summary-row"><div class="summary-icon">💰</div><div class="summary-body"><div class="sb-title">Wallet Register Flow</div><div class="sb-text">Entry fee deduction, refund, prize payout — sab atomic aur correct hai</div></div></div>
+    <div class="summary-row"><div class="summary-icon">🏆</div><div class="summary-body"><div class="sb-title">Tournament Creation / Review / Reporting</div><div class="sb-text">Admin aur user dono flows implemented hain, approval queue kaam kar raha hai</div></div></div>
+    <div class="summary-row"><div class="summary-icon">📱</div><div class="summary-body"><div class="sb-title">Unity Tournament Register / Detail Flow</div><div class="sb-text">Details popup, registration, wallet update — sab Unity side properly implemented</div></div></div>
+    <div class="summary-row"><div class="summary-icon">🖥</div><div class="summary-body"><div class="sb-title">Admin &amp; User Panels</div><div class="sb-text">Dono panels strong hain — reports, monitoring, support, permissions — sab available</div></div></div>
+    <div class="summary-row"><div class="summary-icon">🕐</div><div class="summary-body"><div class="sb-title">Play Slot Concept</div><div class="sb-text">Slots define, track, aur validate karna — sab implemented hai</div></div></div>
+
+    <h3 style="margin-top:32px;">🎯 Sabse Important Audit Points</h3>
+
+    <div class="alert alert-danger" style="margin-bottom:12px;">
+      <span class="al-icon">🚨</span>
+      <div>
+        <strong>Bot Logic Gap:</strong> Public normal Ludo bot logic aur tournament room bot logic <strong>same nahi hai</strong>.<br>
+        Tournament provisioned room me live bot auto-fill <strong>currently active nahi hai</strong> — chahe model me bot_allowed = true ho.
+      </div>
+    </div>
+
+    <div class="alert alert-warn" style="margin-bottom:12px;">
+      <span class="al-icon">⚠️</span>
+      <div>
+        <strong>Attendance Dependency:</strong> Tournament me real attendance / no-show / slot discipline abhi <strong>main deciding factor</strong> hai match success ke liye.
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">💡</span>
+      <div>
+        <strong>Next Step:</strong> Agar tournament auto-bot-fill chahiye to usko <strong>alag explicitly build</strong> karna padega — dedicated tournament-bot-start policy implement karni hogi.<br><br>
+        Ye handbook review ke liye bana hai. Iske basis par next step me ek separate <strong>Issue Audit Checklist</strong> bhi bana sakte hain.
+      </div>
+    </div>
+  </section>
+
+</main>
+</div>
+</body>
+</html>
