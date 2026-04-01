@@ -524,10 +524,15 @@ namespace LudoClassicOffline
             {
                 if (seatIndex == socketNumberEventReceiver.signUpResponce.data.playerInfo[i].seatIndex)
                 {
-                    ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.username = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].username;
+                    string displayName = LudoDisplayNameUtility.ResolveDisplayName(
+                        socketNumberEventReceiver.signUpResponce.data.playerInfo[i].userId,
+                        socketNumberEventReceiver.signUpResponce.data.playerInfo[i].username,
+                        seatIndex
+                    );
+                    ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.username = displayName;
                     ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userId = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].userId;
                     ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userProfile = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].avatar;
-                    ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].username;
+                    ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = displayName;
                     ludoNumberPlayerControl[refernceIndex].gameObject.SetActive(true);
                     emojiHandler.tabelId = socketNumberEventReceiver.signUpResponce.data.roomName;
                     //myUserId = socketNumberEvnetReceiver.signUpResponce.data.playerInfo[i].userId;
@@ -548,7 +553,7 @@ namespace LudoClassicOffline
                     }
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.playerSeatIndex = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].seatIndex;
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.userId = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].userId;
-                    ludoNumberPlayerControl[refernceIndex].playerInfoData.username = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].username;
+                    ludoNumberPlayerControl[refernceIndex].playerInfoData.username = displayName;
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.userProfile = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].avatar;
                 }
             }
@@ -569,14 +574,19 @@ namespace LudoClassicOffline
                     if (seatIndex == socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].playerSeatIndex)
                     {
                         ludoNumberUiManager.reconnationPanel.gameObject.SetActive(false);
-                        ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.username = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].username;
+                        string displayName = LudoDisplayNameUtility.ResolveDisplayName(
+                            socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].userId,
+                            socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].username,
+                            seatIndex
+                        );
+                        ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.username = displayName;
                         ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userId = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].userId;
                         ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userProfile = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].userProfile;
                         tableId = socketNumberEventReceiver.joinTableResponse.data.tableId;
                         Debug.Log("Join table data" + ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.username);
                         //emojiHandler.senderId = ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userId;
                         //emojiHandler.tabelId = socketNumberEvnetReceiver.signUpResponce.tableId;
-                        ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].username;
+                        ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = displayName;
                         ludoNumberPlayerControl[refernceIndex].gameObject.SetActive(true);
                         Debug.Log("Token On => " + ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockie.Count);
 
@@ -600,6 +610,7 @@ namespace LudoClassicOffline
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.scoreBox.SetActive(true);
                         }
                         ludoNumberPlayerControl[refernceIndex].playerInfoData = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i];
+                        ludoNumberPlayerControl[refernceIndex].playerInfoData.username = displayName;
                     }
                 }
             }

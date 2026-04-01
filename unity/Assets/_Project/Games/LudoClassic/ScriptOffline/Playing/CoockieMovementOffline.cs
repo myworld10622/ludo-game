@@ -51,10 +51,13 @@ namespace LudoClassicOffline
         public Renderer playerRenderer;
         public int seatIndex;
         public bool isSafeMode;
+
+        private RectTransform _rectTransform;
         #endregion
 
         private void Awake()
         {
+            _rectTransform = GetComponent<RectTransform>();
             if (
                 MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
                     "CLASSIC"
@@ -242,26 +245,33 @@ namespace LudoClassicOffline
                 (coockie) => coockie.transform.GetChild(0).gameObject.SetActive(false)
             );
 
+            // Dynamic timing: total move ~1.0s regardless of dice value, feels like Ludo King
+            float perStepTime = Mathf.Clamp(1.0f / movementValue, 0.13f, 0.30f);
+
             for (int i = 0; i < movementValue; i++)
             {
                 this.myLastBoxIndex++;
+                bool isLastStep = (i == movementValue - 1);
+
                 transform.SetParent(
                     ludoNumbersPlayerHome.way_Point[myLastBoxIndex].transform.GetChild(1)
                 );
+
+                // Scale up during flight with natural ease, land with bounce on final step
+                transform.DOKill();
                 transform
-                    .DOScale(new Vector3(1.4f, 1.4f, 1.4f), moveTime / 2)
-                    .SetEase(Ease.Linear)
+                    .DOScale(new Vector3(1.25f, 1.25f, 1.25f), perStepTime * 0.35f)
+                    .SetEase(Ease.OutQuad)
                     .OnComplete(() =>
                     {
-                        if (transform.localScale.x >= 1)
-                            transform
-                                .DOScale(new Vector3(1f, 1f, 1f), moveTime / 2f)
-                                .SetEase(Ease.Linear);
+                        if (transform == null) return;
+                        transform
+                            .DOScale(Vector3.one, perStepTime * 0.65f)
+                            .SetEase(isLastStep ? Ease.OutBounce : Ease.OutQuad);
                     });
-                //transform.GetComponent<RectTransform>().DOJumpAnchorPos(new Vector3(0, BoardRotateManagerOffline.isRotate ? 0 : 30, BoardRotateManagerOffline.isRotate ? 30 : 0), jumpPower, jumpnumber, moveTime).OnComplete(() =>
-                transform
-                    .GetComponent<RectTransform>()
-                    .DOJumpAnchorPos(new Vector3(0, 0, 30), jumpPower, jumpnumber, moveTime)
+
+                _rectTransform
+                    .DOJumpAnchorPos(new Vector3(0, 0, 30), jumpPower, jumpnumber, perStepTime)
                     .OnComplete(() =>
                     {
                         SoundManagerOffline.instance.TimeSoundStop(
@@ -280,10 +290,10 @@ namespace LudoClassicOffline
                                 .GetComponent<LudoNumbersBoxPropertyOffline>()
                                 .trail
                         );
-                        Debug.Log("COMPLETE");
                         CoockieManage();
                     });
-                yield return new WaitForSeconds(movedelay);
+
+                yield return new WaitForSeconds(perStepTime);
             }
             if (
                 ludoNumbersPlayerHome
@@ -303,7 +313,6 @@ namespace LudoClassicOffline
                 SoundManagerOffline.instance.SoundPlay(
                     SoundManagerOffline.instance.tokenEnterHomeAudio
                 );
-                // CoockieManage();
                 gameObject.transform.GetComponent<Image>().raycastTarget = false;
                 ludoNumberGsNew.homePartical.gameObject.SetActive(true);
                 ParticleSystem.ColorBySpeedModule col = ludoNumberGsNew.homePartical.colorBySpeed;
@@ -316,6 +325,11 @@ namespace LudoClassicOffline
                 playerRenderer.material.color = myColor;
 
                 ludoNumberGsNew.homePartical.Play();
+
+                // Celebratory punch scale when token reaches home
+                transform.DOKill();
+                transform.localScale = Vector3.one;
+                transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0), 0.5f, 8, 0.4f);
                 //if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                 //{
                 //    ludoNumberGsNew.pointPanel.transform.DOScale(Vector3.one, 0.5f).OnComplete(() =>
@@ -579,15 +593,21 @@ namespace LudoClassicOffline
             playerCoockie.ForEach(
                 (coockie) => coockie.transform.GetChild(0).gameObject.SetActive(false)
             );
+            // Impact shake before returning to base — premium Ludo King-style kill feedback
+            transform.DOKill();
+            transform.DOPunchScale(new Vector3(0.6f, 0.6f, 0), 0.3f, 8, 0.5f);
+            yield return new WaitForSeconds(0.25f);
+
+            // Fast but visible kill-return animation (was 0.009s — nearly invisible)
+            float killStepTime = Mathf.Clamp(0.6f / Mathf.Max(killMove, 1), 0.04f, 0.12f);
             for (int i = 0; i < killMove; i++)
             {
                 myLastBoxIndex--;
                 transform.SetParent(
                     ludoNumbersPlayerHome.way_Point[myLastBoxIndex].transform.GetChild(1)
                 );
-                transform
-                    .GetComponent<RectTransform>()
-                    .DOJumpAnchorPos(new Vector3(0, 27, 0), jumpPower, jumpnumber, moveTime)
+                _rectTransform
+                    .DOJumpAnchorPos(new Vector3(0, 27, 0), jumpPower * 0.6f, 1, killStepTime)
                     .OnComplete(() =>
                     {
                         if (
@@ -597,7 +617,7 @@ namespace LudoClassicOffline
                         )
                             CoockieManage();
                     });
-                yield return new WaitForSeconds(0.009f);
+                yield return new WaitForSeconds(killStepTime);
             }
             CoockieManage();
             if (
@@ -640,8 +660,7 @@ namespace LudoClassicOffline
                     transform.SetParent(
                         ludoNumbersPlayerHome.way_Point[myLastBoxIndex].transform.GetChild(1)
                     );
-                    transform
-                        .GetComponent<RectTransform>()
+                    _rectTransform
                         .DOJumpAnchorPos(new Vector3(0, 20, 0), jumpPower, jumpnumber, moveTime)
                         .OnComplete(() =>
                         {

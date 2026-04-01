@@ -272,7 +272,7 @@ module.exports = function (namespace) {
         userId: null,
         playerType: playerTypes.BOT,
         botCode: seat.botCode ?? `tournament-bot-${seat.seatNo}`,
-        displayName: seat.displayName || `Bot ${seat.seatNo}`,
+        displayName: seat.displayName || `Player ${seat.seatNo}`,
         isConnected: true,
         isReady: true,
       };

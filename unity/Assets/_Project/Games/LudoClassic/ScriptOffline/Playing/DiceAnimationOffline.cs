@@ -20,11 +20,15 @@ namespace LudoClassicOffline
 
         public IEnumerator DiceRoll(int diceValue, int startTurnSeatIndex)
         {
+            // Variable speed: fast tumble at start, slow down at end for realistic dice deceleration
+            Image diceImage = dice.GetComponent<Image>();
+            diceImage.raycastTarget = false;
             for (int i = 0; i < 23; i++)
             {
-                dice.transform.GetComponent<Image>().raycastTarget = false;
-                yield return new WaitForSeconds(0.01f);
-                dice.GetComponent<Image>().sprite = diceAnimtion[i];
+                // Decelerate: frames 0-10 fast (0.015s), 11-18 medium (0.025s), 19-22 slow (0.045s)
+                float frameDelay = i < 11 ? 0.015f : (i < 19 ? 0.025f : 0.045f);
+                yield return new WaitForSeconds(frameDelay);
+                diceImage.sprite = diceAnimtion[i];
             }
             diceNumber = socketNumberEventReceiver.diceValue;
             socketNumberEventReceiver.ludoNumberGsNew.isAnimation = true;
@@ -50,15 +54,16 @@ namespace LudoClassicOffline
 
         public void DiceAnimationStart(int diceValue, int startTurnSeatIndex)
         {
-            transform.DOScale(1f, 0.1f).OnComplete(() =>
+            // Punch scale on throw for tactile feedback, then settle before rolling
+            transform.DOKill();
+            transform.DOPunchScale(new Vector3(0.3f, 0.3f, 0), 0.2f, 5, 0.5f).OnComplete(() =>
             {
-                dice.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector3(130 , 130);
+                dice.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector3(130, 130);
                 SoundManagerOffline.instance.SoundPlay(SoundManagerOffline.instance.diceAnimationAudio);
 
                 if (diceCoroutine != null)
                     StopCoroutine(diceCoroutine);
                 diceCoroutine = StartCoroutine(DiceRoll(diceValue, startTurnSeatIndex));
-                transform.DOScale(1f, 0.1f);
             });
         }
 
@@ -76,7 +81,12 @@ namespace LudoClassicOffline
                 if (diceNumber - 1 >= 0)
                 {
                     dice.GetComponent<Image>().sprite = diceList[diceNumber - 1];
-                    dice.gameObject.GetComponent<RectTransform>().sizeDelta = new Vector3(85, 85);
+                    RectTransform diceRect = dice.gameObject.GetComponent<RectTransform>();
+                    diceRect.sizeDelta = new Vector3(85, 85);
+                    // Punch scale on result reveal for satisfying feedback
+                    dice.transform.DOKill();
+                    dice.transform.localScale = Vector3.one;
+                    dice.transform.DOPunchScale(new Vector3(0.4f, 0.4f, 0), 0.3f, 6, 0.4f);
                     StartCoroutine(WaitForSecond(diceValue, startTurnSeatIndex));
                 }
                 else

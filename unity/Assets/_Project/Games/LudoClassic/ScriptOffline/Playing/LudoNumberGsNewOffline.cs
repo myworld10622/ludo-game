@@ -1003,7 +1003,7 @@ namespace LudoClassicOffline
             {
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].userId = "0";
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].username =
-                    DashBoardManagerOffline.instance.userName.text;
+                    LudoDisplayNameUtility.LocalPlayerLabel();
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].seatIndex = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].isPlaying = true;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].avatar =
@@ -1011,7 +1011,7 @@ namespace LudoClassicOffline
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].score = 1;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].winAmount = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].userId = "1";
-                socketNumberEventReceiver.battleFinish.data.payload.players[1].username = "Com.1";
+                socketNumberEventReceiver.battleFinish.data.payload.players[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].seatIndex = 1;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].isPlaying = false;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].avatar =
@@ -1019,7 +1019,7 @@ namespace LudoClassicOffline
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].score = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].winAmount = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].userId = "2";
-                socketNumberEventReceiver.battleFinish.data.payload.players[2].username = "Com.2";
+                socketNumberEventReceiver.battleFinish.data.payload.players[2].username = LudoDisplayNameUtility.NeutralSeatLabel(2);
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].seatIndex = 2;
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].isPlaying = false;
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].avatar =
@@ -1027,7 +1027,7 @@ namespace LudoClassicOffline
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].score = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[2].winAmount = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[3].userId = "3";
-                socketNumberEventReceiver.battleFinish.data.payload.players[3].username = "Com.3";
+                socketNumberEventReceiver.battleFinish.data.payload.players[3].username = LudoDisplayNameUtility.NeutralSeatLabel(3);
                 socketNumberEventReceiver.battleFinish.data.payload.players[3].seatIndex = 3;
                 socketNumberEventReceiver.battleFinish.data.payload.players[3].isPlaying = false;
                 socketNumberEventReceiver.battleFinish.data.payload.players[3].avatar =
@@ -1039,7 +1039,7 @@ namespace LudoClassicOffline
             {
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].userId = "0";
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].username =
-                    DashBoardManagerOffline.instance.userName.text;
+                    LudoDisplayNameUtility.LocalPlayerLabel();
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].seatIndex = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].isPlaying = true;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].avatar =
@@ -1047,7 +1047,7 @@ namespace LudoClassicOffline
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].score = 1;
                 socketNumberEventReceiver.battleFinish.data.payload.players[0].winAmount = 0;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].userId = "1";
-                socketNumberEventReceiver.battleFinish.data.payload.players[1].username = "Com.1";
+                socketNumberEventReceiver.battleFinish.data.payload.players[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].seatIndex = 1;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].isPlaying = false;
                 socketNumberEventReceiver.battleFinish.data.payload.players[1].avatar =
@@ -2965,8 +2965,12 @@ namespace LudoClassicOffline
                             ludoNumberPlayerControl[i]
                                 .ludoNumbersUserData.diceAnimation.dice.gameObject.GetComponent<RectTransform>()
                                 .sizeDelta = new Vector3(85, 85);
-                            ludoNumberPlayerControl[i]
-                                .ludoNumbersUserData.turnProfileBlink.SetActive(true);
+                            var profileBlink = ludoNumberPlayerControl[i].ludoNumbersUserData.turnProfileBlink;
+                            profileBlink.SetActive(true);
+                            // Punch scale on turn start for premium "your turn" feel
+                            profileBlink.transform.DOKill();
+                            profileBlink.transform.localScale = Vector3.one;
+                            profileBlink.transform.DOPunchScale(new Vector3(0.3f, 0.3f, 0), 0.45f, 6, 0.35f);
                             ludoNumberPlayerControl[i].ludoNumbersUserData.animatorOnTurn.enabled =
                                 true;
                             //if (socketNumberEvnetReceiver.userTurnStart.data.isExtraTurn == true)

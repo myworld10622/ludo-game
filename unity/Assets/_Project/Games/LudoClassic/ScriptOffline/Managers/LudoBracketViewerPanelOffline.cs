@@ -165,7 +165,9 @@ namespace LudoClassicOffline
                     string name   = players[i]["name"]?.ToString() ?? "Player";
                     bool   isBot  = players[i]["is_bot"]?.ToObject<bool>() ?? false;
                     string result = players[i]["result"]?.ToString() ?? "";
-                    if (isBot) name = "🤖 " + name;
+                    name = isBot
+                        ? LudoDisplayNameUtility.NeutralSeatLabel(i)
+                        : LudoDisplayNameUtility.ResolveDisplayName(players[i]["user_id"]?.ToString(), name, i);
 
                     if (i == 0) { p1Name = name; p1Wins = result == "winner"; }
                     else        { p2Name = name; p2Wins = result == "winner"; }

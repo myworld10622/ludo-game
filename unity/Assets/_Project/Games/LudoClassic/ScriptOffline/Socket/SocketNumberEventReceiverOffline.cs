@@ -280,23 +280,23 @@ namespace LudoClassicOffline
                 {
                     joinTableResponse.data.playerInfo[0].playerSeatIndex = 0;
                     joinTableResponse.data.playerInfo[0].userId = "0";
-                    joinTableResponse.data.playerInfo[0].username = DashBoardManagerOffline.instance.userName.text;
+                    joinTableResponse.data.playerInfo[0].username = LudoDisplayNameUtility.LocalPlayerLabel();
                     joinTableResponse.data.playerInfo[0].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
                     signUpResponce.data.thisPlayerSeatIndex = joinTableResponse.data.playerInfo[0].playerSeatIndex;
 
                     joinTableResponse.data.playerInfo[1].playerSeatIndex = 1;
                     joinTableResponse.data.playerInfo[1].userId = "1";
-                    joinTableResponse.data.playerInfo[1].username = "Com.1";
+                    joinTableResponse.data.playerInfo[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
                     joinTableResponse.data.playerInfo[1].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
 
                     joinTableResponse.data.playerInfo[2].playerSeatIndex = 2;
                     joinTableResponse.data.playerInfo[2].userId = "2";
-                    joinTableResponse.data.playerInfo[2].username = "Com.2";
+                    joinTableResponse.data.playerInfo[2].username = LudoDisplayNameUtility.NeutralSeatLabel(2);
                     joinTableResponse.data.playerInfo[2].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
 
                     joinTableResponse.data.playerInfo[3].playerSeatIndex = 3;
                     joinTableResponse.data.playerInfo[3].userId = "3";
-                    joinTableResponse.data.playerInfo[3].username = "Com.3";
+                    joinTableResponse.data.playerInfo[3].username = LudoDisplayNameUtility.NeutralSeatLabel(3);
                     joinTableResponse.data.playerInfo[3].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
                 }
                 else
@@ -304,13 +304,13 @@ namespace LudoClassicOffline
 
                     joinTableResponse.data.playerInfo[0].playerSeatIndex = 0;
                     joinTableResponse.data.playerInfo[0].userId = "0";
-                    joinTableResponse.data.playerInfo[0].username = DashBoardManagerOffline.instance.userName.text;
+                    joinTableResponse.data.playerInfo[0].username = LudoDisplayNameUtility.LocalPlayerLabel();
                     joinTableResponse.data.playerInfo[0].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
                     signUpResponce.data.thisPlayerSeatIndex = joinTableResponse.data.playerInfo[0].playerSeatIndex;
 
                     joinTableResponse.data.playerInfo[1].playerSeatIndex = 1;
                     joinTableResponse.data.playerInfo[1].userId = "1";
-                    joinTableResponse.data.playerInfo[1].username = "Com.1";
+                    joinTableResponse.data.playerInfo[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
                     joinTableResponse.data.playerInfo[1].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
                 }
                 ChangeCukiSeatIndex();

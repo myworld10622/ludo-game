@@ -119,7 +119,7 @@ class LudoMatchmakingService
                 'joined_at' => now(),
                 'last_seen_at' => now(),
                 'meta' => [
-                    'username' => $user->profile?->first_name ?: $user->username,
+                    'username' => (string) ($user->user_code ?: $user->username),
                 ],
             ]);
 

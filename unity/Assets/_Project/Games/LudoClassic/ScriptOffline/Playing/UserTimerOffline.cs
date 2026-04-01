@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -28,6 +29,12 @@ namespace LudoClassicOffline
         public Sprite red;
         public SocketNumberEventReceiverOffline socketNumberEventReceiver;
 
+        // Cached component references — never call GetComponent in Update/InvokeRepeating
+        private Image _timerFillImage;
+        private Image _timerIconImage;
+        private Transform _timerTransform;
+        private Tween _pulseTween;
+        private bool _isCritical;
 
         #endregion
         private void OnEnable()
@@ -35,14 +42,31 @@ namespace LudoClassicOffline
             PlayerIndex = 0;
         }
 
+        private void Awake()
+        {
+            CacheComponents();
+        }
 
+        private void CacheComponents()
+        {
+            if (_timerFillImage == null)
+                _timerFillImage = AllPlayerTimerImage.GetComponent<Image>();
+            if (_timerIconImage == null)
+                _timerIconImage = AllPlayerTimerImage.transform.GetChild(0).GetComponent<Image>();
+            if (_timerTransform == null)
+                _timerTransform = AllPlayerTimerImage.transform;
+        }
 
         public void Reapet(float _remainTime, float _turnTime)
         {
+            CacheComponents();
             turnTime = _turnTime;
             remainTime = _remainTime;
+            _isCritical = false;
             AllPlayerTimerImage.gameObject.SetActive(true);
-            AllPlayerTimerImage.gameObject.GetComponent<Image>().color = Color.green;
+            _timerFillImage.color = Color.green;
+            _pulseTween?.Kill();
+            _timerTransform.localScale = Vector3.one;
             if (this.gameObject.activeSelf == true)
                 InvokeRepeating(nameof(TurnTimeStart), 0f, 0.02f);
 
@@ -51,6 +75,10 @@ namespace LudoClassicOffline
         public void TurnDataReset()
         {
             CancelInvoke(nameof(TurnTimeStart));
+            _pulseTween?.Kill();
+            if (_timerTransform != null)
+                _timerTransform.localScale = Vector3.one;
+            _isCritical = false;
             AllPlayerTimerImage.gameObject.SetActive(false);
         }
 
@@ -58,25 +86,35 @@ namespace LudoClassicOffline
         float remainTime;
         public void TurnTimeStart()
         {
-            AllPlayerTimerImage.gameObject.GetComponent<Image>().fillAmount = (remainTime / turnTime);
+            float fill = remainTime / turnTime;
+            _timerFillImage.fillAmount = fill;
             remainTime -= 0.02f;
             AllPlayerTimerImage.gameObject.SetActive(true);
-            if (AllPlayerTimerImage.gameObject.GetComponent<Image>().fillAmount <= 0.3)
+
+            if (fill <= 0.3f && !_isCritical)
             {
+                // Enter critical state once — smooth color transition + pulsing scale loop
+                _isCritical = true;
                 IsPlayerTurn = true;
-                if (IsPlayerTurn == true && !isSound)
+                if (!isSound && socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == socketNumberEventReceiver.signUpResponce.data.thisPlayerSeatIndex)
                 {
-                    if (socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == socketNumberEventReceiver.signUpResponce.data.thisPlayerSeatIndex)
-                    {
-                      //  TimeCount();
-                    }
+                    // TimeCount();
                 }
-                AllPlayerTimerImage.gameObject.transform.GetChild(0).GetComponent<Image>().sprite = red;
-                AllPlayerTimerImage.gameObject.GetComponent<Image>().color = Color.red;
+                _timerIconImage.sprite = red;
+                _timerFillImage.DOColor(Color.red, 0.25f);
+                _pulseTween?.Kill();
+                _pulseTween = _timerTransform
+                    .DOScale(1.15f, 0.3f)
+                    .SetEase(Ease.InOutSine)
+                    .SetLoops(-1, LoopType.Yoyo);
             }
-            if (AllPlayerTimerImage.gameObject.GetComponent<Image>().fillAmount <= 0)
+
+            if (fill <= 0)
             {
-                AllPlayerTimerImage.gameObject.GetComponent<Image>().fillAmount = 1;
+                _pulseTween?.Kill();
+                _timerTransform.localScale = Vector3.one;
+                _timerFillImage.fillAmount = 1;
+                _isCritical = false;
                 AllPlayerTimerImage.gameObject.SetActive(false);
                 SoundManagerOffline.instance.TimeSoundStop(SoundManagerOffline.instance.timerAudio);
                 CancelInvoke(nameof(TurnTimeStart));

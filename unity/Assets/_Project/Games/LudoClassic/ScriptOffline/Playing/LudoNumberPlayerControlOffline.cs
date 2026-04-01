@@ -27,7 +27,11 @@ namespace LudoClassicOffline
 
         public void SetMoveIndex()
         {
-            userName.text = ludoNumbersUserData.username;
+            userName.text = LudoDisplayNameUtility.ResolveDisplayName(
+                ludoNumbersUserData.userId,
+                ludoNumbersUserData.username,
+                SeatIndex
+            );
 
             string imgUrl = ludoNumbersUserData.userProfile;
             if (!string.IsNullOrEmpty(imgUrl.Trim()))

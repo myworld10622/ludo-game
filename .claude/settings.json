@@ -23,7 +23,8 @@
       "Bash(curl -s \"http://localhost:8000/api/v1/tournaments/me/history\" -H \"Accept: application/json\" -H \"Authorization: Bearer bad_token\")",
       "Bash(grep -rl \"userRagisterPanal\\\\|RegisterPanel\\\\|SignupPanel\\\\|registerPanel\\\\|register.*panel\\\\|mobile.*number\\\\|Enter.*name\\\\|referral.*code\" d:/Live-Code/games/unity/Assets/_Project --include=*.cs -l)",
       "Bash(find d:/Live-Code/games/unity -name *.log -path */Logs/*)",
-      "Read(//c/Users/asus/AppData/Local/Unity/Editor/**)"
+      "Read(//c/Users/asus/AppData/Local/Unity/Editor/**)",
+      "Bash(grep -l \"ParticleSystem\" \"/d/Live-Code/games/unity/Assets/_Project/Games/LudoClassic/PerFab/\"*.prefab)"
     ]
   }
 }

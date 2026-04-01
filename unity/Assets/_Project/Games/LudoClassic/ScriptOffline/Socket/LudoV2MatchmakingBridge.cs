@@ -257,7 +257,7 @@ namespace LudoClassicOffline
                 JsonConvert.SerializeObject(new
                 {
                     userId = int.Parse(Configuration.GetId()),
-                    displayName = Configuration.GetName(),
+                    displayName = LudoDisplayNameUtility.LocalPlayerLabel(),
                     roomUuid = queuedRoom.data.room_uuid,
                     roomType = "public",
                     playMode = entryFee > 0 ? "cash" : "practice",
@@ -410,7 +410,11 @@ namespace LudoClassicOffline
                 {
                     playerSeatIndex = Mathf.Max(0, seat.seatNo - 1),
                     userId = seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                    username = seat.displayName ?? ("Seat " + seat.seatNo),
+                    username = LudoDisplayNameUtility.ResolveDisplayName(
+                        seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
+                        seat.displayName ?? ("Seat " + seat.seatNo),
+                        Mathf.Max(0, seat.seatNo - 1)
+                    ),
                     userProfile = string.Empty,
                 });
             }
@@ -449,7 +453,11 @@ namespace LudoClassicOffline
                 {
                     seatIndex = Mathf.Max(0, seat.seatNo - 1),
                     userId = seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                    username = seat.displayName ?? ("Seat " + seat.seatNo),
+                    username = LudoDisplayNameUtility.ResolveDisplayName(
+                        seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
+                        seat.displayName ?? ("Seat " + seat.seatNo),
+                        Mathf.Max(0, seat.seatNo - 1)
+                    ),
                     avatar = string.Empty,
                     tokenDetails = new List<int> { 0, 0, 0, 0 },
                     score = 0,
@@ -745,7 +753,11 @@ namespace LudoClassicOffline
                     stats = new
                     {
                         win_type = player.winType ?? string.Empty,
-                        username = seat?.displayName ?? player.username ?? string.Empty,
+                        username = LudoDisplayNameUtility.ResolveDisplayName(
+                            seat?.userId?.ToString(),
+                            seat?.displayName ?? player.username ?? string.Empty,
+                            Mathf.Max(0, seatNo - 1)
+                        ),
                         player_type = seat?.playerType ?? "unknown",
                         bot_code = seat?.botCode,
                     },
