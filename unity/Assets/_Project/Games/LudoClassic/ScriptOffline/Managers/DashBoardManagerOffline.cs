@@ -143,11 +143,14 @@ public class DashBoardManagerOffline : MonoBehaviour
         private LudoTournamentMatchNotificationOffline ludoMatchNotification;
         private RectTransform tournamentTab;
         private Button tournamentTabButton;
+        private Image tournamentTabImage;
         private bool hasCachedTabPositions;
         private Vector2 cachedPlayer2Position;
         private Vector2 cachedPlayer4Position;
         private Vector2 cachedPlayer2Size;
         private Vector2 cachedPlayer4Size;
+        private readonly List<GameObject> hiddenTournamentMenuObjects = new List<GameObject>();
+        private bool suppressTournamentSideMenu;
 
         private void Awake()
         {
@@ -333,6 +336,14 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             // CheckUSBDebugging();
             //  dashBoardAPIRequestHandler.RunningGameAPI();
+        }
+
+        private void Update()
+        {
+            if (suppressTournamentSideMenu)
+            {
+                HideTournamentSideMenu();
+            }
         }
 
         #region Chack Debug Mode
@@ -680,6 +691,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 2;
                     fourPlayerLobby.SetActive(false);
                     twoPlayerLobby.SetActive(true);
+                    UpdateClassicModeTabSelection(2);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
 
@@ -690,6 +702,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 4;
                     fourPlayerLobby.SetActive(true);
                     twoPlayerLobby.SetActive(false);
+                    UpdateClassicModeTabSelection(4);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
             }
@@ -903,7 +916,10 @@ public class DashBoardManagerOffline : MonoBehaviour
             // Hide game-mode overlay buttons (☰ and ✕) so they don't bleed through
             selectGameModePanal?.SetActive(false);
             backButton?.SetActive(false);
+            suppressTournamentSideMenu = true;
+            HideTournamentSideMenu();
             ludoMatchNotification?.Unsuppress();
+            UpdateClassicModeTabSelection(0);
             ResolveTournamentPanel().OpenPanel();
         }
 
@@ -912,6 +928,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             if (ludoTournamentPanel != null)
                 ludoTournamentPanel.ClosePanel();
             // Restore the overlay panel that contains ☰ / ✕ buttons
+            suppressTournamentSideMenu = false;
+            RestoreTournamentSideMenu();
             selectGameModePanal?.SetActive(true);
         }
 
@@ -938,6 +956,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             selectGameModePanal?.SetActive(false);
             backButton?.SetActive(false);
+            suppressTournamentSideMenu = true;
+            HideTournamentSideMenu();
             ludoMatchNotification?.Suppress();
             if (ludoTournamentPanel != null)
                 ludoTournamentPanel.HidePanel();
@@ -949,6 +969,16 @@ public class DashBoardManagerOffline : MonoBehaviour
             if (ludoCreateTournamentPanel != null)
             {
                 ludoCreateTournamentPanel.ClosePanel();
+            }
+        }
+
+        public void SetTournamentSideMenuSuppressed(bool suppressed)
+        {
+            suppressTournamentSideMenu = suppressed;
+
+            if (!suppressed)
+            {
+                RestoreTournamentSideMenu();
             }
         }
 
@@ -1044,6 +1074,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 GameObject clone = Object.Instantiate(player4.gameObject, player4.parent);
                 clone.name = "TournamentTab";
                 tournamentTab = clone.GetComponent<RectTransform>();
+                tournamentTabImage = clone.GetComponent<Image>();
                 tournamentTabButton = clone.GetComponentInChildren<Button>(true);
 
                 if (tournamentTabButton == null)
@@ -1065,7 +1096,7 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             float centerX = (cachedPlayer2Position.x + cachedPlayer4Position.x) * 0.5f;
             float tabWidth = Mathf.Min(cachedPlayer2Size.x, cachedPlayer4Size.x) * 0.78f;
-            float tabHeight = Mathf.Min(cachedPlayer2Size.y, cachedPlayer4Size.y);
+            float tabHeight = Mathf.Min(cachedPlayer2Size.y, cachedPlayer4Size.y) * 1.14f;
             float gap = 8f;
             float step = tabWidth + gap;
 
@@ -1076,10 +1107,11 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 tournamentTab.gameObject.SetActive(true);
                 tournamentTab.SetAsLastSibling();
-                tournamentTab.anchoredPosition = new Vector2(centerX, cachedPlayer2Position.y);
+                tournamentTab.anchoredPosition = new Vector2(centerX, cachedPlayer2Position.y + 3f);
                 tournamentTab.sizeDelta = new Vector2(tabWidth, tabHeight);
             }
             player4.anchoredPosition = new Vector2(centerX + step, cachedPlayer4Position.y);
+            UpdateClassicModeTabSelection(4);
         }
 
         private void HideTournamentClassicTab()
@@ -1096,6 +1128,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 tournamentTab.gameObject.SetActive(false);
             }
+
+            UpdateClassicModeTabSelection(4);
         }
 
         private void ReplaceTabText(Transform root, string source, string target)
@@ -1117,6 +1151,94 @@ public class DashBoardManagerOffline : MonoBehaviour
                     tmpLabels[i].text = tmpLabels[i].text.Replace(source, target);
                 }
             }
+        }
+
+        private void UpdateClassicModeTabSelection(int selectedMode)
+        {
+            if (player2Button != null)
+            {
+                player2Button.sprite = selectedMode == 2 ? selectSprite : unSelectSprite;
+            }
+
+            if (player4Button != null)
+            {
+                player4Button.sprite = selectedMode == 4 ? selectSprite : unSelectSprite;
+            }
+
+            if (tournamentTabImage != null)
+            {
+                tournamentTabImage.sprite = selectedMode == 0 ? selectSprite : unSelectSprite;
+            }
+        }
+
+        private void HideTournamentSideMenu()
+        {
+            RestoreTournamentSideMenu();
+
+            string[] targetNames =
+            {
+                "SettingBtn",
+                "SettingBtnImage",
+                "OptionHolder2Player",
+                "OptionHolder4Player",
+                "OptionHolderMultiPlayer",
+                "Lobby-Option",
+            };
+
+            for (int i = 0; i < targetNames.Length; i++)
+            {
+                Transform target = FindSceneTransformByName(targetNames[i]);
+                if (target != null && target.gameObject.activeSelf)
+                {
+                    hiddenTournamentMenuObjects.Add(target.gameObject);
+                    target.gameObject.SetActive(false);
+                }
+            }
+
+            if (settinPanal != null && settinPanal.activeSelf)
+            {
+                hiddenTournamentMenuObjects.Add(settinPanal);
+                settinPanal.SetActive(false);
+            }
+        }
+
+        private void RestoreTournamentSideMenu()
+        {
+            for (int i = 0; i < hiddenTournamentMenuObjects.Count; i++)
+            {
+                GameObject target = hiddenTournamentMenuObjects[i];
+                if (target != null)
+                {
+                    target.SetActive(true);
+                }
+            }
+
+            hiddenTournamentMenuObjects.Clear();
+        }
+
+        private Transform FindSceneTransformByName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            Transform[] transforms = Resources.FindObjectsOfTypeAll<Transform>();
+            for (int i = 0; i < transforms.Length; i++)
+            {
+                Transform candidate = transforms[i];
+                if (candidate == null || !candidate.gameObject.scene.IsValid())
+                {
+                    continue;
+                }
+
+                if (string.Equals(candidate.name, objectName, StringComparison.OrdinalIgnoreCase))
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         public void CLickOnPassNPlayButton()

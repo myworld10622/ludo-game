@@ -68,8 +68,11 @@ namespace LudoClassicOffline
 
             // Full-screen backdrop
             panelRoot = new GameObject("CreateTournamentPanel",
-                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
+            var panelCanvas = panelRoot.GetComponent<Canvas>();
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 32010;
             panelRoot.GetComponent<Image>().color = BgColor;
             var pr = panelRoot.GetComponent<RectTransform>();
             pr.anchorMin = Vector2.zero; pr.anchorMax = Vector2.one;

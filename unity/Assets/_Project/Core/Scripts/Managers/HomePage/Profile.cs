@@ -141,6 +141,7 @@ public class Profile : MonoBehaviour
     {
         profilepic.sprite = SpriteManager.Instance.profile_image;
         selection = this.GetComponent<GameSelection>();
+        HideNonLudoGamesImmediately();
     }
 
     async void OnEnable()
@@ -150,10 +151,12 @@ public class Profile : MonoBehaviour
         //         GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
         //         layoutGroup.constraintCount = 4;
         // #endif
+        HideNonLudoGamesImmediately();
         SetUserProfileDetails();
         //AudioManager._instance.StopBackgroundAudio();
         await UpdateData(Configuration.GetId(), Configuration.GetToken());
-        //ShowGames(0);
+        await InitializeGamesAsync();
+        await ShowGamesAsync(0);
 
     }
     /// <summary>
@@ -993,55 +996,89 @@ public class Profile : MonoBehaviour
 
     public async Task ShowGamesAsync(int selected)
     {
+        List<GameObject> combinedGameList = GetConfiguredGameObjects();
         List<GameObject> selectedGameList = selected switch
         {
-            0 => allgames,
-            1 => rummygames,
-            2 => smallgames,
-            3 => roulettegames,
-            4 => coingames,
-            5 => Slotgames,
+            0 => GetLudoOnlyGameObjects(combinedGameList),
+            1 => FilterValidGameObjects(rummygames),
+            2 => FilterValidGameObjects(smallgames),
+            3 => FilterValidGameObjects(roulettegames),
+            4 => FilterValidGameObjects(coingames),
+            5 => FilterValidGameObjects(Slotgames),
             _ => throw new ArgumentException("Invalid selection.", nameof(selected)),
         };
         activegamenamesinunity = new List<string>();
+        bool hasServerGameSettings = activegamenames != null && activegamenames.Count > 0;
 
-        allgames.ForEach(game => game.SetActive(false));
+        combinedGameList.ForEach(game => game.SetActive(false));
 
-        // Activate only selected games present in activegamenames
-        selectedGameList.ForEach(game => game.SetActive(true));
-        /*  selectedGameList.ForEach(game =>
-         {
-             bool isActive = activegamenames.Contains(game.name);
-             game.SetActive(isActive);
-             if (isActive)
-                 activegamenamesinunity.Add(game.name);
-         }); */
-        Debug.Log($"CHECK LIST COUNT {selectedGameList.Count}");
-        if (selectedGameList.Count == 11)
+        selectedGameList.ForEach(game =>
+        {
+            bool isActive = !hasServerGameSettings || IsLobbyGameEnabled(game);
+            game.SetActive(isActive);
+
+            if (isActive)
+            {
+                activegamenamesinunity.Add(game.name);
+            }
+        });
+
+        if (activegamenamesinunity.Count == 0)
+        {
+            var ludoOnly = selectedGameList.Find(game =>
+                game != null
+                && NormalizeGameKey(game.name).Contains("ludo")
+            );
+
+            if (ludoOnly != null)
+            {
+                ludoOnly.SetActive(true);
+                activegamenamesinunity.Add(ludoOnly.name);
+            }
+        }
+
+        Debug.Log($"CHECK ACTIVE GAME COUNT {activegamenamesinunity.Count}");
+        GridLayoutGroup layoutGroup = null;
+        if (gridlayoutgroup != null)
+        {
+            layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
+        }
+
+        if (activegamenamesinunity.Count == 11)
         {
 #if UNITY_WEBGL
             allgames.Find(game => game.name == "color_prediction_vertical").SetActive(false);
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = 6;
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = 6;
+            }
 #else
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = 6;
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = 6;
+            }
 #endif
         }
         else if (selectedGameList.Count == 5)
         {
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = 4;
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = 4;
+            }
         }
-        else if (selectedGameList.Count == 19)
+        else if (activegamenamesinunity.Count == 19)
         {
 #if UNITY_WEBGL
             allgames.Find(game => game.name == "color_prediction_vertical").SetActive(false);
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = 9;
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = 9;
+            }
 #else
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = 10;
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = 10;
+            }
             Debug.Log($"CHECK LIST COUNT else {selectedGameList.Count}");
 
 #endif
@@ -1050,8 +1087,10 @@ public class Profile : MonoBehaviour
         {
             int roundedUpCount = Mathf.CeilToInt(activegamenamesinunity.Count / 2f);
             roundedUpCount += 1;
-            GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
-            layoutGroup.constraintCount = Mathf.Max(roundedUpCount, 4);
+            if (layoutGroup != null)
+            {
+                layoutGroup.constraintCount = Mathf.Max(roundedUpCount, 4);
+            }
             CommonUtil.CheckLog("Rounded int " + roundedUpCount);
         }
         /* if (selected == 0)
@@ -1076,10 +1115,13 @@ public class Profile : MonoBehaviour
         // Adjust GridLayoutGroup constraint count
         // Refresh game content
 #if UNITY_WEBGL
-        allgames.Find(game => game.name == "color_prediction_vertical").SetActive(false);
+        combinedGameList.Find(game => game.name == "color_prediction_vertical")?.SetActive(false);
 #endif
-        gamecontent.gameObject.SetActive(false);
-        gamecontent.gameObject.SetActive(true);
+        if (gamecontent != null && gamecontent.gameObject != null)
+        {
+            gamecontent.gameObject.SetActive(false);
+            gamecontent.gameObject.SetActive(true);
+        }
     }
 
     public async Task InitializeGamesAsync()
@@ -1097,7 +1139,141 @@ public class Profile : MonoBehaviour
         // activehistory.ForEach(game => game.SetActive(true));
 
         // Show default game selection (0)
-        // await ShowGamesAsync(0);
+        if (activegamenames == null)
+        {
+            activegamenames = new List<string>();
+        }
+    }
+
+    private bool IsLobbyGameEnabled(GameObject gameObject)
+    {
+        if (gameObject == null)
+        {
+            return false;
+        }
+
+        string normalizedObjectName = NormalizeGameKey(gameObject.name);
+
+        if (activegamenames.Any(name => MatchesServerGameSetting(name, normalizedObjectName)))
+        {
+            return true;
+        }
+
+        if (games != null)
+        {
+            var mappedGame = games.FirstOrDefault(item =>
+                item != null
+                && (
+                    NormalizeGameKey(item.backendname) == normalizedObjectName
+                    || NormalizeGameKey(item.name) == normalizedObjectName
+                )
+            );
+
+            if (mappedGame != null)
+            {
+                return activegamenames.Any(name =>
+                    MatchesServerGameSetting(name, NormalizeGameKey(mappedGame.backendname))
+                    || MatchesServerGameSetting(name, NormalizeGameKey(mappedGame.name))
+                );
+            }
+        }
+
+        return false;
+    }
+
+    private string NormalizeGameKey(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        return Regex.Replace(value.Trim().ToLowerInvariant(), @"[^a-z0-9]+", "_")
+            .Trim('_');
+    }
+
+    private bool MatchesServerGameSetting(string serverValue, string targetValue)
+    {
+        string normalizedServerValue = NormalizeGameKey(serverValue);
+        string normalizedTargetValue = NormalizeGameKey(targetValue);
+
+        if (normalizedServerValue == normalizedTargetValue)
+        {
+            return true;
+        }
+
+        if (normalizedServerValue == "ludo")
+        {
+            return normalizedTargetValue == "ludo"
+                || normalizedTargetValue == "ludo_online"
+                || normalizedTargetValue.Contains("ludo");
+        }
+
+        return false;
+    }
+
+    private List<GameObject> GetConfiguredGameObjects()
+    {
+        var configuredGames = new List<GameObject>();
+        configuredGames.AddRange(FilterValidGameObjects(allgames));
+        configuredGames.AddRange(FilterValidGameObjects(rummygames));
+        configuredGames.AddRange(FilterValidGameObjects(smallgames));
+        configuredGames.AddRange(FilterValidGameObjects(roulettegames));
+        configuredGames.AddRange(FilterValidGameObjects(coingames));
+        configuredGames.AddRange(FilterValidGameObjects(Slotgames));
+
+        return configuredGames
+            .Where(game => game != null)
+            .Distinct()
+            .ToList();
+    }
+
+    private List<GameObject> GetLudoOnlyGameObjects(List<GameObject> source)
+    {
+        List<GameObject> validGames = FilterValidGameObjects(source);
+        List<GameObject> ludoOnlineGames = validGames
+            .Where(game => NormalizeGameKey(game.name) == "ludo_online")
+            .ToList();
+
+        if (ludoOnlineGames.Count > 0)
+        {
+            return ludoOnlineGames;
+        }
+
+        List<GameObject> genericLudoGames = validGames
+            .Where(game => NormalizeGameKey(game.name).Contains("ludo"))
+            .ToList();
+
+        return genericLudoGames;
+    }
+
+    private List<GameObject> FilterValidGameObjects(List<GameObject> source)
+    {
+        if (source == null)
+        {
+            return new List<GameObject>();
+        }
+
+        return source
+            .Where(game => game != null)
+            .Distinct()
+            .ToList();
+    }
+
+    private void HideNonLudoGamesImmediately()
+    {
+        List<GameObject> combinedGameList = GetConfiguredGameObjects();
+        List<GameObject> ludoGames = GetLudoOnlyGameObjects(combinedGameList);
+
+        foreach (GameObject game in combinedGameList)
+        {
+            if (game == null)
+            {
+                continue;
+            }
+
+            game.SetActive(ludoGames.Contains(game));
+        }
     }
 
     #endregion
@@ -1206,23 +1382,8 @@ public class Profile : MonoBehaviour
                     .ToList();
             }
 
-            GameSetting gameSetting = rootobject.game_setting ?? rootobject.data;
-
-            if (gameSetting == null)
-            {
-                Debug.LogWarning("Game settings payload did not include a supported settings object.");
-                return new List<string>();
-            }
-
-            return typeof(GameSetting)
-                .GetFields(BindingFlags.Instance | BindingFlags.Public)
-                .Where(field =>
-                {
-                    var value = field.GetValue(gameSetting)?.ToString();
-                    return value == "1";
-                })
-                .Select(field => field.Name)
-                .ToList();
+            Debug.LogWarning("Game settings response did not include parsed games list. Falling back to Ludo-only visibility.");
+            return new List<string> { "ludo" };
         }
 
         return new List<string>();

@@ -80,7 +80,9 @@ module.exports = function (namespace) {
       real_players: room.realPlayers,
       bot_players: room.botPlayers,
       allow_bots: room.allowBots,
+      min_real_players: room.minRealPlayers,
       bot_fill_after_seconds: room.botFillAfterSeconds,
+      bot_start_policy: room.botStartPolicy ?? "disabled",
       fill_bots_at: room.fillBotsAt,
       entry_fee: room.entryFee,
       match_uuid: room.matchUuid ?? null,
@@ -89,6 +91,105 @@ module.exports = function (namespace) {
       mode: room.mode ?? "public",
       seats: room.seats,
       players: room.players ?? [],
+    };
+  }
+
+  function mergeTournamentRoomState(existingRoom, incomingRoom, claimedUserId, claimedEntryUuid) {
+    if (!existingRoom) {
+      return incomingRoom;
+    }
+
+    const existingSeats = Array.isArray(existingRoom.seats) ? existingRoom.seats : [];
+    const incomingSeats = Array.isArray(incomingRoom.seats) ? incomingRoom.seats : [];
+    const mergedSeats = [];
+    const incomingSeatNos = new Set(incomingSeats.map((seat) => Number(seat.seatNo)));
+    const connectedEntryUuids = new Set([
+      ...((existingRoom.connectedEntryUuids ?? []).map((value) => String(value))),
+      ...((incomingRoom.connectedEntryUuids ?? []).map((value) => String(value))),
+      ...existingSeats
+        .filter((seat) => seat?.isConnected === true)
+        .map((seat) =>
+          String(
+            seat?.tournamentEntryUuid ??
+              seat?.meta?.tournament_entry_uuid ??
+              seat?.meta?.tournamentEntryUuid ??
+              ""
+          )
+        )
+        .filter(Boolean),
+    ]);
+    const connectedUserIds = new Set([
+      ...((existingRoom.connectedUserIds ?? []).map((value) => String(value))),
+      ...((incomingRoom.connectedUserIds ?? []).map((value) => String(value))),
+      ...existingSeats
+        .filter((seat) => seat?.isConnected === true && seat?.userId !== null && seat?.userId !== undefined)
+        .map((seat) => String(seat.userId)),
+    ]);
+
+    if (claimedEntryUuid !== null && claimedEntryUuid !== undefined) {
+      connectedEntryUuids.add(String(claimedEntryUuid));
+    }
+    if (claimedUserId !== null && claimedUserId !== undefined) {
+      connectedUserIds.add(String(claimedUserId));
+    }
+
+    for (const seat of incomingSeats) {
+      const seatNo = Number(seat.seatNo);
+      const priorSeat = existingSeats.find((item) => Number(item.seatNo) === seatNo);
+      const seatEntryUuid = String(
+        seat?.tournamentEntryUuid ??
+          seat?.meta?.tournament_entry_uuid ??
+          seat?.meta?.tournamentEntryUuid ??
+          ""
+      );
+      const seatUserId =
+        seat?.userId !== null && seat?.userId !== undefined
+          ? String(seat.userId)
+          : "";
+      const isClaimedSeat =
+        seatEntryUuid === String(claimedEntryUuid ?? "") ||
+        seatUserId === String(claimedUserId ?? "");
+      const isKnownConnected =
+        (seatEntryUuid && connectedEntryUuids.has(seatEntryUuid)) ||
+        (seatUserId && connectedUserIds.has(seatUserId));
+
+      mergedSeats.push({
+        ...priorSeat,
+        ...seat,
+        isConnected: isClaimedSeat || isKnownConnected
+          ? true
+          : (priorSeat?.isConnected ?? seat?.isConnected ?? false),
+        isReady: isClaimedSeat || isKnownConnected
+          ? true
+          : (priorSeat?.isReady ?? seat?.isReady ?? false),
+      });
+    }
+
+    for (const seat of existingSeats) {
+      const seatNo = Number(seat.seatNo);
+      if (incomingSeatNos.has(seatNo)) {
+        continue;
+      }
+
+      if (seat.playerType === playerTypes.BOT) {
+        mergedSeats.push(seat);
+      }
+    }
+
+    const realPlayers = mergedSeats.filter((seat) => seat.playerType === playerTypes.HUMAN).length;
+    const botPlayers = mergedSeats.filter((seat) => seat.playerType === playerTypes.BOT).length;
+
+    return {
+      ...existingRoom,
+      ...incomingRoom,
+      seats: mergedSeats.sort((a, b) => Number(a.seatNo) - Number(b.seatNo)),
+      currentPlayers: mergedSeats.length,
+      realPlayers,
+      botPlayers,
+      connectedEntryUuids: Array.from(connectedEntryUuids),
+      connectedUserIds: Array.from(connectedUserIds),
+      fillBotsAt: existingRoom.fillBotsAt ?? incomingRoom.fillBotsAt ?? null,
+      startedAt: existingRoom.startedAt ?? incomingRoom.startedAt ?? null,
     };
   }
 
@@ -186,6 +287,18 @@ module.exports = function (namespace) {
     }
 
     return replacedSeats;
+  }
+
+  function tournamentBotPolicy(room) {
+    return room?.botStartPolicy ?? "disabled";
+  }
+
+  function supportsTournamentBotFill(room) {
+    return ["fill_missing", "hybrid"].includes(tournamentBotPolicy(room));
+  }
+
+  function supportsTournamentOfflineReplacement(room) {
+    return ["replace_offline", "hybrid"].includes(tournamentBotPolicy(room));
   }
 
   function scheduleStartRetry(room, startedWithBots) {
@@ -324,8 +437,9 @@ module.exports = function (namespace) {
       realPlayers: Number(roomData.current_real_players || seats.filter((seat) => seat.playerType === playerTypes.HUMAN).length),
       botPlayers: Number(roomData.current_bot_players || 0),
       allowBots: allowBotsInTournaments,
-      minRealPlayers: 1,
+      minRealPlayers: Number(roomData.min_real_players || 1),
       botFillAfterSeconds: Math.max(0, botFillAfterSeconds),
+      botStartPolicy: roomData.bot_start_policy || (allowBotsInTournaments ? "hybrid" : "disabled"),
       fillBotsAt: null,
       entryFee: Number(roomData.entry_fee || 0),
       matchUuid: roomData.match_uuid ?? null,
@@ -334,6 +448,8 @@ module.exports = function (namespace) {
       tournamentId: roomData.tournament_id ?? null,
       tournamentUuid,
       tournamentEntryUuid,
+      connectedEntryUuids: tournamentEntryUuid ? [String(tournamentEntryUuid)] : [],
+      connectedUserIds: userId !== null && userId !== undefined ? [String(userId)] : [],
       players,
       seats,
       startedAt: null,
@@ -371,23 +487,28 @@ module.exports = function (namespace) {
         tournamentUuid,
         tournamentEntryUuid
       );
+      const existingRoom = rooms.get(room.roomId);
+      const mergedRoom = mergeTournamentRoomState(existingRoom, room, userId, tournamentEntryUuid);
 
-      rooms.set(room.roomId, room);
+      rooms.set(mergedRoom.roomId, mergedRoom);
       socket.join(room.roomId);
       socket.data.roomId = room.roomId;
       socket.data.userId = userId;
       socket.data.tournamentEntryUuid = tournamentEntryUuid;
 
-      namespace.to(room.roomId).emit("ludo.tournament.room_claimed", serializeRoom(room));
-      emitSnapshot(room);
+      namespace.to(mergedRoom.roomId).emit("ludo.tournament.room_claimed", serializeRoom(mergedRoom));
+      emitSnapshot(mergedRoom);
 
-      if (isTournamentRoomReadyToStart(room)) {
-        await startRoom(room, false);
+      if (isTournamentRoomReadyToStart(mergedRoom)) {
+        await startRoom(mergedRoom, false);
       } else if (
-        room.allowBots &&
-        (room.currentPlayers < room.maxPlayers || hasDisconnectedHumanSeats(room))
+        mergedRoom.allowBots &&
+        (
+          (mergedRoom.currentPlayers < mergedRoom.maxPlayers && supportsTournamentBotFill(mergedRoom)) ||
+          (hasDisconnectedHumanSeats(mergedRoom) && supportsTournamentOfflineReplacement(mergedRoom))
+        )
       ) {
-        scheduleBotFill(room);
+        scheduleBotFill(mergedRoom);
       }
     } catch (error) {
       socket.emit("ludo.tournament.room_claim_failed", {
@@ -416,7 +537,11 @@ module.exports = function (namespace) {
 
       const decision = engine.buildStartDecision(currentRoom);
 
-      if (decision.shouldFillBots && decision.botSeat) {
+      if (
+        (currentRoom.mode !== "tournament" || supportsTournamentBotFill(currentRoom)) &&
+        decision.shouldFillBots &&
+        decision.botSeat
+      ) {
         const seat = decision.botSeat;
         currentRoom.seats.push({
           seatNo: seat.seatNo,
@@ -440,6 +565,7 @@ module.exports = function (namespace) {
       if (
         currentRoom.mode === "tournament" &&
         currentRoom.playMode === "tournament" &&
+        supportsTournamentOfflineReplacement(currentRoom) &&
         hasDisconnectedHumanSeats(currentRoom)
       ) {
         const replacedSeats = replaceDisconnectedHumanSeatsWithBots(currentRoom);
@@ -470,7 +596,12 @@ module.exports = function (namespace) {
 
       currentRoom.state = roomStates.WAITING_BOT_FILL;
       emitSnapshot(currentRoom);
-      scheduleBotFill(currentRoom);
+      if (
+        (currentRoom.currentPlayers < currentRoom.maxPlayers && (currentRoom.mode !== "tournament" || supportsTournamentBotFill(currentRoom))) ||
+        (currentRoom.mode === "tournament" && supportsTournamentOfflineReplacement(currentRoom) && hasDisconnectedHumanSeats(currentRoom))
+      ) {
+        scheduleBotFill(currentRoom);
+      }
     }, delayMs);
 
     roomTimers.set(room.roomId, timerId);
@@ -567,8 +698,51 @@ module.exports = function (namespace) {
     }
 
     const room = rooms.get(roomId);
+    const isTournamentRoom = room.mode === "tournament" || room.playMode === "tournament";
     const before = room.seats.length;
     const socketTournamentEntryUuid = socket.data.tournamentEntryUuid ?? null;
+    const socketUserId = socket.data.userId ?? null;
+
+    if (isTournamentRoom) {
+      let markedDisconnected = false;
+      room.seats = room.seats.map((seat) => {
+        const seatTournamentEntryUuid =
+          seat?.tournamentEntryUuid ??
+          seat?.meta?.tournament_entry_uuid ??
+          seat?.meta?.tournamentEntryUuid ??
+          null;
+        const matchesSeat = socketTournamentEntryUuid
+          ? String(seatTournamentEntryUuid ?? "") === String(socketTournamentEntryUuid)
+          : String(seat.userId ?? "") === String(socketUserId ?? "");
+
+        if (!matchesSeat) {
+          return seat;
+        }
+
+        markedDisconnected = true;
+        return {
+          ...seat,
+          isConnected: false,
+          isReady: false,
+        };
+      });
+
+      if (markedDisconnected) {
+        room.connectedEntryUuids = (room.connectedEntryUuids ?? []).filter(
+          (value) => String(value) !== String(socketTournamentEntryUuid ?? "")
+        );
+        room.connectedUserIds = (room.connectedUserIds ?? []).filter(
+          (value) => String(value) !== String(socketUserId ?? "")
+        );
+      }
+
+      socket.leave(roomId);
+      socket.data.roomId = null;
+      socket.data.tournamentEntryUuid = null;
+      emitSnapshot(room);
+      return;
+    }
+
     room.seats = room.seats.filter((seat) => {
       if (socketTournamentEntryUuid) {
         const seatTournamentEntryUuid =

@@ -96,6 +96,7 @@ namespace LudoClassicOffline
         {
             HidePanel();
             if (dashboard == null) return;
+            dashboard.SetTournamentSideMenuSuppressed(false);
             dashboard.lobbySelectPanal?.SetActive(true);
             dashboard.selectGameModePanal?.SetActive(true);
         }
@@ -151,6 +152,15 @@ namespace LudoClassicOffline
 
         private void OpenPrivatePopup()
         {
+            if (privatePopup != null)
+            {
+                Destroy(privatePopup);
+                privatePopup = null;
+                inviteCodeField = null;
+                invitePasswordField = null;
+                privateStatusText = null;
+            }
+
             EnsurePrivatePopup();
             inviteCodeField.text     = string.Empty;
             invitePasswordField.text = string.Empty;
@@ -176,13 +186,13 @@ namespace LudoClassicOffline
             card.transform.SetParent(privatePopup.transform, false);
             card.GetComponent<Image>().color = new Color32(16, 28, 46, 255);
             RectTransform cardRect = card.GetComponent<RectTransform>();
-            cardRect.anchorMin = new Vector2(0.10f, 0.15f);
-            cardRect.anchorMax = new Vector2(0.90f, 0.88f);
+            cardRect.anchorMin = new Vector2(0.18f, 0.24f);
+            cardRect.anchorMax = new Vector2(0.82f, 0.74f);
             cardRect.offsetMin = cardRect.offsetMax = Vector2.zero;
 
             VerticalLayoutGroup vl = card.GetComponent<VerticalLayoutGroup>();
-            vl.padding = new RectOffset(40, 40, 40, 40);
-            vl.spacing = 18;
+            vl.padding = new RectOffset(24, 24, 20, 20);
+            vl.spacing = 10;
             vl.childControlHeight     = true;
             vl.childControlWidth      = true;
             vl.childForceExpandHeight = false;
@@ -191,53 +201,67 @@ namespace LudoClassicOffline
             // Title row: label + ✕ close button side by side
             GameObject titleRow = new GameObject("TitleRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             titleRow.transform.SetParent(card.transform, false);
-            titleRow.GetComponent<LayoutElement>().preferredHeight = 80f;
+            titleRow.GetComponent<LayoutElement>().preferredHeight = 40f;
             HorizontalLayoutGroup thl = titleRow.GetComponent<HorizontalLayoutGroup>();
             thl.childControlHeight = true; thl.childControlWidth = true;
-            thl.childForceExpandHeight = true; thl.childForceExpandWidth = false;
-            thl.spacing = 10;
+            thl.childForceExpandHeight = false; thl.childForceExpandWidth = false;
+            thl.spacing = 8;
 
             GameObject titleLblGo = new GameObject("Title", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text), typeof(LayoutElement));
             titleLblGo.transform.SetParent(titleRow.transform, false);
             Text titleLbl = titleLblGo.GetComponent<Text>();
             titleLbl.font = GetRuntimeFont(); titleLbl.text = "Join Private Tournament";
-            titleLbl.fontSize = 52; titleLbl.fontStyle = FontStyle.Bold; titleLbl.color = Color.white;
+            titleLbl.fontSize = 22; titleLbl.fontStyle = FontStyle.Bold; titleLbl.color = Color.white;
             titleLbl.horizontalOverflow = HorizontalWrapMode.Wrap;
             titleLblGo.GetComponent<LayoutElement>().flexibleWidth = 1f;
 
             Button popupCloseBtn = CreateButton(titleRow.transform, "✕", new Color32(160, 47, 47, 255));
-            popupCloseBtn.GetComponent<LayoutElement>().preferredWidth = 90f;
+            LayoutElement popupCloseLayout = popupCloseBtn.GetComponent<LayoutElement>();
+            popupCloseLayout.preferredWidth = 44f;
+            popupCloseLayout.preferredHeight = 36f;
+            popupCloseLayout.minHeight = 36f;
+            popupCloseLayout.flexibleWidth = 0f;
+            popupCloseBtn.GetComponentInChildren<Text>().fontSize = 18;
             popupCloseBtn.onClick.AddListener(() => privatePopup.SetActive(false));
 
             // Input fields
             inviteCodeField = CreateInputField(card.transform, "Invite Code  (e.g. YAFWGH)");
-            inviteCodeField.GetComponent<LayoutElement>().preferredHeight = 100f;
-            ((Text)inviteCodeField.placeholder).fontSize = 42;
-            inviteCodeField.textComponent.fontSize = 42;
+            inviteCodeField.GetComponent<LayoutElement>().preferredHeight = 40f;
+            ((Text)inviteCodeField.placeholder).fontSize = 16;
+            inviteCodeField.textComponent.fontSize = 16;
 
             invitePasswordField = CreateInputField(card.transform, "Password  (leave blank if none)");
-            invitePasswordField.GetComponent<LayoutElement>().preferredHeight = 100f;
-            ((Text)invitePasswordField.placeholder).fontSize = 42;
-            invitePasswordField.textComponent.fontSize = 42;
+            invitePasswordField.GetComponent<LayoutElement>().preferredHeight = 40f;
+            ((Text)invitePasswordField.placeholder).fontSize = 16;
+            invitePasswordField.textComponent.fontSize = 16;
 
             // Status / error line
-            privateStatusText = CreateLabel(card.transform, string.Empty, 40, FontStyle.Italic, new Color32(255, 110, 110, 255));
+            privateStatusText = CreateLabel(card.transform, string.Empty, 16, FontStyle.Italic, new Color32(255, 110, 110, 255));
+            privateStatusText.alignment = TextAnchor.MiddleLeft;
 
             // Button row
             GameObject btnRow = new GameObject("BtnRow", typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             btnRow.transform.SetParent(card.transform, false);
-            btnRow.GetComponent<LayoutElement>().preferredHeight = 110f;
+            btnRow.GetComponent<LayoutElement>().preferredHeight = 44f;
             HorizontalLayoutGroup hl = btnRow.GetComponent<HorizontalLayoutGroup>();
-            hl.spacing                = 24;
+            hl.spacing                = 10;
             hl.childControlHeight     = true;
             hl.childControlWidth      = true;
             hl.childForceExpandWidth  = true;
-            hl.childForceExpandHeight = true;
+            hl.childForceExpandHeight = false;
 
             Button confirmBtn = CreateButton(btnRow.transform, "Confirm", new Color32(39, 160, 80, 255));
+            LayoutElement confirmLayout = confirmBtn.GetComponent<LayoutElement>();
+            confirmLayout.preferredHeight = 40f;
+            confirmLayout.minHeight = 40f;
+            confirmBtn.GetComponentInChildren<Text>().fontSize = 16;
             confirmBtn.onClick.AddListener(ConfirmPrivateJoin);
 
             Button cancelBtn = CreateButton(btnRow.transform, "Cancel", new Color32(120, 40, 40, 255));
+            LayoutElement cancelLayout = cancelBtn.GetComponent<LayoutElement>();
+            cancelLayout.preferredHeight = 40f;
+            cancelLayout.minHeight = 40f;
+            cancelBtn.GetComponentInChildren<Text>().fontSize = 16;
             cancelBtn.onClick.AddListener(() => privatePopup.SetActive(false));
 
             privatePopup.SetActive(false);
@@ -794,16 +818,19 @@ namespace LudoClassicOffline
 
             // ── Full-screen panel ─────────────────────────────────────────────
             panelRoot = new GameObject("TournamentPanel",
-                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
+            Canvas panelCanvas = panelRoot.GetComponent<Canvas>();
+            panelCanvas.overrideSorting = true;
+            panelCanvas.sortingOrder = 32000;
             panelRoot.GetComponent<Image>().color = new Color32(8, 15, 28, 252);
             var panelRect = panelRoot.GetComponent<RectTransform>();
             panelRect.anchorMin = Vector2.zero; panelRect.anchorMax = Vector2.one;
             panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
 
             // ── Header bar (full-width, fixed height) ─────────────────────────
-            const float headerH  = 82f;
-            const float actionH  = 74f;
+            const float headerH  = 60f;
+            const float actionH  = 60f;
             const float topTotal = headerH + actionH;
 
             var headerBg = new GameObject("HeaderBg",
@@ -860,15 +887,15 @@ namespace LudoClassicOffline
             abHL.childForceExpandHeight = true; abHL.childForceExpandWidth = true;
 
             joinPrivateBtn = CreateButton(actionBar.transform, "🔒 Join Private", new Color32(90, 50, 170, 255));
-            joinPrivateBtn.GetComponentInChildren<Text>().fontSize = 30;
+            joinPrivateBtn.GetComponentInChildren<Text>().fontSize = 40;
             joinPrivateBtn.onClick.AddListener(OpenPrivatePopup);
 
             var createBtn = CreateButton(actionBar.transform, "＋ Create", new Color32(30, 120, 200, 255));
-            createBtn.GetComponentInChildren<Text>().fontSize = 30;
+            createBtn.GetComponentInChildren<Text>().fontSize = 40;
             createBtn.onClick.AddListener(() => dashboard?.OpenCreateTournamentPanel());
 
             var histBtn = CreateButton(actionBar.transform, "📋 My History", new Color32(70, 45, 130, 255));
-            histBtn.GetComponentInChildren<Text>().fontSize = 30;
+            histBtn.GetComponentInChildren<Text>().fontSize = 40;
             histBtn.onClick.AddListener(() => dashboard?.OpenMyTournamentsPanel());
 
             // Status text (below action bar)

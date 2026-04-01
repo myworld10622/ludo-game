@@ -18,6 +18,7 @@ class AdvanceTournamentStatusesCommand extends Command
         $this->info('[TournamentScheduler] Status automation complete.');
         $this->line('  draft → registration_open  : ' . $result['opened_registration']);
         $this->line('  registration_open → closed : ' . $result['closed_registration']);
+        $this->line('  missed-slot disqualified   : ' . ($result['disqualified_no_show'] ?? 0));
 
         return self::SUCCESS;
     }

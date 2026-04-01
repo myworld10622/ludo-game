@@ -8,7 +8,7 @@
     <div class="panel">
         <div class="header-row">
             <strong>Game Catalog</strong>
-            <span class="muted">Create and update via admin API endpoints.</span>
+            <span class="muted">Quick control visibility, activity, and tournament availability from here.</span>
         </div>
         <div class="table-wrap">
             <table>
@@ -21,6 +21,7 @@
                         <th>Client Route</th>
                         <th>Socket Namespace</th>
                         <th>Sort</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -36,10 +37,41 @@
                             <td>{{ $game->client_route ?: '-' }}</td>
                             <td>{{ $game->socket_namespace ?: '-' }}</td>
                             <td>{{ $game->sort_order }}</td>
+                            <td style="min-width:280px;">
+                                <form method="POST" action="{{ route('admin.games.update', $game) }}" class="stack" style="gap:10px;">
+                                    @csrf
+                                    <input type="hidden" name="is_visible" value="{{ $game->is_visible ? 0 : 1 }}">
+                                    <input type="hidden" name="is_active" value="{{ $game->is_active ? 1 : 0 }}">
+                                    <input type="hidden" name="tournaments_enabled" value="{{ $game->tournaments_enabled ? 1 : 0 }}">
+                                    <button type="submit" class="btn {{ $game->is_visible ? 'btn-secondary' : '' }}">
+                                        {{ $game->is_visible ? 'Hide In Lobby' : 'Show In Lobby' }}
+                                    </button>
+                                </form>
+                                <div class="mobile-actions" style="margin-top:8px;">
+                                    <form method="POST" action="{{ route('admin.games.update', $game) }}" style="flex:1;">
+                                        @csrf
+                                        <input type="hidden" name="is_visible" value="{{ $game->is_visible ? 1 : 0 }}">
+                                        <input type="hidden" name="is_active" value="{{ $game->is_active ? 0 : 1 }}">
+                                        <input type="hidden" name="tournaments_enabled" value="{{ $game->tournaments_enabled ? 1 : 0 }}">
+                                        <button type="submit" class="btn {{ $game->is_active ? 'btn-secondary' : '' }}" style="width:100%;">
+                                            {{ $game->is_active ? 'Disable Game' : 'Enable Game' }}
+                                        </button>
+                                    </form>
+                                    <form method="POST" action="{{ route('admin.games.update', $game) }}" style="flex:1;">
+                                        @csrf
+                                        <input type="hidden" name="is_visible" value="{{ $game->is_visible ? 1 : 0 }}">
+                                        <input type="hidden" name="is_active" value="{{ $game->is_active ? 1 : 0 }}">
+                                        <input type="hidden" name="tournaments_enabled" value="{{ $game->tournaments_enabled ? 0 : 1 }}">
+                                        <button type="submit" class="btn {{ $game->tournaments_enabled ? 'btn-secondary' : '' }}" style="width:100%;">
+                                            {{ $game->tournaments_enabled ? 'Tournament Off' : 'Tournament On' }}
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="muted">No games found.</td>
+                            <td colspan="8" class="muted">No games found.</td>
                         </tr>
                     @endforelse
                 </tbody>

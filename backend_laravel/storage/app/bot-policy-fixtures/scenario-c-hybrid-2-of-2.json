@@ -1,0 +1,18 @@
+{
+    "name": "BOTTEST-C Hybrid 2 Of 2 Online",
+    "tournament_uuid": "24",
+    "entries": [
+        {
+            "user_id": 29,
+            "user_name": "simuser1",
+            "entry_uuid": "7181",
+            "access_token": "2714|0pjDmSRPUOZfxNmpvAqCSLlkcBtiZ1jKb7t7HVBw9a27be9c"
+        },
+        {
+            "user_id": 30,
+            "user_name": "simuser2",
+            "entry_uuid": "7182",
+            "access_token": "2715|7ezzpgJE7ASfYXZxR1WaVFplvcSuVJDYwdu0UZPa2f867c22"
+        }
+    ]
+}

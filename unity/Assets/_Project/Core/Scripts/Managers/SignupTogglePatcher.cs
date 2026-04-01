@@ -123,10 +123,18 @@ private void SetInputFieldColor(TMP_InputField field)
                 emailField.characterLimit = 0;
                 emailField.text           = string.Empty;
 
+                // White input text
+                if (emailField.textComponent != null)
+                    emailField.textComponent.color = Color.white;
+
                 if (emailField.placeholder != null)
                 {
                     var ph = emailField.placeholder.GetComponent<TMP_Text>();
-                    if (ph != null) ph.text = "Enter your email address";
+                    if (ph != null)
+                    {
+                        ph.text  = "Enter your email address";
+                        ph.color = new Color(1f, 1f, 1f, 0.6f);   // white, semi-transparent
+                    }
                 }
             }
 
@@ -143,13 +151,25 @@ private void SetInputFieldColor(TMP_InputField field)
 
             SetRowRect(mobileRow, Y_Mobile);
 
-            // Fix placeholder if a previous pass changed it
+            // Fix mobile text + placeholder color → white
+            if (detail.MobileInputfield.textComponent != null)
+                detail.MobileInputfield.textComponent.color = Color.white;
+
             if (detail.MobileInputfield.placeholder != null)
             {
                 var mph = detail.MobileInputfield.placeholder.GetComponent<TMP_Text>();
-                if (mph != null && mph.text.ToLower().Contains("email"))
-                    mph.text = "Enter Your Mobile Number";
+                if (mph != null)
+                {
+                    if (mph.text.ToLower().Contains("email"))
+                        mph.text = "Enter Your Mobile Number";
+                    mph.color = new Color(1f, 1f, 1f, 0.6f);
+                }
             }
+
+            // Fix all other original rows (Name, Password, Referral) → white text
+            FixFieldColors(detail.NameInputfield);
+            FixFieldColors(detail.PasswordInputfield);
+            FixFieldColors(detail.ReferralCodeInputfield);
 
             // Add phone icon (flag-box is hidden; add fresh icon)
             AddLeftEmoji(mobileRow, "📱");
@@ -303,6 +323,20 @@ SetInputFieldColor(detail.ReferralCodeInputfield);
             var le = go.GetComponent<LayoutElement>();
             le.preferredWidth = 70f;
             le.flexibleWidth  = 0f;
+        }
+
+        // ── Field color helper ─────────────────────────────────────────────────
+
+        private static void FixFieldColors(TMP_InputField field)
+        {
+            if (field == null) return;
+            if (field.textComponent != null)
+                field.textComponent.color = Color.white;
+            if (field.placeholder != null)
+            {
+                var ph = field.placeholder.GetComponent<TMP_Text>();
+                if (ph != null) ph.color = new Color(1f, 1f, 1f, 0.6f);
+            }
         }
 
         // ── Row rect helper ────────────────────────────────────────────────────

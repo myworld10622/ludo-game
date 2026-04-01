@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 Ludo User Guide — Hinglish</title>
+<style>
+/* ════════════════════════════════════════════════
+   RESET & BASE
+════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:        #080c14;
+  --bg2:       #0d1220;
+  --card:      #111827;
+  --card2:     #1a2235;
+  --border:    #1f2d42;
+  --border2:   #2a3a54;
+  --text:      #e8eef8;
+  --muted:     #7a8fa8;
+  --dim:       #4a5e78;
+  --gold:      #f5a623;
+  --gold2:     #ffc94d;
+  --teal:      #22d3a8;
+  --blue:      #60a5fa;
+  --purple:    #a78bfa;
+  --pink:      #f472b6;
+  --green:     #4ade80;
+  --red:       #f87171;
+  --orange:    #fb923c;
+  --yellow:    #facc15;
+  --sidebar-w: 260px;
+  --radius:    12px;
+}
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.75;
+  font-size: 15px;
+}
+
+/* ════════════════════════════════════════════════
+   SCROLLBAR
+════════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* ════════════════════════════════════════════════
+   LAYOUT
+════════════════════════════════════════════════ */
+.layout { display: flex; min-height: 100vh; }
+
+/* ════════════════════════════════════════════════
+   SIDEBAR
+════════════════════════════════════════════════ */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 0 0 32px;
+  flex-shrink: 0;
+}
+.sidebar-brand {
+  padding: 22px 20px 18px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.sidebar-brand .logo { font-size: 22px; margin-bottom: 4px; }
+.sidebar-brand .title { font-size: 13px; font-weight: 700; color: var(--gold); letter-spacing: 0.04em; }
+.sidebar-brand .sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.nav-group { padding: 10px 0 4px; }
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--dim);
+  padding: 4px 20px 6px;
+}
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 20px;
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  border-left: 2px solid transparent;
+  transition: all 0.15s;
+}
+.nav-link:hover { color: var(--text); background: rgba(255,255,255,0.04); border-left-color: var(--gold); }
+.nav-link .n {
+  background: var(--border2);
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  min-width: 22px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.nav-link .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ════════════════════════════════════════════════
+   MAIN CONTENT
+════════════════════════════════════════════════ */
+.main {
+  flex: 1;
+  min-width: 0;
+  padding: 0 48px 80px 48px;
+  max-width: 880px;
+}
+
+/* ════════════════════════════════════════════════
+   HERO HEADER
+════════════════════════════════════════════════ */
+.hero {
+  position: relative;
+  padding: 52px 0 44px;
+  margin-bottom: 48px;
+  border-bottom: 1px solid var(--border);
+  overflow: hidden;
+}
+.hero::before {
+  content: '🎮';
+  position: absolute;
+  right: -10px;
+  top: 20px;
+  font-size: 160px;
+  opacity: 0.04;
+  pointer-events: none;
+  user-select: none;
+}
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(245,166,35,0.12);
+  border: 1px solid rgba(245,166,35,0.3);
+  border-radius: 20px;
+  padding: 4px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.hero h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  font-weight: 800;
+  line-height: 1.15;
+  color: #fff;
+  margin-bottom: 12px;
+}
+.hero h1 span { color: var(--gold); }
+.hero p { color: var(--muted); font-size: 15px; max-width: 580px; line-height: 1.7; }
+.hero-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.hero-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.hero-pill strong { color: var(--text); }
+
+/* ════════════════════════════════════════════════
+   SECTIONS
+════════════════════════════════════════════════ */
+.section { margin-bottom: 60px; }
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sec-num {
+  background: linear-gradient(135deg, var(--gold), var(--gold2));
+  color: #000;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 3px 10px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  flex-shrink: 0;
+}
+.section-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1.3;
+}
+.sec-icon { font-size: 22px; flex-shrink: 0; }
+
+/* ════════════════════════════════════════════════
+   CARDS
+════════════════════════════════════════════════ */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 22px 24px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 16px; }
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 16px; }
+.mini-card {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+.mini-card .mc-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.mini-card .mc-value { font-size: 13.5px; color: var(--text); line-height: 1.5; }
+
+/* ════════════════════════════════════════════════
+   TYPOGRAPHY
+════════════════════════════════════════════════ */
+.section p { font-size: 15px; color: var(--text); margin-bottom: 12px; line-height: 1.75; }
+.section p .hl { color: var(--gold2); font-weight: 600; }
+.section h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--teal);
+  margin: 28px 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section h3::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 16px;
+  background: var(--teal);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.section ul, .section ol { padding-left: 0; list-style: none; margin-bottom: 12px; }
+.section ul li, .section ol li {
+  padding: 5px 0 5px 22px;
+  position: relative;
+  font-size: 14.5px;
+  color: var(--text);
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.section ul li::before {
+  content: '▸';
+  position: absolute;
+  left: 4px;
+  color: var(--gold);
+  font-size: 11px;
+  top: 7px;
+}
+.section ol { counter-reset: ol; }
+.section ol li { counter-increment: ol; }
+.section ol li::before {
+  content: counter(ol);
+  position: absolute;
+  left: 0;
+  background: var(--border2);
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  top: 6px;
+}
+
+/* ════════════════════════════════════════════════
+   CODE
+════════════════════════════════════════════════ */
+code {
+  font-family: 'Cascadia Code', 'Fira Code', Consolas, monospace;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--border2);
+  border-radius: 5px;
+  padding: 1px 7px;
+  font-size: 13px;
+  color: #ff9d6b;
+}
+
+/* ════════════════════════════════════════════════
+   BADGES / PILLS
+════════════════════════════════════════════════ */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.b-gold   { background: rgba(245,166,35,0.15);  color: var(--gold);   border: 1px solid rgba(245,166,35,0.3); }
+.b-teal   { background: rgba(34,211,168,0.12);  color: var(--teal);   border: 1px solid rgba(34,211,168,0.25); }
+.b-blue   { background: rgba(96,165,250,0.12);  color: var(--blue);   border: 1px solid rgba(96,165,250,0.25); }
+.b-purple { background: rgba(167,139,250,0.12); color: var(--purple); border: 1px solid rgba(167,139,250,0.25); }
+.b-green  { background: rgba(74,222,128,0.12);  color: var(--green);  border: 1px solid rgba(74,222,128,0.25); }
+.b-red    { background: rgba(248,113,113,0.12); color: var(--red);    border: 1px solid rgba(248,113,113,0.25); }
+.b-orange { background: rgba(251,146,60,0.12);  color: var(--orange); border: 1px solid rgba(251,146,60,0.25); }
+.b-dim    { background: rgba(74,94,120,0.2);    color: var(--muted);  border: 1px solid var(--border2); }
+
+/* ════════════════════════════════════════════════
+   ALERT BOXES
+════════════════════════════════════════════════ */
+.alert {
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 14px 0;
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.65;
+}
+.alert .al-icon { font-size: 18px; margin-top: 1px; flex-shrink: 0; }
+.alert-warn   { background: rgba(250,204,21,0.07);  border: 1px solid rgba(250,204,21,0.2);  color: #f0d060; }
+.alert-info   { background: rgba(96,165,250,0.07);  border: 1px solid rgba(96,165,250,0.2);  color: #90c4ff; }
+.alert-danger { background: rgba(248,113,113,0.07); border: 1px solid rgba(248,113,113,0.2); color: #ffaaaa; }
+.alert-success{ background: rgba(74,222,128,0.07);  border: 1px solid rgba(74,222,128,0.2);  color: #90ff90; }
+.alert strong { font-weight: 700; }
+
+/* ════════════════════════════════════════════════
+   FLOW STEPS
+════════════════════════════════════════════════ */
+.flow { margin: 16px 0; }
+.flow-step {
+  display: flex;
+  gap: 16px;
+  padding: 4px 0 16px;
+  position: relative;
+}
+.flow-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 16px;
+  top: 36px;
+  bottom: 0;
+  width: 2px;
+  background: var(--border2);
+}
+.fs-num {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  background: linear-gradient(135deg, var(--gold), #e08800);
+  color: #000;
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 0 4px rgba(245,166,35,0.12);
+}
+.fs-body { padding-top: 6px; font-size: 14.5px; line-height: 1.65; flex: 1; }
+.fs-body strong { color: var(--gold2); }
+
+/* ════════════════════════════════════════════════
+   STATUS TABLE
+════════════════════════════════════════════════ */
+.status-table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 13.5px; }
+.status-table th {
+  background: var(--card2);
+  color: var(--muted);
+  font-weight: 600;
+  text-align: left;
+  padding: 11px 16px;
+  border-bottom: 2px solid var(--border2);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.status-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.status-table tr:last-child td { border-bottom: none; }
+.status-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ════════════════════════════════════════════════
+   SCENARIO CARDS
+════════════════════════════════════════════════ */
+.scenario-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.scenario-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  border-top: 3px solid var(--teal);
+}
+.scenario-card.warn    { border-top-color: var(--orange); }
+.scenario-card.danger  { border-top-color: var(--red); }
+.scenario-card.success { border-top-color: var(--green); }
+.scenario-card.info    { border-top-color: var(--blue); }
+.sc-num   { font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 5px; letter-spacing: 0.05em; text-transform: uppercase; }
+.sc-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.sc-body  { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+/* ════════════════════════════════════════════════
+   CHECKLIST
+════════════════════════════════════════════════ */
+.checklist { list-style: none; padding: 0; margin: 12px 0; }
+.checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 14.5px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  color: var(--text);
+}
+.checklist li::before { display: none; }
+.checklist li .ck { font-size: 15px; margin-top: 1px; flex-shrink: 0; }
+
+/* ════════════════════════════════════════════════
+   DIVIDER
+════════════════════════════════════════════════ */
+.divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+/* ════════════════════════════════════════════════
+   SUMMARY ROW
+════════════════════════════════════════════════ */
+.summary-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 20px 0;
+}
+.summary-item {
+  background: var(--card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 18px;
+  flex: 1;
+  min-width: 160px;
+}
+.summary-item .si-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--dim); margin-bottom: 5px; }
+.summary-item .si-value { font-size: 14px; color: var(--text); font-weight: 600; }
+
+/* ════════════════════════════════════════════════
+   FOOTER
+════════════════════════════════════════════════ */
+.footer {
+  margin-top: 60px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+/* ════════════════════════════════════════════════
+   RESPONSIVE
+════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .main { padding: 0 20px 60px; }
+  .grid-3 { grid-template-columns: 1fr; }
+  .grid-2 { grid-template-columns: 1fr; }
+  .scenario-grid { grid-template-columns: 1fr; }
+  .summary-row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══════════════ SIDEBAR ══════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">🎮</div>
+    <div class="title">LUDO USER GUIDE</div>
+    <div class="sub">Player-Facing Hinglish Guide</div>
+  </div>
+
+  <nav>
+    <div class="nav-group">
+      <div class="nav-group-label">Getting Started</div>
+      <a class="nav-link" href="#ludo-basics"><span class="n">1</span><span class="lbl">Ludo Basics</span></a>
+      <a class="nav-link" href="#tournament-status"><span class="n">2</span><span class="lbl">Tournament Status</span></a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Join & Play</div>
+      <a class="nav-link" href="#tournament-join"><span class="n">3</span><span class="lbl">Tournament Join Guide</span></a>
+      <a class="nav-link" href="#register-flow"><span class="n">4</span><span class="lbl">Register Kaise Karein</span></a>
+      <a class="nav-link" href="#play-slots"><span class="n">5</span><span class="lbl">Play Slot Timing</span></a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Create & Wallet</div>
+      <a class="nav-link" href="#create-tournament"><span class="n">6</span><span class="lbl">Create Tournament</span></a>
+      <a class="nav-link" href="#wallet-rules"><span class="n">7</span><span class="lbl">Wallet Rules</span></a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Reference</div>
+      <a class="nav-link" href="#common-scenarios"><span class="n">8</span><span class="lbl">Common Scenarios</span></a>
+      <a class="nav-link" href="#best-practices"><span class="n">9</span><span class="lbl">Best Practices</span></a>
+    </div>
+  </nav>
+</aside>
+
+<!-- ══════════════ MAIN ══════════════ -->
+<main class="main">
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-badge">🎮 Player Guide · Hinglish</div>
+    <h1>Ludo <span>User Guide</span></h1>
+    <p>
+      Ye guide sirf players ke liye hai. Isme Ludo gameplay, tournament join karna,
+      tournament create karna, wallet deduction, play slots, waiting flow, aur normal
+      rules simple Hinglish me explain kiye gaye hain.
+    </p>
+    <div class="hero-meta">
+      <div class="hero-pill">🎯 <strong>Real Player Based</strong></div>
+      <div class="hero-pill">🏆 <strong>Tournament Join + Create</strong></div>
+      <div class="hero-pill">💬 <strong>Easy Hinglish</strong></div>
+      <div class="hero-pill">💰 <strong>Wallet Guide</strong></div>
+    </div>
+  </div>
+
+  <!-- ══════ SECTION 1 — LUDO BASICS ══════ -->
+  <section class="section" id="ludo-basics">
+    <div class="section-header">
+      <span class="sec-num">01</span>
+      <span class="sec-icon">🎲</span>
+      <h2>Ludo Basics</h2>
+    </div>
+
+    <p>
+      Ludo ek <span class="hl">real multiplayer game</span> hai jahan players table join karke apas me match khelte hain.
+      Tournament mode me aapka goal hota hai ki aap <span class="hl">round by round match jeet</span> kar aage badho
+      aur final winners me aao.
+    </p>
+
+    <div class="grid-3">
+      <div class="mini-card">
+        <div class="mc-label">👤 2 Player Match</div>
+        <div class="mc-value">Aapka match ek aur real player ke saath hota hai. Winner next round me jata hai.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">👥 4 Player Match</div>
+        <div class="mc-value">4 real players ek table par hote hain. Qualified players next round me ja sakte hain.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">⚡ Knockout Format</div>
+        <div class="mc-value">Ek round haarne par aap tournament se bahar ho sakte ho. Har match important hota hai.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">💡</span>
+      <div>
+        <strong>Simple baat:</strong> Tournament me register karna alag step hai aur actual match khelna alag step hai.
+        Pehle aap tournament <strong>join</strong> karte ho, phir jab time aata hai tab table ya match <strong>join</strong> karte ho.
+      </div>
+    </div>
+
+    <h3>Match Types at a Glance</h3>
+    <table class="status-table">
+      <thead>
+        <tr>
+          <th>Format</th>
+          <th>Players Per Match</th>
+          <th>Advancement</th>
+          <th>Risk</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-teal">1v1</span></td>
+          <td>2</td>
+          <td>Winner advances</td>
+          <td><span class="badge b-orange">Medium</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge b-blue">4-Player</span></td>
+          <td>4</td>
+          <td>Top players qualify</td>
+          <td><span class="badge b-gold">High</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge b-red">Knockout</span></td>
+          <td>2–4</td>
+          <td>Lose = eliminated</td>
+          <td><span class="badge b-red">Very High</span></td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ══════ SECTION 2 — TOURNAMENT STATUS ══════ -->
+  <section class="section" id="tournament-status">
+    <div class="section-header">
+      <span class="sec-num">02</span>
+      <span class="sec-icon">📊</span>
+      <h2>Tournament Status — Kya Matlab Hota Hai</h2>
+    </div>
+
+    <p>
+      Jab aap Unity app me tournament page open karte ho, to aapko har tournament ka ek <span class="hl">status</span> dikhai deta hai.
+      Ye status batata hai ki tournament abhi kahan hai apni lifecycle me.
+    </p>
+
+    <table class="status-table">
+      <thead>
+        <tr>
+          <th>Status</th>
+          <th>Matlab</th>
+          <th>Aap Kya Kar Sakte Ho</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="badge b-blue">Registration Open</span></td>
+          <td>Abhi register ho sakta hai</td>
+          <td>✅ Register karo</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-dim">Registration Closed</span></td>
+          <td>Registration band ho gayi</td>
+          <td>🚫 Join nahi ho sakta</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-gold">In Progress</span></td>
+          <td>Tournament chal raha hai</td>
+          <td>▶️ Play Now (agar registered)</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-green">Completed</span></td>
+          <td>Tournament khatam ho gaya</td>
+          <td>👁 Details dekho only</td>
+        </tr>
+        <tr>
+          <td><span class="badge b-red">Cancelled</span></td>
+          <td>Tournament cancel ho gaya</td>
+          <td>💰 Refund milega wallet me</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="alert alert-warn">
+      <span class="al-icon">⚠️</span>
+      <div>
+        <strong>Dhyan rakho:</strong> Status tab tak update nahi hota jab tak aap page refresh nahi karte ya app me
+        tournament list dobara load nahi karte. Always latest info ke liye refresh karo.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 3 — TOURNAMENT JOIN ══════ -->
+  <section class="section" id="tournament-join">
+    <div class="section-header">
+      <span class="sec-num">03</span>
+      <span class="sec-icon">🏆</span>
+      <h2>Tournament Join Guide</h2>
+    </div>
+
+    <p>
+      Jab aap Unity app me <span class="hl">Tournament Page</span> open karte ho, to aapko live tournaments
+      ya registration open tournaments dikhte hain. Har tournament ka status alag ho sakta hai.
+    </p>
+
+    <div class="grid-3">
+      <div class="mini-card">
+        <div class="mc-label">📝 Registration Open</div>
+        <div class="mc-value">Aap tournament detail dekh kar register kar sakte ho. Tournament abhi start nahi hua hota.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🔥 In Progress / Running</div>
+        <div class="mc-value">Agar aap already registered ho aur match available hai, to <code>Play Now</code> se join kar sakte ho.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">✅ Completed</div>
+        <div class="mc-value">Tournament finish ho chuka hota hai. Is stage me naya registration ya play possible nahi hota.</div>
+      </div>
+    </div>
+
+    <h3>Tournament Details Popup Me Kya Dikhta Hai</h3>
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <ul>
+            <li>Tournament Name</li>
+            <li>Status (current lifecycle stage)</li>
+            <li>Entry Fee (wallet se deduct hogi)</li>
+            <li>Prize Pool (total winning amount)</li>
+            <li>Players Count (registered / max)</li>
+          </ul>
+        </div>
+        <div>
+          <ul>
+            <li>Registration Close Time</li>
+            <li>Tournament Start Time</li>
+            <li>Play Slots (specific time windows)</li>
+            <li>Aapka Current Wallet Balance</li>
+            <li>Register / Play Now Button</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-success">
+      <span class="al-icon">✅</span>
+      <div>
+        <strong>Tip:</strong> Details popup me entry fee aur prize pool dono compare karo. Agar prize pool entry fee se
+        kaafi zyada hai, to ye ek acha tournament ho sakta hai.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 4 — REGISTER FLOW ══════ -->
+  <section class="section" id="register-flow">
+    <div class="section-header">
+      <span class="sec-num">04</span>
+      <span class="sec-icon">📋</span>
+      <h2>Register Kaise Karein</h2>
+    </div>
+
+    <p>
+      Tournament me join karna ek simple process hai. Niche step-by-step guide hai jo batata hai ki
+      <span class="hl">registration kaise hoti hai</span> aur kya expect karo.
+    </p>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="fs-num">1</div>
+        <div class="fs-body">
+          <strong>Tournament List Open Karo</strong><br>
+          App me Tournament section me jao. Available tournaments ki list dikhegi.
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">2</div>
+        <div class="fs-body">
+          <strong>Tournament Select Karo</strong><br>
+          Jo tournament join karna hai uska card ya button click karo. Details popup open hoga.
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">3</div>
+        <div class="fs-body">
+          <strong>Entry Fee aur Time Check Karo</strong><br>
+          Entry fee, prize pool, registration close time, aur play slots dhyan se padho.
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">4</div>
+        <div class="fs-body">
+          <strong>Register Button Press Karo</strong><br>
+          Popup me <code>Register</code> button press karo. Confirm karo ki aap register karna chahte ho.
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">5</div>
+        <div class="fs-body">
+          <strong>Entry Fee Deduct Hogi</strong><br>
+          Agar wallet balance enough hai to entry fee automatically deduct ho jayegi.
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">6</div>
+        <div class="fs-body">
+          <strong>Registration Successful</strong><br>
+          Aap tournament me add ho jaoge. Registered status dikhai dega. Ab slot time ka wait karo.
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <span class="al-icon">⚠️</span>
+      <div>
+        <strong>Important:</strong> Register karne ke baad aapko <strong>play slot ya tournament timing ke hisaab se online aana hota hai</strong>.
+        Sirf registration kar lena enough nahi hota — aapko actual match time par bhi present rehna padega.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 5 — PLAY SLOTS ══════ -->
+  <section class="section" id="play-slots">
+    <div class="section-header">
+      <span class="sec-num">05</span>
+      <span class="sec-icon">⏰</span>
+      <h2>Play Slot Timing Guide</h2>
+    </div>
+
+    <p>
+      Kuch tournaments me <span class="hl">play slots</span> diye jaate hain. Play slot ka matlab hai
+      <span class="hl">specific time window</span> jisme players ko online rehna hota hai,
+      taaki real users ek dusre ke saath match start kar sakein.
+    </p>
+
+    <div class="grid-2">
+      <div class="mini-card">
+        <div class="mc-label">📅 Example Slot</div>
+        <div class="mc-value"><code>01 Apr 2026, 01:05 PM – 01:20 PM</code><br>
+        Is time window me aapko available rehna chahiye.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">❓ Kyun Zaruri Hai</div>
+        <div class="mc-value">Jab zyada players same slot me online aate hain to table jaldi fill hoti hai aur real match fast start hota hai.</div>
+      </div>
+    </div>
+
+    <h3>Play Slot Ke Rules</h3>
+    <ul>
+      <li>Slot timing tournament details me <strong>pehle hi</strong> dikhai jaati hai — register se pehle dekh lo</li>
+      <li>Register karne se pehle user ko timing confirm kar leni chahiye ki wo available hai</li>
+      <li>Slot ke time par online rehna user ki <strong>apni responsibility</strong> hai</li>
+      <li>Multiple slots ho sakte hain — har round ka alag slot ho sakta hai</li>
+      <li>Agar aap slot time par play nahi karte, to aap tournament se <span class="badge b-red">Eliminated</span> ho sakte ho</li>
+    </ul>
+
+    <div class="alert alert-danger">
+      <span class="al-icon">🚨</span>
+      <div>
+        <strong>Warning:</strong> Tournament join karne se pehle hamesha slot time dekh lo.
+        Agar aap us time online nahi reh sakte, to tournament <strong>join mat karo</strong> — entry fee waste hogi.
+      </div>
+    </div>
+
+    <h3>Slot Time Par Kya Karna Chahiye</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="fs-num">1</div>
+        <div class="fs-body"><strong>App Open Karo</strong> — Slot time se 5 min pehle app open kar lo.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">2</div>
+        <div class="fs-body"><strong>Tournament Me Jao</strong> — Registered tournament par jao.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">3</div>
+        <div class="fs-body"><strong>Play Now Button Press Karo</strong> — Jab match available ho, immediately join karo.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">4</div>
+        <div class="fs-body"><strong>Match Complete Karo</strong> — Match finish karo bina connection drop hone ke.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 6 — CREATE TOURNAMENT ══════ -->
+  <section class="section" id="create-tournament">
+    <div class="section-header">
+      <span class="sec-num">06</span>
+      <span class="sec-icon">🛠️</span>
+      <h2>Apna Tournament Create Kaise Karein</h2>
+    </div>
+
+    <p>
+      User panel me aap <span class="hl">apna tournament create</span> kar sakte ho.
+      Ye option un users ke liye hai jo apna real-player tournament chalana chahte hain.
+    </p>
+
+    <h3>Create Form Me Kya Bharna Hota Hai</h3>
+
+    <div class="grid-2">
+      <div class="mini-card">
+        <div class="mc-label">📝 Basic Info</div>
+        <div class="mc-value">Tournament name, type (2-player / 4-player), format (knockout/round-robin), description</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">👥 Player Setup</div>
+        <div class="mc-value">Max players allowed, players per match, entry fee amount</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">📅 Schedule</div>
+        <div class="mc-value">Registration start time, registration close time, tournament start time, play slots</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🏆 Prize Setup</div>
+        <div class="mc-value">Prize pool split among winners, tournament terms &amp; conditions</div>
+      </div>
+    </div>
+
+    <h3>Create Tournament Karte Waqt Dhyan Rakhne Wali Baatein</h3>
+    <ul>
+      <li>Name <strong>clear aur simple</strong> rakho — players easily samjhenge</li>
+      <li>Entry fee aur prize details <strong>sahi aur realistic</strong> rakho</li>
+      <li>Registration timing realistic rakho — too short = players miss kar sakte hain</li>
+      <li>Play slots aise rakho jisme users <strong>actually available</strong> ho sakein (prime time prefer karo)</li>
+      <li>Description me short, clear information do — confusing description se players door ho jaate hain</li>
+      <li>Terms &amp; conditions me important rules clearly likho</li>
+    </ul>
+
+    <h3>Create Ke Baad Kya Hota Hai</h3>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="fs-num">1</div>
+        <div class="fs-body"><strong>Form Submit Karo</strong> — Sari details fill karke submit karo.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">2</div>
+        <div class="fs-body"><strong>Tournament Create Ho Jata Hai</strong> — System me tournament entry ban jaati hai.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">3</div>
+        <div class="fs-body"><strong>Approval Wait (agar required ho)</strong> — Kuch tournaments ko admin approval ki zarurat hoti hai. Tab tak wait karo.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">4</div>
+        <div class="fs-body"><strong>Registration Open</strong> — Approve hone ke baad players properly join kar paate hain.</div>
+      </div>
+      <div class="flow-step">
+        <div class="fs-num">5</div>
+        <div class="fs-body"><strong>Live Reports</strong> — Registrations, live matches, aur results reports show hone lagti hain.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">ℹ️</span>
+      <div>
+        <strong>Note:</strong> Ek baar tournament create aur approve hone ke baad, uske basic details change karna
+        possible nahi hota. Isliye form bharte waqt sab kuch ek baar dhyan se check karo.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 7 — WALLET RULES ══════ -->
+  <section class="section" id="wallet-rules">
+    <div class="section-header">
+      <span class="sec-num">07</span>
+      <span class="sec-icon">💰</span>
+      <h2>Wallet Rules</h2>
+    </div>
+
+    <p>
+      Tournament join flow me <span class="hl">wallet ka role bahut important</span> hota hai,
+      kyunki entry fee direct wallet se deduct hoti hai. Wallet balance kam hone par registration fail ho sakti hai.
+    </p>
+
+    <div class="summary-row">
+      <div class="summary-item">
+        <div class="si-label">Registration Pe</div>
+        <div class="si-value">Entry fee deduct hoti hai</div>
+      </div>
+      <div class="summary-item">
+        <div class="si-label">Winning Par</div>
+        <div class="si-value">Prize wallet me credit hoti hai</div>
+      </div>
+      <div class="summary-item">
+        <div class="si-label">Cancellation Par</div>
+        <div class="si-value">Entry fee refund milti hai</div>
+      </div>
+      <div class="summary-item">
+        <div class="si-label">Balance Kam Ho</div>
+        <div class="si-value">Registration fail ho sakti hai</div>
+      </div>
+    </div>
+
+    <h3>Wallet Deduction Rules — Detail Me</h3>
+    <ul>
+      <li><strong>Register karte hi</strong> wallet se entry fee deduct hoti hai — confirm se pehle check karo</li>
+      <li>Agar balance kam hai to registration fail ho sakti hai aur error show hoga</li>
+      <li>Successful registration ke baad aap tournament list me <span class="badge b-green">Registered</span> status dekh sakte ho</li>
+      <li>Winner banne par prize amount <strong>automatically wallet me credit</strong> ho sakti hai</li>
+      <li>Tournament cancel hone par entry fee <strong>original wallet me refund</strong> ho jaati hai</li>
+      <li>Winning wallet aur main wallet alag hote hain — withdrawal rules check karo</li>
+    </ul>
+
+    <div class="grid-2">
+      <div class="mini-card">
+        <div class="mc-label">✅ Before Registering</div>
+        <div class="mc-value">Wallet balance check karo. Entry fee se kam ho to pehle wallet top-up karo. Register button press karne se pehle confirm karo.</div>
+      </div>
+      <div class="mini-card">
+        <div class="mc-label">🏆 After Winning</div>
+        <div class="mc-value">Prize amount wallet me automatically credit ho jata hai. Winning wallet me credit hone me kuch time lag sakta hai.</div>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <span class="al-icon">💡</span>
+      <div>
+        <strong>Best Practice:</strong> Register button press karne se pehle apna wallet balance aur entry fee
+        dono zarur check karo. Popup me wallet balance already shown hota hai — use dekhna mat bhoolo.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 8 — COMMON SCENARIOS ══════ -->
+  <section class="section" id="common-scenarios">
+    <div class="section-header">
+      <span class="sec-num">08</span>
+      <span class="sec-icon">🎭</span>
+      <h2>Common User Scenarios</h2>
+    </div>
+
+    <p>
+      Ye section un common situations ke baare me hai jo players frequently face karte hain —
+      aur unka <span class="hl">correct response kya hona chahiye</span>.
+    </p>
+
+    <div class="scenario-grid">
+      <div class="scenario-card">
+        <div class="sc-num">Scenario 01</div>
+        <div class="sc-title">Registration open hai, match abhi start nahi hua</div>
+        <div class="sc-body">
+          Aap details dekh ke register karo. Register ke baad aapko tournament timing ka wait karna hai.
+          Play slot time aane par app open karke Play Now karo.
+        </div>
+      </div>
+      <div class="scenario-card success">
+        <div class="sc-num">Scenario 02</div>
+        <div class="sc-title">Aap already registered ho</div>
+        <div class="sc-body">
+          Aapko dobara register karne ki zarurat nahi hoti. Aapko bas slot time ya match time par online rehna hota hai.
+          Registered status dikhai dega tournament me.
+        </div>
+      </div>
+      <div class="scenario-card warn">
+        <div class="sc-num">Scenario 03</div>
+        <div class="sc-title">Tournament full ho gaya</div>
+        <div class="sc-body">
+          Agar max players fill ho gaye, to naya registration possible nahi hota.
+          Aap details dekh sakte ho lekin join nahi kar paoge. Agle tournament ka wait karo.
+        </div>
+      </div>
+      <div class="scenario-card">
+        <div class="sc-num">Scenario 04</div>
+        <div class="sc-title">Tournament running hai, aapka match available</div>
+        <div class="sc-body">
+          <code>Play Now</code> use karke immediately table join karo.
+          Delay karne par aap apna match slot miss kar sakte ho aur tournament se out ho sakte ho.
+        </div>
+      </div>
+    </div>
+
+    <div class="scenario-grid">
+      <div class="scenario-card danger">
+        <div class="sc-num">Scenario 05</div>
+        <div class="sc-title">Slot time par online nahi aaye</div>
+        <div class="sc-body">
+          Agar tournament slot-based hai aur aap assigned timing me online nahi aate,
+          to aap tournament se <strong>out ho sakte ho</strong>. Entry fee refund nahi hogi is case me.
+        </div>
+      </div>
+      <div class="scenario-card info">
+        <div class="sc-num">Scenario 06</div>
+        <div class="sc-title">4-player tournament me kam players online hain</div>
+        <div class="sc-body">
+          Aapko apne tournament ke time par online rehna hai. Match start logic tournament rules aur
+          current player availability ke hisaab se decide hota hai. Apna kaam karo — online raho.
+        </div>
+      </div>
+    </div>
+
+    <div class="alert alert-success">
+      <span class="al-icon">✅</span>
+      <div>
+        <strong>Golden Rule:</strong> Hamesha details padho → wallet check karo → slot timing confirm karo → match ke time online raho.
+        Isi se aapka tournament experience <strong>smooth aur successful</strong> rahega.
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════ SECTION 9 — BEST PRACTICES ══════ -->
+  <section class="section" id="best-practices">
+    <div class="section-header">
+      <span class="sec-num">09</span>
+      <span class="sec-icon">⭐</span>
+      <h2>Best Practices For Players</h2>
+    </div>
+
+    <p>
+      Ye checklist follow karne se aap tournament experience ko maximum level par le ja sakte ho.
+      Har point ek real situation se related hai.
+    </p>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title"><span class="icon">📋</span> Before Joining</div>
+        <ul class="checklist">
+          <li><span class="ck">✅</span>Entry fee aur prize pool compare karo</li>
+          <li><span class="ck">✅</span>Registration end time check karo</li>
+          <li><span class="ck">✅</span>Play slots carefully padho</li>
+          <li><span class="ck">✅</span>Wallet me enough balance confirm karo</li>
+          <li><span class="ck">✅</span>Terms &amp; conditions padho</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🎮</span> During Tournament</div>
+        <ul class="checklist">
+          <li><span class="ck">✅</span>Slot time se 5 min pehle app open karo</li>
+          <li><span class="ck">✅</span>Stable internet connection ensure karo</li>
+          <li><span class="ck">✅</span>Play Now immediately press karo jab match available ho</li>
+          <li><span class="ck">✅</span>Match bich me mat choro</li>
+          <li><span class="ck">✅</span>Score aur next round schedule track karo</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">🛠️</span> Apna Tournament Create Karte Waqt</div>
+        <ul class="checklist">
+          <li><span class="ck">✅</span>Timing realistic rakho — user availability ke hisaab se</li>
+          <li><span class="ck">✅</span>Description aur terms clearly likho</li>
+          <li><span class="ck">✅</span>Entry fee aur prize pool fair rakho</li>
+          <li><span class="ck">✅</span>Maximum players ka accurate number do</li>
+          <li><span class="ck">✅</span>Submit se pehle sab kuch ek baar review karo</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon">💰</span> Wallet Management</div>
+        <ul class="checklist">
+          <li><span class="ck">✅</span>Regular wallet balance check karo</li>
+          <li><span class="ck">✅</span>Register karne se pehle enough balance confirm karo</li>
+          <li><span class="ck">✅</span>Winning wallet aur main wallet ka fark samjho</li>
+          <li><span class="ck">✅</span>Withdrawal rules pehle se padh lo</li>
+          <li><span class="ck">✅</span>Refund policy samjho tournament cancel hone par</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="alert alert-info">
+      <span class="al-icon">🎯</span>
+      <div>
+        <strong>Final Advice:</strong> Ludo tournament me success ka sabse bada factor hai
+        <strong>preparation</strong> — sahi tournament choose karo, timing confirm karo, aur match ke time fully present raho.
+        Technical gameplay se zyada important hai <strong>discipline aur punctuality</strong>.
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <p>🎮 Ludo User Guide — Hinglish</p>
+    <p style="margin-top:6px;">Ye guide player-facing Ludo aur tournament usage flow ke liye hai.</p>
+  </div>
+
+</main>
+</div>
+</body>
+</html>
