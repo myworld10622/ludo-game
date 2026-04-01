@@ -86,7 +86,7 @@ class LudoMatchLifecycleService
                             'left_at' => null,
                             'last_seen_at' => now(),
                             'meta' => array_merge($roomPlayer->meta ?? [], [
-                                'display_name' => $seatPayload['display_name'] ?? ('Bot ' . $seatPayload['seat_no']),
+                                'display_name' => $seatPayload['display_name'] ?? ('Player ' . $seatPayload['seat_no']),
                                 'source' => 'node_ludo_v2_start_sync',
                             ]),
                         ])->save();
@@ -108,7 +108,7 @@ class LudoMatchLifecycleService
                             'left_at' => null,
                             'last_seen_at' => now(),
                             'meta' => [
-                                'display_name' => $seatPayload['display_name'] ?? ('Bot ' . $seatPayload['seat_no']),
+                                'display_name' => $seatPayload['display_name'] ?? ('Player ' . $seatPayload['seat_no']),
                                 'source' => 'node_ludo_v2_start_sync',
                             ],
                         ]);
@@ -329,7 +329,9 @@ class LudoMatchLifecycleService
                 'seat_no' => $roomPlayer->seat_no,
                 'user_id' => $roomPlayer->user_id,
                 'player_type' => $roomPlayer->player_type,
-                'display_name' => Arr::get($roomPlayer->meta ?? [], 'username'),
+                'display_name' => $roomPlayer->player_type === 'bot'
+                    ? "Player {$roomPlayer->seat_no}"
+                    : (Arr::get($roomPlayer->meta ?? [], 'username') ?: (string) ($roomPlayer->user?->user_code ?? $roomPlayer->user?->username)),
                 'bot_code' => $roomPlayer->bot_code,
             ])
             ->values()

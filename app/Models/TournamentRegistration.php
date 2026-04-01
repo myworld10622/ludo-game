@@ -76,9 +76,17 @@ class TournamentRegistration extends Model
     public function displayName(): string
     {
         if ($this->is_bot) {
-            return $this->bot_name ?? 'Bot';
+            return $this->pseudoBotPublicId();
         }
 
-        return $this->user?->username ?? 'Unknown';
+        return (string) ($this->user?->user_code ?? $this->user?->username ?? 'Unknown');
+    }
+
+    protected function pseudoBotPublicId(): string
+    {
+        $seed = 'bot|'.$this->id.'|'.$this->slot_number.'|'.$this->bot_name;
+        $hash = abs(crc32($seed));
+
+        return (string) (10000000 + ($hash % 90000000));
     }
 }
