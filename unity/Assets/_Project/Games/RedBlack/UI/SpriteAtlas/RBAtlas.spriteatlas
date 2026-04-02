@@ -158,15 +158,15 @@ SpriteAtlas:
   - 10
   - SET
   - Seq 10x
-  - redblack-mask
+  - mask
   - COLOR
   - Frame 109
   - 1000
-  - redblack-Chip
+  - Chip
   - Bottom Pannel
   - PAIR
   - PURE SEQ
-  - redblack-Menu-iconns
+  - Menu iconns
   - Profile amount
   - 10x set
   - 5000

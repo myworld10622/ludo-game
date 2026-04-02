@@ -63,11 +63,11 @@ SpriteAtlas:
   - {fileID: 21300000, guid: e66bec493cd546641b4d132014b69abb, type: 3}
   - {fileID: 21300000, guid: ecc7da1fad6e6a146ba545cd6c3f8dae, type: 3}
   m_PackedSpriteNamesToIndex:
-  - rummy-Rule-text
-  - rummy-Option
-  - rummy-setting
+  - Rule text
+  - Option
+  - setting
   - FinishDesk
-  - rummy-exit
+  - exit
   - Table
   - Bg
   - Discard_Area

@@ -129,11 +129,11 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 86492e8f8c49e104ca26a9b0935a4afe, type: 3}
   - {fileID: 21300000, guid: 3dd21bff70b6a70408d814f83b56701b, type: 3}
   m_PackedSpriteNamesToIndex:
-  - andarbahar-Rule-text
-  - andarbahar-profile-ring
-  - andarbahar-Option
+  - Rule text
+  - profile-ring
+  - Option
   - 50
-  - andarbahar-setting
+  - setting
   - clock
   - imgpsh-fullsize_anim
   - Backcard
@@ -147,18 +147,18 @@ SpriteAtlas:
   - 100
   - 10
   - centre
-  - andarbahar-mask
-  - andarbahar-info
+  - mask
+  - info
   - table-main
   - andar-icon
   - 1000
-  - andarbahar-Chip
+  - Chip
   - circle64
-  - andarbahar-Menu-iconns
+  - Menu iconns
   - guest-name-pannel-icon
   - 5000
   - model
-  - andarbahar-close-green
+  - close-green
   m_RenderDataMap: {}
   m_Tag: AndarbagarAtlas
   m_IsVariant: 0

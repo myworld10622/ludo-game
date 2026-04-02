@@ -12,7 +12,7 @@ public class Configuration : MonoBehaviour
     // public const string BaseUrl = "http://localhost:8000/";
     // public const string Website = "http://localhost:8000/";
     // public const string BaseSocketUrl = "http://localhost:3002";
-    public const string BaseUrl = "https://ludo.betzono.tech/";
+    public const string BaseUrl = "https://api.betzono.tech/";
     public const string Website = "https://ludo.betzono.tech/";
     public const string BaseSocketUrl = "https://socket.betzono.tech/";
     public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";

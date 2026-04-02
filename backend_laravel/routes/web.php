@@ -7,11 +7,18 @@ use App\Http\Controllers\Web\UserPanelTournamentController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
-    return response()->json([
-        'name' => config('app.name'),
-        'status' => 'bootstrap-ready',
+    return view('ludo.landing', [
+        'apkUrl' => env('LUDO_APK_URL', 'https://ludo.betzono.com/ludo.apk'),
+        'playUrl' => route('ludo.play'),
     ]);
 });
+
+Route::get('/play', function () {
+    return view('ludo.play', [
+        'landingUrl' => url('/'),
+        'buildBaseUrl' => asset('ludo-webgl/Build'),
+    ]);
+})->name('ludo.play');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [UserPanelAuthController::class, 'showLogin'])->name('login');

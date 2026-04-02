@@ -119,12 +119,12 @@ SpriteAtlas:
   - bara
   - 100
   - 10
-  - baccarat-mask
+  - mask
   - p.p
   - barmediums
   - baccart up table
   - 1000
-  - baccarat-Chip
+  - Chip
   - circle64
   - vs s
   - guest-name-pannel-icon

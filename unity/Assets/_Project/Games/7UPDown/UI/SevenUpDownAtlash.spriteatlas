@@ -100,11 +100,11 @@ SpriteAtlas:
   - Bottom Pannel
   - 100
   - 10
-  - sevenupdown-mask
+  - mask
   - 1000
-  - sevenupdown-Chip
+  - Chip
   - circle64
-  - sevenupdown-Menu-iconns
+  - Menu iconns
   - guest-name-pannel-icon
   - 5000
   m_RenderDataMap: {}
