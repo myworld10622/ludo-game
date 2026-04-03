@@ -25,6 +25,9 @@ namespace AndroApps
     public class AuthManager : MonoBehaviour
     {
         public int number;
+        private GameObject authErrorPopup;
+        private Text authErrorTitleText;
+        private Text authErrorMessageText;
 
         [Header("LogIn Fields")]
         public newLogInDetails LogInDetail;
@@ -112,6 +115,8 @@ namespace AndroApps
             {
                 txt.color = data.placeholdercolor;
             }
+
+            ApplyLoginFieldVisuals();
         }
 
         private void Awake()
@@ -231,6 +236,372 @@ namespace AndroApps
         public void showtoastmessage(string message)
         {
             Toast.Show(message, 3f);
+        }
+
+        private void ShowAuthErrorMessage(string message, string caption = "Authentication Error")
+        {
+            string finalMessage = string.IsNullOrWhiteSpace(message)
+                ? "Please check your details and try again."
+                : message.Trim();
+
+            if (EnsureAuthErrorPopup())
+            {
+                authErrorTitleText.text = caption;
+                authErrorMessageText.text = finalMessage;
+                authErrorPopup.transform.SetAsLastSibling();
+                authErrorPopup.SetActive(true);
+                return;
+            }
+
+            Toast.Show(finalMessage, 3f);
+        }
+
+        private bool EnsureAuthErrorPopup()
+        {
+            if (authErrorPopup != null)
+            {
+                return true;
+            }
+
+            Canvas parentCanvas = GetComponentInParent<Canvas>();
+            if (parentCanvas == null)
+            {
+                parentCanvas = FindObjectOfType<Canvas>();
+            }
+
+            if (parentCanvas == null)
+            {
+                return false;
+            }
+
+            Font popupFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            authErrorPopup = new GameObject(
+                "AuthErrorPopup",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image)
+            );
+            authErrorPopup.transform.SetParent(parentCanvas.transform, false);
+            RectTransform overlayRect = authErrorPopup.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+            Image overlayImage = authErrorPopup.GetComponent<Image>();
+            overlayImage.color = new Color32(8, 6, 10, 190);
+
+            GameObject card = new GameObject(
+                "Card",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Outline)
+            );
+            card.transform.SetParent(authErrorPopup.transform, false);
+            RectTransform cardRect = card.GetComponent<RectTransform>();
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot = new Vector2(0.5f, 0.5f);
+            cardRect.sizeDelta = new Vector2(560f, 320f);
+            Image cardImage = card.GetComponent<Image>();
+            cardImage.color = new Color32(44, 10, 18, 245);
+            Outline cardOutline = card.GetComponent<Outline>();
+            cardOutline.effectColor = new Color32(255, 186, 92, 110);
+            cardOutline.effectDistance = new Vector2(2f, -2f);
+
+            GameObject titleBar = new GameObject(
+                "TitleBar",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image)
+            );
+            titleBar.transform.SetParent(card.transform, false);
+            RectTransform titleBarRect = titleBar.GetComponent<RectTransform>();
+            titleBarRect.anchorMin = new Vector2(0f, 1f);
+            titleBarRect.anchorMax = new Vector2(1f, 1f);
+            titleBarRect.pivot = new Vector2(0.5f, 1f);
+            titleBarRect.sizeDelta = new Vector2(0f, 72f);
+            titleBarRect.anchoredPosition = Vector2.zero;
+            titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
+
+            GameObject titleObj = new GameObject(
+                "Title",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text)
+            );
+            titleObj.transform.SetParent(titleBar.transform, false);
+            authErrorTitleText = titleObj.GetComponent<Text>();
+            authErrorTitleText.font = popupFont;
+            authErrorTitleText.fontSize = 28;
+            authErrorTitleText.fontStyle = FontStyle.Bold;
+            authErrorTitleText.alignment = TextAnchor.MiddleLeft;
+            authErrorTitleText.color = Color.white;
+            RectTransform titleRect = authErrorTitleText.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0f, 0f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.offsetMin = new Vector2(28f, 0f);
+            titleRect.offsetMax = new Vector2(-84f, 0f);
+
+            GameObject closeObj = new GameObject(
+                "CloseButton",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button)
+            );
+            closeObj.transform.SetParent(titleBar.transform, false);
+            RectTransform closeRect = closeObj.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1f, 0.5f);
+            closeRect.anchorMax = new Vector2(1f, 0.5f);
+            closeRect.pivot = new Vector2(1f, 0.5f);
+            closeRect.sizeDelta = new Vector2(46f, 46f);
+            closeRect.anchoredPosition = new Vector2(-18f, 0f);
+            Image closeImage = closeObj.GetComponent<Image>();
+            closeImage.color = new Color32(165, 36, 47, 255);
+            Button closeButton = closeObj.GetComponent<Button>();
+            closeButton.onClick.AddListener(HideAuthErrorPopup);
+
+            GameObject closeLabelObj = new GameObject(
+                "CloseLabel",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text)
+            );
+            closeLabelObj.transform.SetParent(closeObj.transform, false);
+            Text closeLabel = closeLabelObj.GetComponent<Text>();
+            closeLabel.font = popupFont;
+            closeLabel.fontSize = 22;
+            closeLabel.fontStyle = FontStyle.Bold;
+            closeLabel.alignment = TextAnchor.MiddleCenter;
+            closeLabel.color = Color.white;
+            closeLabel.text = "X";
+            RectTransform closeLabelRect = closeLabel.GetComponent<RectTransform>();
+            closeLabelRect.anchorMin = Vector2.zero;
+            closeLabelRect.anchorMax = Vector2.one;
+            closeLabelRect.offsetMin = Vector2.zero;
+            closeLabelRect.offsetMax = Vector2.zero;
+
+            GameObject messageObj = new GameObject(
+                "Message",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text)
+            );
+            messageObj.transform.SetParent(card.transform, false);
+            authErrorMessageText = messageObj.GetComponent<Text>();
+            authErrorMessageText.font = popupFont;
+            authErrorMessageText.fontSize = 28;
+            authErrorMessageText.fontStyle = FontStyle.Normal;
+            authErrorMessageText.alignment = TextAnchor.MiddleCenter;
+            authErrorMessageText.color = new Color32(255, 244, 232, 255);
+            authErrorMessageText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            authErrorMessageText.verticalOverflow = VerticalWrapMode.Overflow;
+            authErrorMessageText.lineSpacing = 1.15f;
+            RectTransform messageRect = authErrorMessageText.GetComponent<RectTransform>();
+            messageRect.anchorMin = new Vector2(0f, 0f);
+            messageRect.anchorMax = new Vector2(1f, 1f);
+            messageRect.offsetMin = new Vector2(34f, 30f);
+            messageRect.offsetMax = new Vector2(-34f, -94f);
+
+            GameObject okObj = new GameObject(
+                "OkButton",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button)
+            );
+            okObj.transform.SetParent(card.transform, false);
+            RectTransform okRect = okObj.GetComponent<RectTransform>();
+            okRect.anchorMin = new Vector2(0.5f, 0f);
+            okRect.anchorMax = new Vector2(0.5f, 0f);
+            okRect.pivot = new Vector2(0.5f, 0f);
+            okRect.sizeDelta = new Vector2(164f, 52f);
+            okRect.anchoredPosition = new Vector2(0f, 26f);
+            Image okImage = okObj.GetComponent<Image>();
+            okImage.color = new Color32(214, 136, 42, 255);
+            Button okButton = okObj.GetComponent<Button>();
+            okButton.onClick.AddListener(HideAuthErrorPopup);
+
+            GameObject okLabelObj = new GameObject(
+                "OkLabel",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text)
+            );
+            okLabelObj.transform.SetParent(okObj.transform, false);
+            Text okLabel = okLabelObj.GetComponent<Text>();
+            okLabel.font = popupFont;
+            okLabel.fontSize = 24;
+            okLabel.fontStyle = FontStyle.Bold;
+            okLabel.alignment = TextAnchor.MiddleCenter;
+            okLabel.color = Color.white;
+            okLabel.text = "OK";
+            RectTransform okLabelRect = okLabel.GetComponent<RectTransform>();
+            okLabelRect.anchorMin = Vector2.zero;
+            okLabelRect.anchorMax = Vector2.one;
+            okLabelRect.offsetMin = Vector2.zero;
+            okLabelRect.offsetMax = Vector2.zero;
+
+            authErrorPopup.SetActive(false);
+            return true;
+        }
+
+        private void HideAuthErrorPopup()
+        {
+            if (authErrorPopup != null)
+            {
+                authErrorPopup.SetActive(false);
+            }
+        }
+
+        private string NormalizeAuthMessage(string message, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return fallback;
+            }
+
+            string normalized = message.Trim();
+
+            if (normalized.Equals("Validation failed.", StringComparison.OrdinalIgnoreCase))
+            {
+                return fallback;
+            }
+
+            if (normalized.IndexOf("API PROBLEM", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return fallback;
+            }
+
+            if (normalized.IndexOf("Invalid login credentials", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "The login ID or password is incorrect.";
+            }
+
+            if (normalized.IndexOf("User account is not allowed to login", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This account is not allowed to log in.";
+            }
+
+            if (normalized.IndexOf("Mobile number already registered", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This mobile number is already registered.";
+            }
+
+            return normalized;
+        }
+
+        private string GetFirstValidationError(
+            Dictionary<string, string[]> errors,
+            string fallback
+        )
+        {
+            if (errors == null || errors.Count == 0)
+            {
+                return fallback;
+            }
+
+            string[] priorityKeys =
+            {
+                "email",
+                "mobile",
+                "username",
+                "identity",
+                "password",
+            };
+
+            foreach (string key in priorityKeys)
+            {
+                if (errors.TryGetValue(key, out string[] values) && values != null && values.Length > 0)
+                {
+                    return NormalizeValidationMessage(key, values[0], fallback);
+                }
+            }
+
+            foreach (var pair in errors)
+            {
+                if (pair.Value != null && pair.Value.Length > 0)
+                {
+                    return NormalizeValidationMessage(pair.Key, pair.Value[0], fallback);
+                }
+            }
+
+            return fallback;
+        }
+
+        private string NormalizeValidationMessage(string field, string rawMessage, string fallback)
+        {
+            if (string.IsNullOrWhiteSpace(rawMessage))
+            {
+                return fallback;
+            }
+
+            string message = rawMessage.Trim();
+            string safeField = string.IsNullOrWhiteSpace(field) ? string.Empty : field.Trim().ToLowerInvariant();
+
+            if (safeField == "email" && message.IndexOf("taken", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This email is already registered. Please log in or use a different email address.";
+            }
+
+            if (safeField == "mobile" && message.IndexOf("taken", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This mobile number is already registered. Please log in or use a different mobile number.";
+            }
+
+            if (safeField == "username" && message.IndexOf("taken", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This username is already taken. Please choose a different username.";
+            }
+
+            if (safeField == "identity")
+            {
+                return NormalizeAuthMessage(message, fallback);
+            }
+
+            if (safeField == "password" && message.IndexOf("min", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "Your password is too short. Please enter at least the minimum required length.";
+            }
+
+            if (message.IndexOf("email", StringComparison.OrdinalIgnoreCase) >= 0
+                && message.IndexOf("taken", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This email is already registered. Please log in or use a different email address.";
+            }
+
+            if (message.IndexOf("mobile", StringComparison.OrdinalIgnoreCase) >= 0
+                && message.IndexOf("taken", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return "This mobile number is already registered. Please log in or use a different mobile number.";
+            }
+
+            return message;
+        }
+
+        private string GetSignupErrorMessage(AuthRegisterV1Response response)
+        {
+            const string fallback = "Sign up failed. Please check your details and try again.";
+
+            if (response == null)
+            {
+                return fallback;
+            }
+
+            string validationMessage = GetFirstValidationError(response.errors, string.Empty);
+            if (!string.IsNullOrWhiteSpace(validationMessage))
+            {
+                return validationMessage;
+            }
+
+            return NormalizeAuthMessage(response.message, fallback);
+        }
+
+        private string GetLoginErrorMessage(string rawMessage)
+        {
+            return NormalizeAuthMessage(rawMessage, "Login failed. Please check your details and try again.");
         }
 
         public void forgotpassword(TMP_InputField mobilenumber)
@@ -433,7 +804,7 @@ namespace AndroApps
             else
             {
                 CommonUtil.CheckLog("error" + LogInOutput.message);
-                showtoastmessage(LogInOutput.message);
+                ShowAuthErrorMessage(GetLoginErrorMessage(LogInOutput.message), "Login Error");
             }
             isprossesing = false;
         }
@@ -642,7 +1013,7 @@ namespace AndroApps
             }
             else
             {
-                showtoastmessage(v1Response?.message ?? "Registration failed. Please try again.");
+                ShowAuthErrorMessage(GetSignupErrorMessage(v1Response), "Sign Up Error");
             }
         }
 
@@ -772,7 +1143,7 @@ namespace AndroApps
             }
             else
             {
-                showtoastmessage(SignUpOutput.message);
+                ShowAuthErrorMessage(NormalizeAuthMessage(SignUpOutput.message, "Sign up failed. Please try again."), "Sign Up Error");
             }
         }
 
@@ -817,17 +1188,51 @@ namespace AndroApps
             var loginField = LogInDetail.MobileInputfield;
             loginField.contentType = TMP_InputField.ContentType.Standard;
             loginField.characterValidation = TMP_InputField.CharacterValidation.None;
+            loginField.characterLimit = 0;
             loginField.lineType = TMP_InputField.LineType.SingleLine;
             loginField.keyboardType = TouchScreenKeyboardType.Default;
+            loginField.readOnly = false;
+            loginField.richText = false;
+            loginField.inputValidator = null;
 
             if (loginField.placeholder != null)
             {
                 var placeholder = loginField.placeholder.GetComponent<TMP_Text>();
                 if (placeholder != null)
+                {
                     placeholder.text = "Enter User ID / Username / Email / Mobile";
+                    placeholder.color = new Color32(255, 255, 255, 150);
+                }
             }
 
+            ApplyLoginFieldVisuals();
             loginField.ForceLabelUpdate();
+        }
+
+        private void ApplyLoginFieldVisuals()
+        {
+            ApplyInputFieldVisuals(LogInDetail != null ? LogInDetail.MobileInputfield : null);
+            ApplyInputFieldVisuals(LogInDetail != null ? LogInDetail.PasswordInputfield : null);
+        }
+
+        private void ApplyInputFieldVisuals(TMP_InputField inputField)
+        {
+            if (inputField == null)
+                return;
+
+            if (inputField.textComponent != null)
+            {
+                inputField.textComponent.color = Color.white;
+            }
+
+            if (inputField.placeholder != null)
+            {
+                var placeholder = inputField.placeholder.GetComponent<TMP_Text>();
+                if (placeholder != null)
+                {
+                    placeholder.color = new Color32(255, 255, 255, 150);
+                }
+            }
         }
 
         private void AnimatePanel(RectTransform panel)

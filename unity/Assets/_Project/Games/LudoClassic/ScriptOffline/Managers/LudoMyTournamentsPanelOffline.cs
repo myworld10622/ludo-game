@@ -122,7 +122,7 @@ namespace LudoClassicOffline
             row.transform.SetParent(listContent, false);
 
             Image rowImg = row.GetComponent<Image>();
-            rowImg.color = new Color32(15, 27, 46, 230);
+            rowImg.color = new Color32(41, 52, 71, 230);
 
             HorizontalLayoutGroup hl = row.GetComponent<HorizontalLayoutGroup>();
             hl.padding              = new RectOffset(18, 18, 14, 14);
@@ -148,7 +148,7 @@ namespace LudoClassicOffline
                 string capturedName = tName;
 
                 Button bracketBtn = CreateButton(left.transform, "📋 View Bracket",
-                    new Color32(30, 80, 150, 255));
+                    new Color32(50, 95, 155, 255));
                 LayoutElement btnLE = bracketBtn.GetComponent<LayoutElement>();
                 btnLE.preferredHeight = 56f;
                 btnLE.minHeight       = 50f;
@@ -249,7 +249,7 @@ namespace LudoClassicOffline
             panelRoot = new GameObject("MyTournamentsPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
-            panelRoot.GetComponent<Image>().color = new Color32(7, 14, 26, 252);
+            panelRoot.GetComponent<Image>().color = new Color32(20, 30, 50, 252);
             RectTransform pr = panelRoot.GetComponent<RectTransform>();
             pr.anchorMin = Vector2.zero;
             pr.anchorMax = Vector2.one;
@@ -263,7 +263,7 @@ namespace LudoClassicOffline
             hr.anchoredPosition = new Vector2(0f, -28f);
             hr.sizeDelta        = new Vector2(0f, 80f);
 
-            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(40, 80, 130, 255));
+            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(50, 95, 155, 255));
             RectTransform rfRect = refreshBtn.GetComponent<RectTransform>();
             rfRect.anchorMin = new Vector2(1f, 1f); rfRect.anchorMax = new Vector2(1f, 1f);
             rfRect.pivot     = new Vector2(1f, 1f);
@@ -283,7 +283,7 @@ namespace LudoClassicOffline
             GameObject colHeader = new GameObject("ColHeader",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(HorizontalLayoutGroup));
             colHeader.transform.SetParent(panelRoot.transform, false);
-            colHeader.GetComponent<Image>().color = new Color32(18, 32, 54, 200);
+            colHeader.GetComponent<Image>().color = new Color32(30, 44, 66, 200);
             RectTransform ch = colHeader.GetComponent<RectTransform>();
             ch.anchorMin = new Vector2(0.02f, 1f); ch.anchorMax = new Vector2(0.98f, 1f);
             ch.pivot     = new Vector2(0.5f, 1f);

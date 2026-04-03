@@ -193,7 +193,10 @@ namespace LudoClassicOffline
         {
             try
             {
-
+                int maxPlayers = Mathf.Clamp(joinTableResponse.data.maxPlayerCount, 2, 4);
+                joinTableResponse.data.maxPlayerCount = maxPlayers;
+                signUpResponce.data.numberOfPlayers = maxPlayers;
+                signUpResponce.data.activePlayer = maxPlayers;
 
                 if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("NUMBER"))
                 {
@@ -276,43 +279,35 @@ namespace LudoClassicOffline
 
                 }
 
-                if (joinTableResponse.data.maxPlayerCount == 4)
+                string defaultAvatar = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
+                joinTableResponse.data.playerInfo = new List<PlayerInfoData>();
+                signUpResponce.data.playerInfo = new List<SignUpResponceClass.PlayerInfo>();
+
+                for (int seatIndex = 0; seatIndex < maxPlayers; seatIndex++)
                 {
-                    joinTableResponse.data.playerInfo[0].playerSeatIndex = 0;
-                    joinTableResponse.data.playerInfo[0].userId = "0";
-                    joinTableResponse.data.playerInfo[0].username = LudoDisplayNameUtility.LocalPlayerLabel();
-                    joinTableResponse.data.playerInfo[0].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
-                    signUpResponce.data.thisPlayerSeatIndex = joinTableResponse.data.playerInfo[0].playerSeatIndex;
+                    string userId = seatIndex.ToString();
+                    string userName = seatIndex == 0
+                        ? LudoDisplayNameUtility.LocalPlayerLabel()
+                        : LudoDisplayNameUtility.NeutralSeatLabel(seatIndex);
 
-                    joinTableResponse.data.playerInfo[1].playerSeatIndex = 1;
-                    joinTableResponse.data.playerInfo[1].userId = "1";
-                    joinTableResponse.data.playerInfo[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
-                    joinTableResponse.data.playerInfo[1].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
+                    joinTableResponse.data.playerInfo.Add(new PlayerInfoData
+                    {
+                        playerSeatIndex = seatIndex,
+                        userId = userId,
+                        username = userName,
+                        userProfile = defaultAvatar
+                    });
 
-                    joinTableResponse.data.playerInfo[2].playerSeatIndex = 2;
-                    joinTableResponse.data.playerInfo[2].userId = "2";
-                    joinTableResponse.data.playerInfo[2].username = LudoDisplayNameUtility.NeutralSeatLabel(2);
-                    joinTableResponse.data.playerInfo[2].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
-
-                    joinTableResponse.data.playerInfo[3].playerSeatIndex = 3;
-                    joinTableResponse.data.playerInfo[3].userId = "3";
-                    joinTableResponse.data.playerInfo[3].username = LudoDisplayNameUtility.NeutralSeatLabel(3);
-                    joinTableResponse.data.playerInfo[3].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
+                    signUpResponce.data.playerInfo.Add(new SignUpResponceClass.PlayerInfo
+                    {
+                        seatIndex = seatIndex,
+                        userId = userId,
+                        username = userName,
+                        avatar = defaultAvatar
+                    });
                 }
-                else
-                {
 
-                    joinTableResponse.data.playerInfo[0].playerSeatIndex = 0;
-                    joinTableResponse.data.playerInfo[0].userId = "0";
-                    joinTableResponse.data.playerInfo[0].username = LudoDisplayNameUtility.LocalPlayerLabel();
-                    joinTableResponse.data.playerInfo[0].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
-                    signUpResponce.data.thisPlayerSeatIndex = joinTableResponse.data.playerInfo[0].playerSeatIndex;
-
-                    joinTableResponse.data.playerInfo[1].playerSeatIndex = 1;
-                    joinTableResponse.data.playerInfo[1].userId = "1";
-                    joinTableResponse.data.playerInfo[1].username = LudoDisplayNameUtility.NeutralSeatLabel(1);
-                    joinTableResponse.data.playerInfo[1].userProfile = "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
-                }
+                signUpResponce.data.thisPlayerSeatIndex = 0;
                 ChangeCukiSeatIndex();
                 Debug.Log("Radhe Radhe => " + joinTableResponse.data.maxPlayerCount);
                 maxPlayer = joinTableResponse.data.maxPlayerCount;
@@ -332,6 +327,19 @@ namespace LudoClassicOffline
             if (joinTableResponse.data.maxPlayerCount == 4)
             {
                 for (int i = 0; i < ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                            ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
+                        else
+                            ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockie[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
+                    }
+                }
+            }
+            else if (joinTableResponse.data.maxPlayerCount == 3)
+            {
+                for (int i = 0; i < 3; i++)
                 {
                     for (int j = 0; j < 4; j++)
                     {

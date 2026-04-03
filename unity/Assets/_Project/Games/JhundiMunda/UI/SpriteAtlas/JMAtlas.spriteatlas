@@ -59,7 +59,7 @@ SpriteAtlas:
     - {fileID: 21300000, guid: 95536a7810238db4abb5c02d9b700c92, type: 3}
     - {fileID: 21300000, guid: ab36c9adbc979604ca42ac31ba3034ae, type: 3}
     - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
-    bindAsDefault: 1
+    bindAsDefault: 0
     isAtlasV2: 0
     cachedData: {fileID: 0}
     packedSpriteRenderDataKeys:

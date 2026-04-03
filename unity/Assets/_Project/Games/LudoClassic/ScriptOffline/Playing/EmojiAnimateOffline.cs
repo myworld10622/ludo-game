@@ -17,13 +17,13 @@ namespace LudoClassicOffline
         {
             this.gameObject.SetActive(true);
             GameObject emojiClone;
-            // var cloneEmojiParent = id == GameManager.instace.ludoNumbersAcknowledgementHandler.myUserId ? GameManager.instace.emojiParent : GameManager.instace.emojiParentOppo;
-            if (id == GameManagerOffline.instace.selfUserID)
+            cloneEmojiParent = ResolveEmojiParent(seatIndex);
+            if (cloneEmojiParent == null && id == GameManagerOffline.instace.selfUserID)
             {
                 cloneEmojiParent = GameManagerOffline.instace.emojiParent;
                 Debug.Log("cloneEmojiParent => " + cloneEmojiParent);
             }
-            else
+            else if (cloneEmojiParent == null)
             {
                 for (int i = 0; i < GameManagerOffline.instace.ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
                 {
@@ -35,12 +35,40 @@ namespace LudoClassicOffline
                     }
                 }
             }
+
+            if (cloneEmojiParent == null)
+            {
+                cloneEmojiParent = GameManagerOffline.instace.emojiParent;
+            }
+
             emojiClone = Instantiate(emojiPrefab, cloneEmojiParent);
             emojiClone.GetComponent<RectTransform>().anchoredPosition = Vector2.zero;
             Animator anim = emojiClone.GetComponent<Animator>();
             anim.runtimeAnimatorController = emojiAnimatiorList[number];
             SoundManagerOffline.instance.EmojiSoundPlay(SoundManagerOffline.instance.emojiSoundClip, number);
             Destroy(emojiClone, 2.2f);
+        }
+
+        private RectTransform ResolveEmojiParent(int seatIndex)
+        {
+            if (GameManagerOffline.instace == null || GameManagerOffline.instace.ludoNumbersAcknowledgementHandler == null)
+            {
+                return null;
+            }
+
+            if (DashBoardManagerOffline.instance != null && DashBoardManagerOffline.instance.IsPassAndPlay)
+            {
+                for (int i = 0; i < GameManagerOffline.instace.ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
+                {
+                    var playerControl = GameManagerOffline.instace.ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i];
+                    if (playerControl != null && playerControl.playerInfoData.playerSeatIndex == seatIndex)
+                    {
+                        return playerControl.emojiTransform;
+                    }
+                }
+            }
+
+            return null;
         }
     }
 }

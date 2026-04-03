@@ -15,11 +15,11 @@ namespace LudoClassicOffline
         private bool hasBuiltUi;
         private Font runtimeFont;
 
-        private static readonly Color32 BgColor     = new Color32(7,  14, 26,  252);
-        private static readonly Color32 CardColor   = new Color32(12, 22, 42,  255);
-        private static readonly Color32 AccentBlue  = new Color32(30, 100, 220, 255);
-        private static readonly Color32 AccentGreen = new Color32(39, 160, 80,  255);
-        private static readonly Color32 MutedColor  = new Color32(140, 160, 195, 200);
+        private static readonly Color32 BgColor     = new Color32(20, 30,  50,  252);
+        private static readonly Color32 CardColor   = new Color32(41, 52,  71,  255);
+        private static readonly Color32 AccentBlue  = new Color32(70, 130, 240, 255);
+        private static readonly Color32 AccentGreen = new Color32(39, 170, 90,  255);
+        private static readonly Color32 MutedColor  = new Color32(170, 185, 210, 210);
 
         // ── Init ──────────────────────────────────────────────────────────────
 
@@ -98,31 +98,32 @@ namespace LudoClassicOffline
             vl.childForceExpandHeight = false;
 
             // ── Globe icon ────────────────────────────────────────────────────
-            var icon = MakeText(card.transform, "🌐", 72, FontStyle.Normal, Color.white);
+            var icon = MakeText(card.transform, "🌐", 90, FontStyle.Normal, Color.white);
             icon.alignment = TextAnchor.MiddleCenter;
-            SetFlexHeight(icon.gameObject, 90f);
+            SetFlexHeight(icon.gameObject, 110f);
 
             // ── Heading ───────────────────────────────────────────────────────
             var heading = MakeText(card.transform,
                 "Create Your Tournament on the Web",
-                44, FontStyle.Bold, Color.white);
+                54, FontStyle.Bold, Color.white);
             heading.alignment = TextAnchor.MiddleCenter;
-            SetFlexHeight(heading.gameObject, 100f);
+            heading.horizontalOverflow = HorizontalWrapMode.Wrap;
+            SetFlexHeight(heading.gameObject, 120f);
 
             // ── Sub-text ──────────────────────────────────────────────────────
             var sub = MakeText(card.transform,
                 "Use your personal tournament management panel in the browser.\nCreate, configure and monitor your tournament from any device.",
-                30, FontStyle.Normal, MutedColor);
+                36, FontStyle.Normal, MutedColor);
             sub.alignment   = TextAnchor.MiddleCenter;
             sub.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(sub.gameObject, 100f);
+            SetFlexHeight(sub.gameObject, 120f);
 
             // ── URL box ───────────────────────────────────────────────────────
             var urlBox = new GameObject("UrlBox",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup));
             urlBox.transform.SetParent(card.transform, false);
-            urlBox.GetComponent<Image>().color = new Color32(10, 24, 52, 255);
+            urlBox.GetComponent<Image>().color = new Color32(28, 40, 62, 255);
             var ubVl = urlBox.GetComponent<VerticalLayoutGroup>();
             ubVl.padding              = new RectOffset(20, 20, 14, 14);
             ubVl.spacing              = 8f;
@@ -131,35 +132,36 @@ namespace LudoClassicOffline
             ubVl.childForceExpandWidth  = true;
             ubVl.childForceExpandHeight = false;
             var urlBoxLE = urlBox.AddComponent<LayoutElement>();
-            urlBoxLE.minHeight = 90f;
+            urlBoxLE.minHeight = 110f;
 
             var urlCaption = MakeText(urlBox.transform,
-                "Your Panel URL", 24, FontStyle.Bold,
+                "Your Panel URL", 30, FontStyle.Bold,
                 new Color32(100, 160, 255, 255));
             urlCaption.alignment = TextAnchor.MiddleLeft;
-            SetFlexHeight(urlCaption.gameObject, 32f);
+            SetFlexHeight(urlCaption.gameObject, 40f);
 
             urlLabel = MakeText(urlBox.transform,
                 Configuration.Website + "login",
-                30, FontStyle.Normal, Color.white);
+                34, FontStyle.Normal, Color.white);
             urlLabel.alignment = TextAnchor.MiddleLeft;
             urlLabel.fontStyle  = FontStyle.Normal;
-            SetFlexHeight(urlLabel.gameObject, 40f);
+            SetFlexHeight(urlLabel.gameObject, 48f);
 
             // ── Login hint ────────────────────────────────────────────────────
             var loginHint = MakeText(card.transform,
                 "Login using User ID, username, email address, or mobile number with your password.",
-                28, FontStyle.Normal, MutedColor);
+                34, FontStyle.Normal, MutedColor);
             loginHint.alignment   = TextAnchor.MiddleCenter;
             loginHint.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(loginHint.gameObject, 60f);
+            SetFlexHeight(loginHint.gameObject, 80f);
 
             // ── Email sent notice ─────────────────────────────────────────────
             var notice = MakeText(card.transform,
                 "✓  Open the login page in your browser and sign in to access your panel.",
-                26, FontStyle.Italic, new Color32(80, 200, 120, 220));
+                32, FontStyle.Italic, new Color32(80, 200, 120, 220));
             notice.alignment = TextAnchor.MiddleCenter;
-            SetFlexHeight(notice.gameObject, 48f);
+            notice.horizontalOverflow = HorizontalWrapMode.Wrap;
+            SetFlexHeight(notice.gameObject, 60f);
 
             // ── Buttons row ───────────────────────────────────────────────────
             var btnRow = new GameObject("BtnRow",
@@ -180,9 +182,9 @@ namespace LudoClassicOffline
             sL.GetComponent<LayoutElement>().flexibleWidth = 1f;
 
             // "Got it" close button
-            var closeBtn = MakeButton(btnRow.transform, "Got it!", AccentGreen, 36);
-            closeBtn.GetComponent<LayoutElement>().preferredWidth  = 320f;
-            closeBtn.GetComponent<LayoutElement>().preferredHeight = 80f;
+            var closeBtn = MakeButton(btnRow.transform, "Got it!", AccentGreen, 42);
+            closeBtn.GetComponent<LayoutElement>().preferredWidth  = 360f;
+            closeBtn.GetComponent<LayoutElement>().preferredHeight = 96f;
             closeBtn.onClick.AddListener(ClosePanel);
 
             // Spacer right

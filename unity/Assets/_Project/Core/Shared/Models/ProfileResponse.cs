@@ -350,6 +350,7 @@ public class AuthRegisterV1Response
     public bool success;
     public string message;
     public AuthRegisterV1Data data;
+    public Dictionary<string, string[]> errors;
 }
 
 [System.Serializable]

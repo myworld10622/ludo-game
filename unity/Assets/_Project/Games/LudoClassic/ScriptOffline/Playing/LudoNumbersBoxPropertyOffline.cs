@@ -2,11 +2,12 @@ using DG.Tweening;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace LudoClassicOffline
 {
-    public class LudoNumbersBoxPropertyOffline : MonoBehaviour
+    public class LudoNumbersBoxPropertyOffline : MonoBehaviour, IPointerClickHandler
     {
         public TokenPopupPositions tokenPopup;
 
@@ -15,7 +16,22 @@ namespace LudoClassicOffline
         public int index;
         public BoxType boxType;
 
+        private Transform tokenHolder;
+
+        private void Awake()
+        {
+            if (transform.childCount > 1)
+                tokenHolder = transform.GetChild(1);
+
+            DisableBoardRaycasts();
+        }
+
         public void UpdateMyColor(Color color) => trail.color = color;
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            TryForwardTapToToken();
+        }
 
         public void CockieManage()
         {
@@ -132,6 +148,38 @@ namespace LudoClassicOffline
                 transformObj.GetChild(6).transform.localScale = new Vector2(0.5f, 0.5f);
             }
 
+        }
+
+        private void DisableBoardRaycasts()
+        {
+            Graphic[] graphics = GetComponentsInChildren<Graphic>(true);
+            foreach (Graphic graphic in graphics)
+            {
+                if (graphic == null)
+                    continue;
+
+                if (tokenHolder != null && graphic.transform.IsChildOf(tokenHolder))
+                    continue;
+
+                graphic.raycastTarget = false;
+            }
+
+            if (trail != null)
+                trail.raycastTarget = false;
+        }
+
+        private void TryForwardTapToToken()
+        {
+            if (tokenHolder == null)
+                return;
+
+            for (int i = tokenHolder.childCount - 1; i >= 0; i--)
+            {
+                CoockieMovementOffline token =
+                    tokenHolder.GetChild(i).GetComponent<CoockieMovementOffline>();
+                if (token != null && token.TryHandleTap())
+                    return;
+            }
         }
     }
     public enum TokenPopupPositions

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ludo Social, Voice, AI Chat, and Friends Plan</title>
+  <style>
+    :root {
+      --bg: #f6f1e7;
+      --paper: #fffdf8;
+      --ink: #211915;
+      --muted: #6c635d;
+      --line: #ddd1c2;
+      --accent: #b54c30;
+      --soft: #f4e1d7;
+      --chip: #efe5d7;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, #fff1d6 0, transparent 26%),
+        radial-gradient(circle at top right, #f4ddd4 0, transparent 22%),
+        linear-gradient(180deg, #f6f1e7 0%, #f1eadf 100%);
+      line-height: 1.65;
+    }
+    .wrap {
+      max-width: 1080px;
+      margin: 0 auto;
+      padding: 36px 18px 72px;
+    }
+    .hero, .section {
+      background: rgba(255,255,255,0.82);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.04);
+    }
+    .section { margin-top: 18px; }
+    .eyebrow {
+      display: inline-block;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--chip);
+      color: var(--accent);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    h1, h2, h3 { line-height: 1.2; margin: 0 0 10px; }
+    h1 { font-size: clamp(2rem, 4vw, 3.2rem); }
+    h2 { font-size: 1.6rem; padding-top: 8px; border-top: 1px solid var(--line); }
+    h3 { font-size: 1.1rem; color: #8a3624; margin-top: 16px; }
+    p { margin: 0 0 12px; }
+    ul, ol { margin: 10px 0 14px 22px; }
+    li { margin: 4px 0; }
+    code {
+      background: var(--chip);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .95em;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .card, .phase, .callout {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px;
+    }
+    .phase { border-left: 5px solid var(--accent); }
+    .callout { background: var(--soft); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 12px;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+      background: rgba(255,255,255,0.72);
+    }
+    th { background: #efe3d7; color: #863623; }
+    .muted { color: var(--muted); }
+    @media (max-width: 720px) {
+      .wrap { padding: 22px 12px 54px; }
+      .hero, .section { padding: 18px; border-radius: 18px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="hero">
+      <div class="eyebrow">Master Plan</div>
+      <h1>Ludo Social, Voice, AI Chat, and Friends System</h1>
+      <p class="muted">
+        This document combines the full roadmap for room chat, emoji, bot AI chat, Agora-based
+        voice talk, friend requests, add-by-player-ID, and friend online or playing notifications.
+      </p>
+      <div class="grid">
+        <div class="card">
+          <h3>Room Chat</h3>
+          <p>Text chat, emoji, message history, reconnect-safe room communication.</p>
+        </div>
+        <div class="card">
+          <h3>Friends</h3>
+          <p>Friend request from room and lobby, player-ID search, friend list, presence.</p>
+        </div>
+        <div class="card">
+          <h3>Voice</h3>
+          <p>Temporary room voice channel using Agora with secure backend token issue.</p>
+        </div>
+        <div class="card">
+          <h3>Bot AI Chat</h3>
+          <p>Safe controlled bot replies, templates first, AI-assisted later.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Main User Flows</h2>
+      <ol>
+        <li>Players in same room can text chat and use emoji.</li>
+        <li>If bot is in room, bot can also send short controlled chat.</li>
+        <li>Players in same room can use live voice talk.</li>
+        <li>Player can send friend request from room player card.</li>
+        <li>Player can also send friend request from lobby by entering player ID.</li>
+        <li>Later the app can notify when a friend comes online or starts playing Ludo.</li>
+      </ol>
+      <div class="callout">
+        Example: User A with player ID <code>12345678</code> sends a request to User B with player ID
+        <code>78945612</code> from the room or from the lobby search box.
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Product Modules</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Module</th>
+            <th>Includes</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Room Chat</td>
+            <td>Text messages, emoji reactions, system messages</td>
+          </tr>
+          <tr>
+            <td>Friends System</td>
+            <td>Friend requests, add by player ID, friend list, presence</td>
+          </tr>
+          <tr>
+            <td>Voice Talk</td>
+            <td>Agora room voice, join, leave, mute, unmute</td>
+          </tr>
+          <tr>
+            <td>Bot AI Chat</td>
+            <td>Bot-generated short messages, safe and rate-limited</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Recommended Release Phases</h2>
+      <div class="phase">
+        <h3>Phase 1: Emoji</h3>
+        <p>Fast low-risk release with emoji tray, socket event, cooldown, and seat animation.</p>
+      </div>
+      <div class="phase">
+        <h3>Phase 2: Text Chat</h3>
+        <p>Add room messaging, history, Laravel persistence, reconnect support, and moderation basics.</p>
+      </div>
+      <div class="phase">
+        <h3>Phase 3: Friend Requests</h3>
+        <p>Add in-room friend action, lobby add-by-ID, accept and reject flow, and friend list.</p>
+      </div>
+      <div class="phase">
+        <h3>Phase 4: Presence and Notifications</h3>
+        <p>Add friend online, lobby, and in-match presence plus lightweight notifications.</p>
+      </div>
+      <div class="phase">
+        <h3>Phase 5: Agora Voice Talk</h3>
+        <p>Add backend token issue, Unity voice UI, room voice join and leave, and token renew flow.</p>
+      </div>
+      <div class="phase">
+        <h3>Phase 6: Bot AI Chat</h3>
+        <p>Start with safe templates, then move to AI-assisted short replies only if needed.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Architecture Decision</h2>
+      <ul>
+        <li>Reuse existing Ludo room identity for room chat and emoji.</li>
+        <li>Keep friends system separate at app level.</li>
+        <li>Use same room mapping for Agora voice channels.</li>
+        <li>Generate bot chat on server side, not in Unity.</li>
+      </ul>
+      <p>Current repo integration points:</p>
+      <ul>
+        <li><code>node/sockets/ludoRoomSocket.js</code></li>
+        <li><code>backend_laravel/</code> service and model layer</li>
+        <li><code>unity/Assets/_Project/Games/LudoClassic/ScriptOffline/Socket/LudoV2MatchmakingBridge.cs</code></li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Data Model Plan</h2>
+      <h3>Chat</h3>
+      <ul>
+        <li><code>game_room_messages</code> for canonical room text messages</li>
+      </ul>
+      <h3>Friends</h3>
+      <ul>
+        <li><code>friend_requests</code></li>
+        <li><code>user_friends</code></li>
+        <li><code>user_presence_snapshots</code> optional</li>
+        <li><code>user_notifications</code></li>
+      </ul>
+      <h3>Voice</h3>
+      <ul>
+        <li><code>game_room_voice_sessions</code></li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Socket and API Contract</h2>
+      <h3>Chat socket events</h3>
+      <ul>
+        <li><code>ludo.chat.send</code></li>
+        <li><code>ludo.chat.history</code></li>
+        <li><code>ludo.chat.emoji</code></li>
+        <li><code>ludo.chat.message</code></li>
+        <li><code>ludo.chat.system</code></li>
+        <li><code>ludo.chat.error</code></li>
+      </ul>
+      <h3>Friend APIs</h3>
+      <ul>
+        <li><code>POST /api/v1/friends/request</code></li>
+        <li><code>POST /api/v1/friends/request/by-player-id</code></li>
+        <li><code>POST /api/v1/friends/request/{requestUuid}/accept</code></li>
+        <li><code>POST /api/v1/friends/request/{requestUuid}/reject</code></li>
+        <li><code>GET /api/v1/friends</code></li>
+      </ul>
+      <h3>Voice APIs</h3>
+      <ul>
+        <li><code>POST /api/v1/ludo/rooms/{roomUuid}/voice/join</code></li>
+        <li><code>POST /api/v1/ludo/rooms/{roomUuid}/voice/leave</code></li>
+      </ul>
+    </section>
+
+    <section class="section">
+      <h2>Bot AI Chat Plan</h2>
+      <div class="callout">
+        <strong>Recommendation:</strong> do not start with fully free-form AI chat.
+      </div>
+      <ol>
+        <li>Event-driven templates first</li>
+        <li>Context-aware variations second</li>
+        <li>Optional AI-assisted short replies later</li>
+      </ol>
+      <p>Bot triggers can include join, emoji, capture, timeout, match start, and match end.</p>
+      <p>Bot replies should stay short, playful, non-toxic, and rate-limited.</p>
+    </section>
+
+    <section class="section">
+      <h2>Agora Voice Talk Plan</h2>
+      <p>
+        Agora is a practical RTC choice here because it supports low-latency room voice and secure token-based access.
+      </p>
+      <h3>Recommended channel naming</h3>
+      <ul>
+        <li><code>ludo_room_{roomUuid}</code></li>
+        <li><code>ludo_private_{roomUuid}</code></li>
+        <li><code>ludo_tournament_{roomUuid}</code></li>
+      </ul>
+      <h3>Required values</h3>
+      <ul>
+        <li><code>App ID</code></li>
+        <li><code>App Certificate</code></li>
+        <li>backend-generated <code>RTC token</code></li>
+        <li><code>channel_name</code></li>
+        <li><code>agora_uid</code></li>
+      </ul>
+      <div class="callout">
+        <strong>Security:</strong> keep the <code>App Certificate</code> on the backend only.
+      </div>
+      <h3>Agora setup steps</h3>
+      <ol>
+        <li>Create account in Agora Console.</li>
+        <li>Create a project for Ludo voice.</li>
+        <li>Copy the project <code>App ID</code>.</li>
+        <li>Keep <code>App Certificate</code> enabled for token generation.</li>
+        <li>Build Laravel token endpoint for room voice join.</li>
+        <li>Unity fetches token from backend, not directly from Agora.</li>
+        <li>Unity joins with <code>App ID</code>, <code>channel_name</code>, <code>agora_uid</code>, and <code>rtc_token</code>.</li>
+        <li>When token is near expiry, Unity requests a fresh token and renews it.</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>Engineering Ownership</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Layer</th>
+            <th>Main Work</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Node</td>
+            <td>Room chat broadcast, emoji, bot triggers, room-level realtime social events</td>
+          </tr>
+          <tr>
+            <td>Laravel</td>
+            <td>Persistence, friend graph, presence, notifications, Agora token generation</td>
+          </tr>
+          <tr>
+            <td>Unity</td>
+            <td>Chat UI, friend request UI, lobby player-ID search, voice controls, notification views</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>Best Build Order</h2>
+      <ol>
+        <li>Emoji</li>
+        <li>Text chat</li>
+        <li>Friend request backend</li>
+        <li>Friend request Unity UI</li>
+        <li>Presence and notifications</li>
+        <li>Agora token backend</li>
+        <li>Unity Agora voice integration</li>
+        <li>Bot rule-based chat</li>
+        <li>Optional AI-assisted bot chat</li>
+      </ol>
+    </section>
+
+    <section class="section">
+      <h2>Official Agora Note</h2>
+      <p>
+        This plan uses Agora official guidance checked on April 3, 2026: token-based authentication is the recommended
+        secure approach, clients should fetch tokens from their own backend, and Unity voice integration follows the
+        standard RTC channel-join flow.
+      </p>
+      <ul>
+        <li><code>https://docs.agora.io/en/voice-calling/token-authentication/authentication-workflow</code></li>
+        <li><code>https://docs.agora.io/en/voice-calling/get-started/get-started-sdk?platform=unity</code></li>
+      </ul>
+    </section>
+  </div>
+</body>
+</html>

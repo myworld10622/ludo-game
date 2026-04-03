@@ -139,7 +139,7 @@ namespace LudoClassicOffline
         {
             emojiPanel.transform.DOScale(Vector3.zero, 0f);
             emojiCloseBtn.gameObject.SetActive(false);
-            ludoNumberGsNew.emojiBtn.gameObject.SetActive(true);
+            RestorePassAndPlayEmojiTrigger();
             greenInfoPanel.transform.DOScale(Vector2.one, 0f);
         }
 
@@ -183,6 +183,7 @@ namespace LudoClassicOffline
 
         public void EmojiOpen()
         {
+            UpdatePassAndPlayEmojiTrigger(socketNumberEventReceiver != null ? socketNumberEventReceiver.userStartIndex : 0, false);
             greenInfoPanel.transform.DOScale(Vector2.zero, 0f);
             emojiPanel.transform.DOScale(Vector3.one, 0f);
             emojiCloseBtn.gameObject.SetActive(true);
@@ -193,7 +194,97 @@ namespace LudoClassicOffline
         {
             emojiPanel.transform.DOScale(Vector3.zero, 0f);
             emojiCloseBtn.gameObject.SetActive(false);
-            ludoNumberGsNew.emojiBtn.gameObject.SetActive(true);
+            RestorePassAndPlayEmojiTrigger();
+        }
+
+        public void RefreshPassAndPlayEmojiButton(int seatIndex)
+        {
+            if (ludoNumberGsNew == null || ludoNumberGsNew.emojiBtn == null)
+            {
+                return;
+            }
+
+            if (DashBoardManagerOffline.instance == null || !DashBoardManagerOffline.instance.IsPassAndPlay)
+            {
+                return;
+            }
+
+            RectTransform buttonRect = ludoNumberGsNew.emojiBtn.rectTransform;
+            if (buttonRect == null || ludoNumbersAcknowledgementHandler == null || ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
+            {
+                var playerControl = ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i];
+                if (playerControl == null || playerControl.playerInfoData == null || playerControl.playerInfoData.playerSeatIndex != seatIndex || playerControl.emojiTransform == null)
+                {
+                    continue;
+                }
+
+                buttonRect.position = playerControl.emojiTransform.position;
+                return;
+            }
+        }
+
+        public void UpdatePassAndPlayEmojiTrigger(int seatIndex, bool showTrigger = true)
+        {
+            if (DashBoardManagerOffline.instance == null || !DashBoardManagerOffline.instance.IsPassAndPlay)
+            {
+                if (ludoNumberGsNew != null && ludoNumberGsNew.emojiBtn != null)
+                {
+                    ludoNumberGsNew.emojiBtn.gameObject.SetActive(showTrigger);
+                }
+
+                return;
+            }
+
+            if (ludoNumbersAcknowledgementHandler == null || ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl == null)
+            {
+                return;
+            }
+
+            RefreshPassAndPlayEmojiButton(seatIndex);
+
+            bool boundToSeatButton = false;
+            for (int i = 0; i < ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
+            {
+                var playerControl = ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i];
+                if (playerControl == null || playerControl.playerInfoData == null)
+                {
+                    continue;
+                }
+
+                GameObject infoBtn = playerControl.ludoNumbersUserData.infoBtn;
+                if (infoBtn == null)
+                {
+                    continue;
+                }
+
+                bool isActiveSeat = showTrigger
+                    && playerControl.playerInfoData.playerSeatIndex == seatIndex
+                    && playerControl.playerInfoData.playerSeatIndex >= 0;
+
+                infoBtn.SetActive(isActiveSeat);
+                infoBtn.transform.localScale = isActiveSeat ? Vector3.one : Vector3.zero;
+                boundToSeatButton |= isActiveSeat;
+            }
+
+            if (ludoNumberGsNew != null && ludoNumberGsNew.emojiBtn != null)
+            {
+                ludoNumberGsNew.emojiBtn.gameObject.SetActive(showTrigger && !boundToSeatButton);
+            }
+        }
+
+        private void RestorePassAndPlayEmojiTrigger()
+        {
+            int seatIndex = socketNumberEventReceiver != null ? socketNumberEventReceiver.userStartIndex : 0;
+            UpdatePassAndPlayEmojiTrigger(seatIndex, true);
+            if (DashBoardManagerOffline.instance == null || !DashBoardManagerOffline.instance.IsPassAndPlay)
+            {
+                ludoNumberGsNew.emojiBtn.gameObject.SetActive(true);
+            }
         }
 
         public void LeaveTable()

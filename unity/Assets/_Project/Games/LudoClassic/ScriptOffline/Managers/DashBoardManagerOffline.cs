@@ -94,6 +94,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         [SerializeField]
         Image player2ButtonOnline,
             player4ButtonOnline;
+        private GameObject passNPlayPlayerCountPopup;
+        private int selectedPassNPlayPlayerCount = 2;
         public GameObject twoPlayerLobby,
             fourPlayerLobby;
 
@@ -146,6 +148,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         private Button tournamentTabButton;
         private Image tournamentTabImage;
         private bool hasCachedTabPositions;
+        private Vector2 _tabCustomSize;   // computed once in EnsureTournamentClassicTab, reused on every click
+        private bool _tabCustomSizeReady;
         private Vector2 cachedPlayer2Position;
         private Vector2 cachedPlayer4Position;
         private Vector2 cachedPlayer2Size;
@@ -696,8 +700,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             switch (no)
             {
                 case 2:
-                    //player2.DOAnchorPosY(newPostion, 0f);
-                    player2.sizeDelta = maxSize;
+                    player2.sizeDelta = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
+                        ? _tabCustomSize : maxSize;
                     player2Button.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 2;
                     fourPlayerLobby.SetActive(false);
@@ -708,8 +712,8 @@ public class DashBoardManagerOffline : MonoBehaviour
                     break;
 
                 case 4:
-                    //player4.DOAnchorPosY(newPostion, 0f);
-                    player4.sizeDelta = maxSize;
+                    player4.sizeDelta = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
+                        ? _tabCustomSize : maxSize;
                     player4Button.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 4;
                     fourPlayerLobby.SetActive(true);
@@ -757,11 +761,14 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void ResetButton()
         {
-            //player2.DOAnchorPosY(oldPostion, 0f);
-            player2.sizeDelta = smallSize;
+            // When tournament tab is active use custom size so spacing never breaks
+            Vector2 resetSize = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
+                ? _tabCustomSize
+                : smallSize;
+
+            player2.sizeDelta    = resetSize;
             player2Button.sprite = unSelectSprite;
-            //player4.DOAnchorPosY(oldPostion, 0f);
-            player4.sizeDelta = smallSize;
+            player4.sizeDelta    = resetSize;
             player4Button.sprite = unSelectSprite;
         }
 
@@ -1291,7 +1298,11 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             suppressTournamentSideMenu = suppressed;
 
-            if (!suppressed)
+            if (suppressed)
+            {
+                HideTournamentSideMenu();
+            }
+            else
             {
                 RestoreTournamentSideMenu();
             }
@@ -1409,23 +1420,30 @@ public class DashBoardManagerOffline : MonoBehaviour
                 ReplaceTabText(clone.transform, "PLAYER", "TOURNAMENT");
             }
 
-            float centerX = (cachedPlayer2Position.x + cachedPlayer4Position.x) * 0.5f;
-            float tabWidth = Mathf.Min(cachedPlayer2Size.x, cachedPlayer4Size.x) * 0.78f;
-            float tabHeight = Mathf.Min(cachedPlayer2Size.y, cachedPlayer4Size.y) * 1.14f;
-            float gap = 8f;
+            float centerX  = (cachedPlayer2Position.x + cachedPlayer4Position.x) * 0.5f;
+            float tabWidth  = Mathf.Min(cachedPlayer2Size.x, cachedPlayer4Size.x) * 0.82f;
+            float tabHeight = Mathf.Min(cachedPlayer2Size.y, cachedPlayer4Size.y) * 1.35f;
+            float gap  = 22f;
             float step = tabWidth + gap;
 
-            player2.sizeDelta = new Vector2(tabWidth, tabHeight);
-            player4.sizeDelta = new Vector2(tabWidth, tabHeight);
+            // Cache custom size so ResetButton/ClickOnPlayerButton can reuse it
+            _tabCustomSize      = new Vector2(tabWidth, tabHeight);
+            _tabCustomSizeReady = true;
+
+            // Side tabs — use same height so row is visually even
+            player2.sizeDelta = _tabCustomSize;
+            player4.sizeDelta = _tabCustomSize;
             player2.anchoredPosition = new Vector2(centerX - step, cachedPlayer2Position.y);
+            player4.anchoredPosition = new Vector2(centerX + step, cachedPlayer4Position.y);
+
+            // Center TOURNAMENT tab — 8% taller for visual prominence
             if (tournamentTab != null)
             {
                 tournamentTab.gameObject.SetActive(true);
                 tournamentTab.SetAsLastSibling();
-                tournamentTab.anchoredPosition = new Vector2(centerX, cachedPlayer2Position.y + 3f);
-                tournamentTab.sizeDelta = new Vector2(tabWidth, tabHeight);
+                tournamentTab.sizeDelta        = new Vector2(tabWidth, tabHeight * 1.08f);
+                tournamentTab.anchoredPosition = new Vector2(centerX, cachedPlayer2Position.y);
             }
-            player4.anchoredPosition = new Vector2(centerX + step, cachedPlayer4Position.y);
             UpdateClassicModeTabSelection(4);
         }
 
@@ -1470,19 +1488,30 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         private void UpdateClassicModeTabSelection(int selectedMode)
         {
+            // Active: warm gold highlight so selected tab pops.
+            // Inactive: pure white so the sprite's own color shows — no grey dullness.
+            Color activeColor   = new Color(1f, 0.92f, 0.45f, 1f);  // gold tint
+            Color inactiveColor = Color.white;                        // natural sprite color
+
             if (player2Button != null)
             {
-                player2Button.sprite = selectedMode == 2 ? selectSprite : unSelectSprite;
+                bool active = selectedMode == 2;
+                player2Button.sprite = active ? selectSprite : unSelectSprite;
+                player2Button.color  = active ? activeColor : inactiveColor;
             }
 
             if (player4Button != null)
             {
-                player4Button.sprite = selectedMode == 4 ? selectSprite : unSelectSprite;
+                bool active = selectedMode == 4;
+                player4Button.sprite = active ? selectSprite : unSelectSprite;
+                player4Button.color  = active ? activeColor : inactiveColor;
             }
 
             if (tournamentTabImage != null)
             {
-                tournamentTabImage.sprite = selectedMode == 0 ? selectSprite : unSelectSprite;
+                bool active = selectedMode == 0;
+                tournamentTabImage.sprite = active ? selectSprite : unSelectSprite;
+                tournamentTabImage.color  = active ? activeColor : inactiveColor;
             }
         }
 
@@ -1494,6 +1523,11 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 "SettingBtn",
                 "SettingBtnImage",
+                "ludo-menu-iconns",
+                "Setting",
+                "SettingPanel",
+                "OptionContent",
+                "OnlineLobbySelectionPanel",
                 "OptionHolder2Player",
                 "OptionHolder4Player",
                 "OptionHolderMultiPlayer",
@@ -1558,6 +1592,24 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void CLickOnPassNPlayButton()
         {
+            ShowPassNPlayPlayerCountPopup();
+        }
+
+        private void StartPassNPlayMatch(int playerCount)
+        {
+            selectedPassNPlayPlayerCount = Mathf.Clamp(playerCount, 2, 4);
+            HidePassNPlayPlayerCountPopup();
+
+            if (
+                socketNumberEventReceiver != null
+                && socketNumberEventReceiver.joinTableResponse != null
+                && socketNumberEventReceiver.joinTableResponse.data != null
+            )
+            {
+                socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount =
+                    selectedPassNPlayPlayerCount;
+            }
+
             backButton.SetActive(false);
             lobbySelectPanal.SetActive(false);
             if (
@@ -1612,6 +1664,280 @@ public class DashBoardManagerOffline : MonoBehaviour
                 }
                 socketNumberEventReceiver.PlayerJoinData();
             }
+        }
+
+        private void ShowPassNPlayPlayerCountPopup()
+        {
+            EnsurePassNPlayPlayerCountPopup();
+            if (passNPlayPlayerCountPopup != null)
+            {
+                passNPlayPlayerCountPopup.transform.SetAsLastSibling();
+                Canvas popupCanvas = passNPlayPlayerCountPopup.GetComponent<Canvas>();
+                if (popupCanvas != null)
+                {
+                    popupCanvas.overrideSorting = true;
+                    popupCanvas.sortingOrder = 32760;
+                }
+                passNPlayPlayerCountPopup.SetActive(true);
+            }
+        }
+
+        private void HidePassNPlayPlayerCountPopup()
+        {
+            if (passNPlayPlayerCountPopup != null)
+            {
+                passNPlayPlayerCountPopup.SetActive(false);
+            }
+        }
+
+        private void EnsurePassNPlayPlayerCountPopup()
+        {
+            if (passNPlayPlayerCountPopup != null)
+            {
+                return;
+            }
+
+            Font popupFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            Canvas rootCanvas =
+                dashBordPanal != null
+                    ? dashBordPanal.GetComponentInParent<Canvas>(true)
+                    : GetComponentInParent<Canvas>(true);
+            if (rootCanvas == null)
+            {
+                return;
+            }
+
+            rootCanvas = rootCanvas.rootCanvas != null ? rootCanvas.rootCanvas : rootCanvas;
+
+            passNPlayPlayerCountPopup = new GameObject(
+                "PassNPlayPlayerCountPopup",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Canvas),
+                typeof(GraphicRaycaster)
+            );
+            passNPlayPlayerCountPopup.transform.SetParent(rootCanvas.transform, false);
+            passNPlayPlayerCountPopup.transform.SetAsLastSibling();
+
+            RectTransform overlayRect = passNPlayPlayerCountPopup.GetComponent<RectTransform>();
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+
+            Canvas overlayCanvas = passNPlayPlayerCountPopup.GetComponent<Canvas>();
+            overlayCanvas.overrideSorting = true;
+            overlayCanvas.sortingLayerID = rootCanvas.sortingLayerID;
+            overlayCanvas.sortingOrder = 32760;
+
+            Image overlayImage = passNPlayPlayerCountPopup.GetComponent<Image>();
+            overlayImage.color = new Color(0f, 0f, 0f, 0.72f);
+
+            GameObject card = new GameObject(
+                "Card",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Outline),
+                typeof(VerticalLayoutGroup),
+                typeof(ContentSizeFitter)
+            );
+            card.transform.SetParent(passNPlayPlayerCountPopup.transform, false);
+
+            RectTransform cardRect = card.GetComponent<RectTransform>();
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot = new Vector2(0.5f, 0.5f);
+            cardRect.sizeDelta = new Vector2(880f, 0f);
+
+            Image cardImage = card.GetComponent<Image>();
+            cardImage.color = new Color32(44, 10, 18, 245);
+            Outline cardOutline = card.GetComponent<Outline>();
+            cardOutline.effectColor = new Color32(255, 186, 92, 110);
+            cardOutline.effectDistance = new Vector2(2f, -2f);
+
+            VerticalLayoutGroup cardLayout = card.GetComponent<VerticalLayoutGroup>();
+            cardLayout.padding = new RectOffset(40, 40, 110, 40);
+            cardLayout.spacing = 26f;
+            cardLayout.childAlignment = TextAnchor.UpperCenter;
+            cardLayout.childControlHeight = false;
+            cardLayout.childControlWidth = true;
+            cardLayout.childForceExpandHeight = false;
+            cardLayout.childForceExpandWidth = true;
+
+            ContentSizeFitter fitter = card.GetComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            GameObject titleBar = new GameObject(
+                "TitleBar",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image)
+            );
+            titleBar.transform.SetParent(card.transform, false);
+            titleBar.transform.SetAsFirstSibling();
+            RectTransform titleBarRect = titleBar.GetComponent<RectTransform>();
+            titleBarRect.anchorMin = new Vector2(0f, 1f);
+            titleBarRect.anchorMax = new Vector2(1f, 1f);
+            titleBarRect.pivot = new Vector2(0.5f, 1f);
+            titleBarRect.sizeDelta = new Vector2(0f, 76f);
+            titleBarRect.anchoredPosition = new Vector2(0f, 34f);
+            titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
+
+            Text title = CreatePopupText(
+                "Choose Player Count",
+                38,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                popupFont,
+                Color.white
+            );
+            title.transform.SetParent(titleBar.transform, false);
+            RectTransform titleRect = title.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0f, 0f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.offsetMin = new Vector2(28f, 0f);
+            titleRect.offsetMax = new Vector2(-28f, 0f);
+
+            Text subtitle = CreatePopupText(
+                "Select how many players will join this Pass N Play match.",
+                28,
+                FontStyle.Normal,
+                TextAnchor.MiddleCenter,
+                popupFont,
+                new Color32(230, 220, 220, 255)
+            );
+            subtitle.transform.SetParent(card.transform, false);
+
+            GameObject buttonRow = new GameObject(
+                "ButtonRow",
+                typeof(RectTransform),
+                typeof(HorizontalLayoutGroup),
+                typeof(LayoutElement)
+            );
+            buttonRow.transform.SetParent(card.transform, false);
+            LayoutElement buttonRowLayoutElement = buttonRow.GetComponent<LayoutElement>();
+            buttonRowLayoutElement.minHeight = 88f;
+
+            HorizontalLayoutGroup buttonRowLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
+            buttonRowLayout.spacing = 22f;
+            buttonRowLayout.childAlignment = TextAnchor.MiddleCenter;
+            buttonRowLayout.childControlWidth = true;
+            buttonRowLayout.childControlHeight = false;
+            buttonRowLayout.childForceExpandWidth = true;
+            buttonRowLayout.childForceExpandHeight = false;
+
+            CreatePopupChoiceButton(
+                buttonRow.transform,
+                "2 Players",
+                new Color32(214, 140, 38, 255),
+                popupFont,
+                () => StartPassNPlayMatch(2)
+            );
+            CreatePopupChoiceButton(
+                buttonRow.transform,
+                "3 Players",
+                new Color32(170, 86, 227, 255),
+                popupFont,
+                () => StartPassNPlayMatch(3)
+            );
+            CreatePopupChoiceButton(
+                buttonRow.transform,
+                "4 Players",
+                new Color32(45, 126, 228, 255),
+                popupFont,
+                () => StartPassNPlayMatch(4)
+            );
+
+            Button cancelButton = CreatePopupChoiceButton(
+                card.transform,
+                "Cancel",
+                new Color32(88, 88, 96, 255),
+                popupFont,
+                HidePassNPlayPlayerCountPopup
+            );
+            RectTransform cancelRect = cancelButton.GetComponent<RectTransform>();
+            cancelRect.sizeDelta = new Vector2(340f, 76f);
+
+            passNPlayPlayerCountPopup.SetActive(false);
+        }
+
+        private Text CreatePopupText(
+            string value,
+            int fontSize,
+            FontStyle style,
+            TextAnchor alignment,
+            Font font,
+            Color color
+        )
+        {
+            GameObject go = new GameObject(
+                "Text",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text),
+                typeof(LayoutElement)
+            );
+            LayoutElement layout = go.GetComponent<LayoutElement>();
+            layout.minHeight = fontSize + 18f;
+
+            Text text = go.GetComponent<Text>();
+            text.font = font;
+            text.text = value;
+            text.fontSize = fontSize;
+            text.fontStyle = style;
+            text.alignment = alignment;
+            text.color = color;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            return text;
+        }
+
+        private Button CreatePopupChoiceButton(
+            Transform parent,
+            string label,
+            Color buttonColor,
+            Font font,
+            Action onClick
+        )
+        {
+            GameObject buttonObject = new GameObject(
+                label.Replace(" ", string.Empty) + "Button",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button),
+                typeof(LayoutElement)
+            );
+            buttonObject.transform.SetParent(parent, false);
+
+            LayoutElement layout = buttonObject.GetComponent<LayoutElement>();
+            layout.minWidth = 0f;
+            layout.minHeight = 100f;
+            layout.flexibleWidth = 1f;
+
+            Image buttonImage = buttonObject.GetComponent<Image>();
+            buttonImage.color = buttonColor;
+
+            Button button = buttonObject.GetComponent<Button>();
+            button.onClick.AddListener(() => onClick?.Invoke());
+
+            Text labelText = CreatePopupText(
+                label,
+                30,
+                FontStyle.Bold,
+                TextAnchor.MiddleCenter,
+                font,
+                Color.white
+            );
+            labelText.transform.SetParent(buttonObject.transform, false);
+            RectTransform labelRect = labelText.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+            return button;
         }
 
         [Serializable]

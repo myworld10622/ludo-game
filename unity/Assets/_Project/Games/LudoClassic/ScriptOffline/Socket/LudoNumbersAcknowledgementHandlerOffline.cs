@@ -431,6 +431,7 @@ namespace LudoClassicOffline
         //    internal void HeartBeatReceived(string data) => socketNumberEventReceiver.ludoNumberGsNew.heartBeatManager.OnReceiveHB(new JSONObject(data));
         public void JoinTableAcknowledged()
         {
+            ResetAllPlayerSlots();
             ArrangePlayer(socketNumberEventReceiver.joinTableResponse.data);
             moveLeftTotalMove = socketNumberEventReceiver.joinTableResponse.data.playerMoves.Count;
             socketNumberEventReceiver.maxPlayer = socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount;
@@ -447,6 +448,7 @@ namespace LudoClassicOffline
         }
         public void RejoinArrangePlayer(List<PlayerInfoData> data)
         {
+            ResetAllPlayerSlots();
             int mySeatIndex = 0;
             for (int i = 0; i < data.Count; i++)
             {
@@ -534,6 +536,7 @@ namespace LudoClassicOffline
                     ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userProfile = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].avatar;
                     ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = displayName;
                     ludoNumberPlayerControl[refernceIndex].gameObject.SetActive(true);
+                    SetPlayerSlotVisualState(ludoNumberPlayerControl[refernceIndex], true);
                     emojiHandler.tabelId = socketNumberEventReceiver.signUpResponce.data.roomName;
                     //myUserId = socketNumberEvnetReceiver.signUpResponce.data.playerInfo[i].userId;
                     //emojiHandler.senderId = ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userId;
@@ -588,6 +591,7 @@ namespace LudoClassicOffline
                         //emojiHandler.tabelId = socketNumberEvnetReceiver.signUpResponce.tableId;
                         ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userNameText.text = displayName;
                         ludoNumberPlayerControl[refernceIndex].gameObject.SetActive(true);
+                        SetPlayerSlotVisualState(ludoNumberPlayerControl[refernceIndex], true);
                         Debug.Log("Token On => " + ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockie.Count);
 
                         if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
@@ -626,6 +630,85 @@ namespace LudoClassicOffline
             for (int i = 0; i < ludoNumberPlayerControl.Length; i++)
             {
                 ludoNumberPlayerControl[i].ludoNumbersUserData.scoreText.text = 0.ToString();
+            }
+        }
+
+        private void ResetAllPlayerSlots()
+        {
+            if (ludoNumberPlayerControl == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < ludoNumberPlayerControl.Length; i++)
+            {
+                ResetPlayerSlot(ludoNumberPlayerControl[i]);
+            }
+        }
+
+        private void ResetPlayerSlot(LudoNumberPlayerControlOffline playerControl)
+        {
+            if (playerControl == null)
+            {
+                return;
+            }
+
+            playerControl.playerInfoData = new PlayerInfoData { playerSeatIndex = -1, userId = string.Empty, username = string.Empty, userProfile = string.Empty };
+            playerControl.ludoNumbersUserData.username = string.Empty;
+            playerControl.ludoNumbersUserData.userId = string.Empty;
+            playerControl.ludoNumbersUserData.userProfile = string.Empty;
+
+            if (playerControl.ludoNumbersUserData.userNameText != null)
+            {
+                playerControl.ludoNumbersUserData.userNameText.text = string.Empty;
+            }
+
+            SetPlayerSlotVisualState(playerControl, false);
+
+            if (playerControl.ludoNumbersUserData.leaveTableImage != null)
+            {
+                playerControl.ludoNumbersUserData.leaveTableImage.SetActive(true);
+            }
+
+            if (playerControl.ludoNumbersUserData.smallRoundImage != null)
+            {
+                playerControl.ludoNumbersUserData.smallRoundImage.SetActive(false);
+            }
+
+            if (playerControl.ludoNumbersUserData.scoreBox != null)
+            {
+                playerControl.ludoNumbersUserData.scoreBox.SetActive(false);
+            }
+
+            if (playerControl.ludoNumbersUserData.turnProfileBlink != null)
+            {
+                playerControl.ludoNumbersUserData.turnProfileBlink.SetActive(false);
+            }
+
+            if (playerControl.ludoNumbersUserData.infoBtn != null)
+            {
+                playerControl.ludoNumbersUserData.infoBtn.SetActive(false);
+                playerControl.ludoNumbersUserData.infoBtn.transform.localScale = Vector3.zero;
+            }
+
+            playerControl.gameObject.SetActive(false);
+        }
+
+        private void SetPlayerSlotVisualState(LudoNumberPlayerControlOffline playerControl, bool isOccupied)
+        {
+            if (playerControl == null)
+            {
+                return;
+            }
+
+            if (playerControl.playerProfile != null)
+            {
+                playerControl.playerProfile.enabled = isOccupied;
+            }
+
+            if (playerControl.ludoNumbersUserData.userImage != null)
+            {
+                playerControl.ludoNumbersUserData.userImage.enabled = isOccupied;
             }
         }
         #endregion

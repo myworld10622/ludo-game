@@ -11,7 +11,7 @@ using UnityEngine.UI;
 
 namespace LudoClassicOffline
 {
-    public class CoockieMovementOffline : MonoBehaviour, IPointerDownHandler
+    public class CoockieMovementOffline : MonoBehaviour, IPointerDownHandler, IPointerClickHandler
     {
         #region VARIABLES
 
@@ -52,12 +52,18 @@ namespace LudoClassicOffline
         public int seatIndex;
         public bool isSafeMode;
 
+        private const float TapCooldown = 0.12f;
+        private const float MinTapTargetSize = 96f;
+
         private RectTransform _rectTransform;
+        private Image _tokenImage;
+        private float _lastTapTime = -10f;
         #endregion
 
         private void Awake()
         {
             _rectTransform = GetComponent<RectTransform>();
+            _tokenImage = GetComponent<Image>();
             if (
                 MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
                     "CLASSIC"
@@ -66,6 +72,8 @@ namespace LudoClassicOffline
             {
                 myLastBoxIndex = -1;
             }
+
+            EnsureTapProxy();
         }
 
         void Start()
@@ -179,35 +187,96 @@ namespace LudoClassicOffline
 
         public void OnPointerDown(PointerEventData eventData)
         {
-            if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                    "CLASSIC"
-                )
-            )
+            TryHandleTap();
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            TryHandleTap();
+        }
+
+        public bool IsTapEnabled
+        {
+            get
             {
-                MoveToken();
+                return isActiveAndEnabled
+                    && gameObject.activeInHierarchy
+                    && _tokenImage != null
+                    && _tokenImage.raycastTarget
+                    && ludoNumberGsNew != null
+                    && !ludoNumberGsNew.tokenMovement;
             }
-            else
-            {
-                MoveToken();
-                //if (ludoNumberGsNew.socketNumberEventReceiver.signUpResponce.data.thisPlayerSeatIndex != ludoNumberGsNew.socketNumberEventReceiver.userStartIndex)
-                //    gameManager.socketConnection.SendDataToSocket(gameManager.ludoNumberEventManager.Score(tokenIndex), ludoNumbersAcknowledgementHandler.ScoreViewAcknowledgement, LudoNumberEventList.SCORE_CHECK.ToString());
-                //else
-                //{
-                //    gameManager.socketConnection.SendDataToSocket(gameManager.ludoNumberEventManager.MoveTokenCoockie(cookieStaticIndex), ludoNumbersAcknowledgementHandler.TokenMove, LudoNumberEventList.MOVE_TOKEN.ToString());
-                //}
-            }
+        }
+
+        public bool TryHandleTap()
+        {
+            if (!IsTapEnabled)
+                return false;
+
+            if (Time.unscaledTime - _lastTapTime < TapCooldown)
+                return true;
+
+            _lastTapTime = Time.unscaledTime;
+            _tokenImage.raycastTarget = false;
+
+            transform.DOKill();
+            transform.localScale = Vector3.one;
+            transform.DOPunchScale(new Vector3(0.12f, 0.12f, 0f), 0.14f, 4, 0.4f);
+            MoveToken();
+            return true;
         }
 
         public void MoveToken()
         {
             Debug.Log("<==Move Token==>");
+            if (ludoNumberGsNew != null)
+                ludoNumberGsNew.tokenMovement = true;
             socketNumberEventReceiver.moveToken.data.movementValue =
                 socketNumberEventReceiver.diceValue;
             socketNumberEventReceiver.moveToken.data.tokenMove = cookieStaticIndex;
             ludoNumberGsNew.TokenMove();
             // gameManager.socketConnection.SendDataToSocket(gameManager.ludoNumberEventManager.MoveTokenCoockie(cookieStaticIndex),
             //     AcknowledgementTokenMove, LudoNumberEventList.MOVE_TOKEN.ToString());
+        }
+
+        private void EnsureTapProxy()
+        {
+            if (_rectTransform == null)
+                return;
+
+            Transform proxyTransform = transform.Find("TapProxy");
+            if (proxyTransform == null)
+            {
+                GameObject proxy = new GameObject(
+                    "TapProxy",
+                    typeof(RectTransform),
+                    typeof(CanvasRenderer),
+                    typeof(Image),
+                    typeof(LudoTokenTapProxyOffline)
+                );
+                proxyTransform = proxy.transform;
+                proxyTransform.SetParent(transform, false);
+                proxyTransform.SetAsLastSibling();
+            }
+
+            RectTransform proxyRect = (RectTransform)proxyTransform;
+            proxyRect.anchorMin = new Vector2(0.5f, 0.5f);
+            proxyRect.anchorMax = new Vector2(0.5f, 0.5f);
+            proxyRect.pivot = new Vector2(0.5f, 0.5f);
+            proxyRect.anchoredPosition = Vector2.zero;
+            proxyRect.sizeDelta = new Vector2(
+                Mathf.Max(_rectTransform.rect.width, MinTapTargetSize),
+                Mathf.Max(_rectTransform.rect.height, MinTapTargetSize)
+            );
+            proxyRect.localScale = Vector3.one;
+
+            Image proxyImage = proxyTransform.GetComponent<Image>();
+            proxyImage.color = new Color(1f, 1f, 1f, 0.001f);
+            proxyImage.raycastTarget = false;
+
+            LudoTokenTapProxyOffline proxyComponent =
+                proxyTransform.GetComponent<LudoTokenTapProxyOffline>();
+            proxyComponent.Initialize(this, proxyImage);
         }
 
         public void AcknowledgementTokenMove(string data) =>
