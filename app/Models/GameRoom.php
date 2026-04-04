@@ -66,4 +66,9 @@ class GameRoom extends Model
     {
         return $this->hasMany(GameMatch::class);
     }
+
+    public function messages(): HasMany
+    {
+        return $this->hasMany(GameRoomMessage::class, 'game_room_id');
+    }
 }

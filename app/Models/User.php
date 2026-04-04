@@ -105,6 +105,21 @@ class User extends Authenticatable
         return $this->hasOne(Wallet::class)->latestOfMany('id');
     }
 
+    public function sentFriendRequests(): HasMany
+    {
+        return $this->hasMany(FriendRequest::class, 'sender_user_id');
+    }
+
+    public function receivedFriendRequests(): HasMany
+    {
+        return $this->hasMany(FriendRequest::class, 'receiver_user_id');
+    }
+
+    public function friends(): HasMany
+    {
+        return $this->hasMany(UserFriend::class, 'user_id');
+    }
+
     public static function defaultPanelPermissions(): array
     {
         return [

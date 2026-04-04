@@ -3,12 +3,15 @@
 use App\Http\Controllers\Api\Legacy\UserCompatibilityController;
 use App\Http\Controllers\Api\Legacy\LudoCompatibilityController;
 use App\Http\Controllers\Api\Internal\V1\LudoMatchController as InternalLudoMatchController;
+use App\Http\Controllers\Api\Internal\V1\LudoRoomMessageController as InternalLudoRoomMessageController;
 use App\Http\Controllers\Api\Internal\V1\TournamentMatchResultController as InternalTournamentMatchResult;
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\HealthController;
+use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\LudoController;
+use App\Http\Controllers\Api\V1\LudoRoomMessageController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\TournamentRegistrationController;
 use App\Http\Controllers\Api\V1\WalletController;
@@ -24,6 +27,8 @@ Route::prefix('internal/v1')
         Route::prefix('ludo')->group(function () {
             Route::post('/rooms/{roomUuid}/start', [InternalLudoMatchController::class, 'start']);
             Route::post('/matches/{matchUuid}/complete', [InternalLudoMatchController::class, 'complete']);
+            Route::get('/rooms/{roomUuid}/messages', [InternalLudoRoomMessageController::class, 'index']);
+            Route::post('/rooms/{roomUuid}/messages', [InternalLudoRoomMessageController::class, 'store']);
         });
 
         // Tournament match result (new — called by Node.js after each match ends)
@@ -127,5 +132,23 @@ Route::prefix($version)
         Route::prefix('ludo')->middleware('api.auth')->group(function () {
             Route::post('/queue/join', [LudoController::class, 'joinQueue']);
             Route::get('/rooms/{roomUuid}', [LudoController::class, 'room']);
+            Route::get('/rooms/{roomUuid}/messages', [LudoRoomMessageController::class, 'index']);
+        });
+
+        // ── Social / Friends Routes ───────────────────────────────────────────
+        Route::prefix('friends')->middleware('api.auth')->group(function () {
+            Route::get('/', [FriendController::class, 'index']);
+            Route::get('/requests', [FriendController::class, 'requests']);
+            Route::post('/request', [FriendController::class, 'send']);
+            Route::post('/request/by-player-id', [FriendController::class, 'sendByPlayerId']);
+            Route::post('/request/{requestUuid}/respond', [FriendController::class, 'respond']);
+            Route::post('/request/{requestUuid}/accept', [FriendController::class, 'respond'])
+                ->defaults('action', 'accept');
+            Route::post('/request/{requestUuid}/reject', [FriendController::class, 'respond'])
+                ->defaults('action', 'reject');
+        });
+
+        Route::prefix('users')->middleware('api.auth')->group(function () {
+            Route::get('/search-by-player-id/{playerId}', [FriendController::class, 'searchByPlayerId']);
         });
     });
