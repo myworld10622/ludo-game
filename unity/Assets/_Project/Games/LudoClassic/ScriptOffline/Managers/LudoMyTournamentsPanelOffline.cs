@@ -122,7 +122,7 @@ namespace LudoClassicOffline
             row.transform.SetParent(listContent, false);
 
             Image rowImg = row.GetComponent<Image>();
-            rowImg.color = new Color32(41, 52, 71, 230);
+            rowImg.color = new Color32(60, 12, 22, 235);
 
             HorizontalLayoutGroup hl = row.GetComponent<HorizontalLayoutGroup>();
             hl.padding              = new RectOffset(18, 18, 14, 14);
@@ -148,7 +148,7 @@ namespace LudoClassicOffline
                 string capturedName = tName;
 
                 Button bracketBtn = CreateButton(left.transform, "📋 View Bracket",
-                    new Color32(50, 95, 155, 255));
+                    new Color32(175, 130, 18, 255));
                 LayoutElement btnLE = bracketBtn.GetComponent<LayoutElement>();
                 btnLE.preferredHeight = 56f;
                 btnLE.minHeight       = 50f;
@@ -159,7 +159,7 @@ namespace LudoClassicOffline
 
             // ── Center column: fee / prize ─────────────────────────────────────
             GameObject center = MakeVStack(row.transform, flexWidth: 1f);
-            MakeLabel(center.transform, feePaid > 0 ? $"₹{feePaid:0} paid" : "Free", 32, FontStyle.Normal, new Color32(180, 200, 230, 255));
+            MakeLabel(center.transform, feePaid > 0 ? $"₹{feePaid:0} paid" : "Free", 32, FontStyle.Normal, new Color32(230, 205, 210, 255));
             if (prizeWon > 0)
                 MakeLabel(center.transform, $"🏆 ₹{prizeWon:0}", 36, FontStyle.Bold, new Color32(255, 210, 40, 255));
 
@@ -168,7 +168,7 @@ namespace LudoClassicOffline
             if (position.HasValue)
                 MakeLabel(right.transform, $"#{position.Value}", 44, FontStyle.Bold, PositionColor(position.Value));
             else
-                MakeLabel(right.transform, "—", 38, FontStyle.Normal, new Color32(120, 140, 165, 200));
+                MakeLabel(right.transform, "—", 38, FontStyle.Normal, new Color32(190, 155, 160, 200));
         }
 
         // ── UI layout helpers ─────────────────────────────────────────────────
@@ -188,7 +188,8 @@ namespace LudoClassicOffline
             return go;
         }
 
-        private Text MakeLabel(Transform parent, string text, int size, FontStyle style, Color color)
+        private Text MakeLabel(Transform parent, string text, int size, FontStyle style, Color color,
+            float flexWidth = 0f)
         {
             GameObject go = new GameObject("Lbl",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Text), typeof(LayoutElement));
@@ -201,7 +202,11 @@ namespace LudoClassicOffline
             t.color            = color;
             t.horizontalOverflow = HorizontalWrapMode.Wrap;
             t.verticalOverflow   = VerticalWrapMode.Overflow;
-            go.GetComponent<LayoutElement>().preferredHeight = size + 10f;
+            var le = go.GetComponent<LayoutElement>();
+            if (flexWidth > 0f)
+                le.flexibleWidth = flexWidth;
+            else
+                le.preferredHeight = size + 10f;
             return t;
         }
 
@@ -217,11 +222,11 @@ namespace LudoClassicOffline
 
         private static Color StatusColor(string status) => status switch
         {
-            "winner"     => new Color32(60, 210, 100, 255),
-            "playing"    => new Color32(90, 150, 255, 255),
-            "eliminated" => new Color32(220, 80, 80, 255),
-            "refunded"   => new Color32(160, 160, 175, 255),
-            _            => new Color32(190, 200, 215, 255),
+            "winner"     => new Color32(80,  230, 120, 255),  // bright green
+            "playing"    => new Color32(0,   210, 185, 255),  // teal — visible on dark red
+            "eliminated" => new Color32(255, 100,  90, 255),  // bright red-orange
+            "refunded"   => new Color32(215, 185, 190, 255),  // warm muted
+            _            => new Color32(225, 200, 205, 255),  // warm light
         };
 
         private static Color PositionColor(int pos) => pos switch
@@ -249,7 +254,7 @@ namespace LudoClassicOffline
             panelRoot = new GameObject("MyTournamentsPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
-            panelRoot.GetComponent<Image>().color = new Color32(20, 30, 50, 252);
+            panelRoot.GetComponent<Image>().color = new Color32(28, 5, 10, 255);
             RectTransform pr = panelRoot.GetComponent<RectTransform>();
             pr.anchorMin = Vector2.zero;
             pr.anchorMax = Vector2.one;
@@ -263,7 +268,7 @@ namespace LudoClassicOffline
             hr.anchoredPosition = new Vector2(0f, -28f);
             hr.sizeDelta        = new Vector2(0f, 80f);
 
-            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(50, 95, 155, 255));
+            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(80, 12, 22, 255));
             RectTransform rfRect = refreshBtn.GetComponent<RectTransform>();
             rfRect.anchorMin = new Vector2(1f, 1f); rfRect.anchorMax = new Vector2(1f, 1f);
             rfRect.pivot     = new Vector2(1f, 1f);
@@ -271,7 +276,7 @@ namespace LudoClassicOffline
             rfRect.sizeDelta        = new Vector2(280f, 90f);
             refreshBtn.onClick.AddListener(Refresh);
 
-            Button closeBtn = CreateButton(panelRoot.transform, "✕ Close", new Color32(160, 47, 47, 255));
+            Button closeBtn = CreateButton(panelRoot.transform, "✕ Close", new Color32(180, 40, 55, 255));
             RectTransform cbRect = closeBtn.GetComponent<RectTransform>();
             cbRect.anchorMin = new Vector2(1f, 1f); cbRect.anchorMax = new Vector2(1f, 1f);
             cbRect.pivot     = new Vector2(1f, 1f);
@@ -283,7 +288,7 @@ namespace LudoClassicOffline
             GameObject colHeader = new GameObject("ColHeader",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(HorizontalLayoutGroup));
             colHeader.transform.SetParent(panelRoot.transform, false);
-            colHeader.GetComponent<Image>().color = new Color32(30, 44, 66, 200);
+            colHeader.GetComponent<Image>().color = new Color32(118, 18, 28, 220);
             RectTransform ch = colHeader.GetComponent<RectTransform>();
             ch.anchorMin = new Vector2(0.02f, 1f); ch.anchorMax = new Vector2(0.98f, 1f);
             ch.pivot     = new Vector2(0.5f, 1f);
@@ -294,9 +299,9 @@ namespace LudoClassicOffline
             chl.spacing  = 12;
             chl.childControlHeight = chl.childControlWidth = true;
             chl.childForceExpandHeight = false; chl.childForceExpandWidth = false;
-            MakeFlexLabel(colHeader.transform, "Tournament", 30, 2f);
-            MakeFlexLabel(colHeader.transform, "Fee / Prize", 30, 1f);
-            MakeFlexLabel(colHeader.transform, "Rank", 30, 0.7f);
+            MakeLabel(colHeader.transform, "Tournament", 30, FontStyle.Bold, new Color32(255, 210, 70, 255), 2f).alignment = TextAnchor.MiddleLeft;
+            MakeLabel(colHeader.transform, "Fee / Prize", 30, FontStyle.Bold, new Color32(255, 210, 70, 255), 1f).alignment = TextAnchor.MiddleLeft;
+            MakeLabel(colHeader.transform, "Rank",        30, FontStyle.Bold, new Color32(255, 210, 70, 255), 0.7f).alignment = TextAnchor.MiddleLeft;
 
             // ── Scroll list ───────────────────────────────────────────────────
             // NO Mask on scrollRoot — only viewport gets Mask (alpha=0 on Mask Image discards all children)
@@ -347,7 +352,7 @@ namespace LudoClassicOffline
             scroll.scrollSensitivity = 70f;
 
             // Status text — centered in scroll area when empty
-            statusText = MakeLabel(panelRoot.transform, string.Empty, 42, FontStyle.Normal, new Color32(160, 175, 200, 200));
+            statusText = MakeLabel(panelRoot.transform, string.Empty, 42, FontStyle.Normal, new Color32(220, 185, 190, 200));
             RectTransform stRect = statusText.GetComponent<RectTransform>();
             stRect.anchorMin = new Vector2(0.1f, 0.35f); stRect.anchorMax = new Vector2(0.9f, 0.65f);
             stRect.offsetMin = stRect.offsetMax = Vector2.zero;
@@ -355,21 +360,6 @@ namespace LudoClassicOffline
 
             panelRoot.SetActive(false);
             hasBuiltUi = true;
-        }
-
-        private void MakeFlexLabel(Transform parent, string text, int size, float flex)
-        {
-            GameObject go = new GameObject("ColLbl",
-                typeof(RectTransform), typeof(CanvasRenderer), typeof(Text), typeof(LayoutElement));
-            go.transform.SetParent(parent, false);
-            Text t = go.GetComponent<Text>();
-            t.font      = GetFont();
-            t.text      = text;
-            t.fontSize  = size;
-            t.fontStyle = FontStyle.Bold;
-            t.color     = new Color32(140, 165, 200, 255);
-            t.alignment = TextAnchor.MiddleLeft;
-            go.GetComponent<LayoutElement>().flexibleWidth = flex;
         }
 
         private Button CreateButton(Transform parent, string label, Color32 color)

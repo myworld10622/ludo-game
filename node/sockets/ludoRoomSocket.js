@@ -1,6 +1,7 @@
 const { v4: uuidv4 } = require("uuid");
 const LudoRoomEngineService = require("../services/ludoRoomEngineService");
 const LudoLaravelSyncService = require("../services/ludoLaravelSyncService");
+const LudoRoomChatSyncService = require("../services/ludoRoomChatSyncService");
 const tournamentLudoLaravelSyncService = require("../services/tournamentLudoLaravelSyncService");
 const tournamentLudoRoomService = require("../services/tournamentLudoRoomService");
 const tournamentMatchResultService = require("../services/tournamentMatchResultService");
@@ -9,9 +10,14 @@ const { roomStates, playerTypes, socketEvents } = require("../constants/ludoRoom
 module.exports = function (namespace) {
   const engine = new LudoRoomEngineService();
   const laravelSync = new LudoLaravelSyncService();
+  const chatSync = new LudoRoomChatSyncService();
   const rooms = new Map();
   const roomTimers = new Map();
   const roomStartRetryTimers = new Map();
+  const CHAT_MESSAGE_COOLDOWN_MS = Math.max(300, Number(process.env.LUDO_CHAT_MESSAGE_COOLDOWN_MS || "800"));
+  const CHAT_MESSAGE_MAX_LENGTH = Math.max(20, Number(process.env.LUDO_CHAT_MESSAGE_MAX_LENGTH || "200"));
+  const EMOJI_COOLDOWN_MS = Math.max(500, Number(process.env.LUDO_EMOJI_COOLDOWN_MS || "2000"));
+  const MAX_EMOJI_ID = Math.max(0, Number(process.env.LUDO_EMOJI_MAX_ID || "31"));
   const START_SYNC_CONCURRENCY = Math.max(1, Number(process.env.LUDO_MATCH_START_SYNC_CONCURRENCY || "8"));
   const SETTLEMENT_SYNC_CONCURRENCY = Math.max(1, Number(process.env.LUDO_MATCH_SETTLEMENT_SYNC_CONCURRENCY || "8"));
   const START_RETRY_DELAY_MS = Math.max(500, Number(process.env.LUDO_MATCH_START_RETRY_DELAY_MS || "3000"));
@@ -218,6 +224,37 @@ module.exports = function (namespace) {
     namespace.to(room.roomId).emit(socketEvents.server.SNAPSHOT, serializeRoom(room));
   }
 
+  function syncSocketSeatContext(socket, room) {
+    if (!socket || !room) {
+      return null;
+    }
+
+    const tournamentEntryUuid = socket.data.tournamentEntryUuid ?? null;
+    const userId = socket.data.userId ?? null;
+    const seat = (room.seats ?? []).find((candidate) => {
+      if (!candidate) {
+        return false;
+      }
+
+      if (tournamentEntryUuid) {
+        const seatTournamentEntryUuid =
+          candidate?.tournamentEntryUuid ??
+          candidate?.meta?.tournament_entry_uuid ??
+          candidate?.meta?.tournamentEntryUuid ??
+          null;
+
+        return String(seatTournamentEntryUuid ?? "") === String(tournamentEntryUuid);
+      }
+
+      return String(candidate.userId ?? "") === String(userId ?? "");
+    }) ?? null;
+
+    socket.data.seatNo = seat?.seatNo ?? null;
+    socket.data.playerType = seat?.playerType ?? null;
+    socket.data.displayName = seat?.displayName ?? null;
+    return seat;
+  }
+
   function clearRoomTimer(roomId) {
     const timerId = roomTimers.get(roomId);
     if (timerId) {
@@ -231,6 +268,234 @@ module.exports = function (namespace) {
     if (timerId) {
       clearTimeout(timerId);
       roomStartRetryTimers.delete(roomId);
+    }
+  }
+
+  function handleChatEmoji(socket, payload = {}) {
+    const roomId = payload.roomId ?? payload.room_id ?? socket.data.roomId;
+    if (!roomId || !rooms.has(roomId)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Room not found.",
+      });
+      return;
+    }
+
+    const room = rooms.get(roomId);
+    if (!room || [roomStates.COMPLETED, roomStates.CANCELLED, roomStates.ABANDONED].includes(room.state)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Emoji is not available for this room state.",
+      });
+      return;
+    }
+
+    if (!socket.data.roomId || String(socket.data.roomId) !== String(room.roomId)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "You are not connected to this room.",
+      });
+      return;
+    }
+
+    const seat = syncSocketSeatContext(socket, room);
+    if (!seat || seat.playerType !== playerTypes.HUMAN) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Only connected room players can send emoji.",
+      });
+      return;
+    }
+
+    const emojiIdRaw = payload.emojiId ?? payload.emoji_id ?? payload.emoji;
+    const emojiId = Number(emojiIdRaw);
+    if (!Number.isInteger(emojiId) || emojiId < 0 || emojiId > MAX_EMOJI_ID) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Invalid emoji selection.",
+      });
+      return;
+    }
+
+    const now = Date.now();
+    if (socket.data.lastEmojiAt && now - Number(socket.data.lastEmojiAt) < EMOJI_COOLDOWN_MS) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Please wait before sending another emoji.",
+      });
+      return;
+    }
+
+    socket.data.lastEmojiAt = now;
+
+    namespace.to(room.roomId).emit(socketEvents.server.CHAT_EMOJI, {
+      room_id: room.roomId,
+      emoji_id: emojiId,
+      sender: {
+        user_id: seat.userId ?? null,
+        seat_no: seat.seatNo,
+        display_name: seat.displayName ?? `Player ${seat.seatNo}`,
+        player_type: seat.playerType,
+      },
+      created_at: new Date(now).toISOString(),
+    });
+  }
+
+  function sanitizeChatMessage(input) {
+    return String(input ?? "")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function roomSupportsChat(room) {
+    return Boolean(
+      room &&
+      ![roomStates.COMPLETED, roomStates.CANCELLED, roomStates.ABANDONED].includes(room.state)
+    );
+  }
+
+  function ensureRoomChatBuffer(room) {
+    if (!Array.isArray(room.chatHistory)) {
+      room.chatHistory = [];
+    }
+
+    return room.chatHistory;
+  }
+
+  async function loadRoomChatHistory(socket, room, limit = 50) {
+    if (!socket || !room) {
+      return;
+    }
+
+    try {
+      let messages;
+      if (chatSync.isEnabled()) {
+        messages = await chatSync.fetchRoomMessages(room.roomId, limit);
+        room.chatHistory = Array.isArray(messages) ? messages.slice(-100) : [];
+      } else {
+        messages = ensureRoomChatBuffer(room).slice(-Math.max(1, Math.min(100, Number(limit) || 50)));
+      }
+
+      socket.emit(socketEvents.server.CHAT_HISTORY, {
+        room_id: room.roomId,
+        messages: Array.isArray(messages) ? messages : [],
+      });
+    } catch (error) {
+      console.error(error.message);
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Unable to fetch room chat history.",
+      });
+    }
+  }
+
+  function buildEphemeralChatMessage(room, seat, message, clientMessageId = null) {
+    return {
+      message_id: `local-${Date.now()}-${seat.seatNo}`,
+      room_id: room.roomId,
+      match_uuid: room.matchUuid ?? null,
+      message_type: "text",
+      sender_type: seat.playerType ?? playerTypes.HUMAN,
+      message,
+      sender: {
+        user_id: seat.userId ?? null,
+        seat_no: seat.seatNo,
+        display_name: seat.displayName ?? `Player ${seat.seatNo}`,
+        player_id: null,
+        avatar: null,
+        bot_code: seat.botCode ?? null,
+      },
+      meta: clientMessageId ? { client_message_id: clientMessageId } : {},
+      created_at: new Date().toISOString(),
+    };
+  }
+
+  async function handleChatSend(socket, payload = {}) {
+    const roomId = payload.roomId ?? payload.room_id ?? socket.data.roomId;
+    if (!roomId || !rooms.has(roomId)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Room not found.",
+      });
+      return;
+    }
+
+    const room = rooms.get(roomId);
+    if (!roomSupportsChat(room)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Chat is not available for this room state.",
+      });
+      return;
+    }
+
+    if (!socket.data.roomId || String(socket.data.roomId) !== String(room.roomId)) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "You are not connected to this room.",
+      });
+      return;
+    }
+
+    const seat = syncSocketSeatContext(socket, room);
+    if (!seat || seat.playerType !== playerTypes.HUMAN) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Only connected room players can send chat.",
+      });
+      return;
+    }
+
+    const message = sanitizeChatMessage(payload.message);
+    if (!message) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Message cannot be empty.",
+      });
+      return;
+    }
+
+    if (message.length > CHAT_MESSAGE_MAX_LENGTH) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: `Message cannot exceed ${CHAT_MESSAGE_MAX_LENGTH} characters.`,
+      });
+      return;
+    }
+
+    const now = Date.now();
+    if (socket.data.lastChatMessageAt && now - Number(socket.data.lastChatMessageAt) < CHAT_MESSAGE_COOLDOWN_MS) {
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Please wait before sending another message.",
+      });
+      return;
+    }
+
+    socket.data.lastChatMessageAt = now;
+
+    try {
+      let outgoingMessage;
+      if (chatSync.isEnabled()) {
+        outgoingMessage = await chatSync.createRoomMessage(room.roomId, {
+          user_id: seat.userId ?? null,
+          seat_no: seat.seatNo,
+          sender_type: "human",
+          message_type: "text",
+          message,
+          display_name: seat.displayName ?? `Player ${seat.seatNo}`,
+          meta: {
+            client_message_id: payload.client_message_id ?? payload.clientMessageId ?? null,
+          },
+        });
+
+        if (outgoingMessage) {
+          ensureRoomChatBuffer(room).push(outgoingMessage);
+          room.chatHistory = room.chatHistory.slice(-100);
+        }
+      } else {
+        outgoingMessage = buildEphemeralChatMessage(
+          room,
+          seat,
+          message,
+          payload.client_message_id ?? payload.clientMessageId ?? null
+        );
+        ensureRoomChatBuffer(room).push(outgoingMessage);
+        room.chatHistory = room.chatHistory.slice(-100);
+      }
+
+      namespace.to(room.roomId).emit(socketEvents.server.CHAT_MESSAGE, outgoingMessage);
+    } catch (error) {
+      console.error(error.message);
+      socket.emit(socketEvents.server.ERROR, {
+        message: "Unable to send room chat message.",
+      });
     }
   }
 
@@ -495,8 +760,10 @@ module.exports = function (namespace) {
       socket.data.roomId = room.roomId;
       socket.data.userId = userId;
       socket.data.tournamentEntryUuid = tournamentEntryUuid;
+      syncSocketSeatContext(socket, mergedRoom);
 
       namespace.to(mergedRoom.roomId).emit("ludo.tournament.room_claimed", serializeRoom(mergedRoom));
+      loadRoomChatHistory(socket, mergedRoom).catch(() => {});
       emitSnapshot(mergedRoom);
 
       if (isTournamentRoomReadyToStart(mergedRoom)) {
@@ -651,7 +918,9 @@ module.exports = function (namespace) {
     if (existingSeat) {
       socket.join(room.roomId);
       socket.data.roomId = room.roomId;
+      syncSocketSeatContext(socket, room);
       socket.emit(socketEvents.server.ROOM_WAITING, serializeRoom(room));
+      loadRoomChatHistory(socket, room).catch(() => {});
       return;
     }
 
@@ -675,12 +944,16 @@ module.exports = function (namespace) {
     room.currentPlayers += 1;
     socket.join(room.roomId);
     socket.data.roomId = room.roomId;
+    socket.data.seatNo = seat.seatNo;
+    socket.data.playerType = seat.playerType;
+    socket.data.displayName = seat.displayName;
 
     namespace.to(room.roomId).emit(socketEvents.server.PLAYER_JOINED, {
       room_id: room.roomId,
       seat,
     });
     socket.emit(socketEvents.server.ROOM_WAITING, serializeRoom(room));
+    loadRoomChatHistory(socket, room).catch(() => {});
     emitSnapshot(room);
 
     if (room.currentPlayers >= room.maxPlayers) {
@@ -936,6 +1209,31 @@ module.exports = function (namespace) {
       leaveRoom(socket);
     });
 
+    socket.on(socketEvents.client.CHAT_SEND, async (payload = {}) => {
+      payload = normalizePayload(payload);
+      await handleChatSend(socket, payload);
+    });
+
+    socket.on(socketEvents.client.CHAT_HISTORY, async (payload = {}) => {
+      payload = normalizePayload(payload);
+      const roomId = payload.roomId ?? payload.room_id ?? socket.data.roomId;
+      const room = roomId ? rooms.get(roomId) : null;
+
+      if (!room) {
+        socket.emit(socketEvents.server.ERROR, {
+          message: "Room not found.",
+        });
+        return;
+      }
+
+      await loadRoomChatHistory(socket, room, payload.limit ?? 50);
+    });
+
+    socket.on(socketEvents.client.CHAT_EMOJI, (payload = {}) => {
+      payload = normalizePayload(payload);
+      handleChatEmoji(socket, payload);
+    });
+
     socket.on(socketEvents.client.RECONNECT, (payload = {}) => {
       payload = normalizePayload(payload);
       const roomId = payload.roomId ?? payload.room_id;
@@ -950,6 +1248,8 @@ module.exports = function (namespace) {
 
       socket.join(room.roomId);
       socket.data.roomId = room.roomId;
+      syncSocketSeatContext(socket, room);
+      loadRoomChatHistory(socket, room).catch(() => {});
       emitSnapshot(room);
     });
 

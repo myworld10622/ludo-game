@@ -34,6 +34,11 @@ namespace LudoClassicOffline
         private LudoV2QueueJoinEnvelope queuedRoom;
         private LudoV2RoomSnapshot latestSnapshot;
         private int lastAnnouncedSeatCount;
+        private LudoRoomChatController roomChatController;
+        private LudoFriendPanelController friendPanelController;
+
+        public static event Action<LudoV2ChatMessagePayload> OnChatMessageReceived;
+        public static event Action<List<LudoV2ChatMessagePayload>> OnChatHistoryReceived;
 
         private void Awake()
         {
@@ -51,6 +56,20 @@ namespace LudoClassicOffline
             {
                 socketNumberEventReceiver = FindObjectOfType<SocketNumberEventReceiverOffline>();
             }
+
+            roomChatController = GetComponent<LudoRoomChatController>();
+            if (roomChatController == null)
+            {
+                roomChatController = gameObject.AddComponent<LudoRoomChatController>();
+            }
+            roomChatController.SetChatAvailability(false);
+
+            friendPanelController = GetComponent<LudoFriendPanelController>();
+            if (friendPanelController == null)
+            {
+                friendPanelController = gameObject.AddComponent<LudoFriendPanelController>();
+            }
+            friendPanelController.SetRoomActionAvailability(false);
         }
 
         private void OnDestroy()
@@ -218,6 +237,9 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2RoomSnapshot>("ludo.room.waiting", OnRoomWaiting);
             namespaceSocket.On<LudoV2RoomStarting>("ludo.room.starting", OnRoomStarting);
             namespaceSocket.On<LudoV2BotJoined>("ludo.room.bot_joined", OnBotJoined);
+            namespaceSocket.On<LudoV2ChatMessagePayload>("ludo.chat.message", OnChatMessage);
+            namespaceSocket.On<LudoV2ChatHistoryPayload>("ludo.chat.history", OnChatHistory);
+            namespaceSocket.On<LudoV2EmojiPayload>("ludo.chat.emoji", OnEmojiReceived);
             namespaceSocket.On<LudoV2RoomSnapshot>("ludo.game.snapshot", OnRoomSnapshot);
             namespaceSocket.On<LudoV2MatchResult>("ludo.game.result", OnMatchResult);
             namespaceSocket.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
@@ -235,6 +257,9 @@ namespace LudoClassicOffline
             namespaceSocket.On<Error>(SocketIOEventTypes.Error, OnSocketError);
             namespaceSocket.On<LudoV2RoomSnapshot>("ludo.tournament.room_claimed", OnRoomWaiting);
             namespaceSocket.On<LudoV2RoomStarting>("ludo.room.starting", OnRoomStarting);
+            namespaceSocket.On<LudoV2ChatMessagePayload>("ludo.chat.message", OnChatMessage);
+            namespaceSocket.On<LudoV2ChatHistoryPayload>("ludo.chat.history", OnChatHistory);
+            namespaceSocket.On<LudoV2EmojiPayload>("ludo.chat.emoji", OnEmojiReceived);
             namespaceSocket.On<LudoV2RoomSnapshot>("ludo.game.snapshot", OnRoomSnapshot);
             namespaceSocket.On<LudoV2MatchResult>("ludo.game.result", OnMatchResult);
             namespaceSocket.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
@@ -384,6 +409,9 @@ namespace LudoClassicOffline
                 ToastMessage.WAITFORPLAYER
             );
             UpdateWaitingBoardMessage(snapshot);
+            roomChatController?.SetChatAvailability(true);
+            friendPanelController?.SetRoomActionAvailability(true);
+            LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
         }
 
         private void RenderSeatsFromSnapshot(LudoV2RoomSnapshot snapshot)
@@ -565,9 +593,137 @@ namespace LudoClassicOffline
             return localSeat != null ? Mathf.Max(0, localSeat.seatNo - 1) : 0;
         }
 
+        public bool TrySendEmoji(int emojiId, int fallbackSeatIndex = 0)
+        {
+            if (!Configuration.IsLudoV2Enabled() || namespaceSocket == null || !namespaceSocket.IsOpen)
+            {
+                return false;
+            }
+
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            if (string.IsNullOrWhiteSpace(roomId))
+            {
+                return false;
+            }
+
+            int seatIndex = latestSnapshot != null ? GetLocalSeatIndex(latestSnapshot) : Mathf.Max(0, fallbackSeatIndex);
+
+            namespaceSocket.Emit(
+                "ludo.chat.emoji",
+                JsonConvert.SerializeObject(new
+                {
+                    room_id = roomId,
+                    emoji_id = emojiId,
+                    seat_index = seatIndex
+                })
+            );
+
+            return true;
+        }
+
+        public bool TrySendChatMessage(string message)
+        {
+            if (!Configuration.IsLudoV2Enabled() || namespaceSocket == null || !namespaceSocket.IsOpen)
+            {
+                return false;
+            }
+
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            if (string.IsNullOrWhiteSpace(roomId) || string.IsNullOrWhiteSpace(message))
+            {
+                return false;
+            }
+
+            namespaceSocket.Emit(
+                "ludo.chat.send",
+                JsonConvert.SerializeObject(new
+                {
+                    room_id = roomId,
+                    message = message.Trim(),
+                    client_message_id = Guid.NewGuid().ToString("N")
+                })
+            );
+
+            return true;
+        }
+
+        public bool TryRequestChatHistory(int limit = 50)
+        {
+            if (!Configuration.IsLudoV2Enabled() || namespaceSocket == null || !namespaceSocket.IsOpen)
+            {
+                return false;
+            }
+
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            if (string.IsNullOrWhiteSpace(roomId))
+            {
+                return false;
+            }
+
+            namespaceSocket.Emit(
+                "ludo.chat.history",
+                JsonConvert.SerializeObject(new
+                {
+                    room_id = roomId,
+                    limit = Mathf.Clamp(limit, 1, 100)
+                })
+            );
+
+            return true;
+        }
+
+        private void OnChatMessage(LudoV2ChatMessagePayload payload)
+        {
+            if (payload == null)
+            {
+                return;
+            }
+
+            Debug.Log("Ludo v2 chat message: " + JsonConvert.SerializeObject(payload));
+            RunOnMainThread(() => OnChatMessageReceived?.Invoke(payload));
+        }
+
+        private void OnChatHistory(LudoV2ChatHistoryPayload payload)
+        {
+            List<LudoV2ChatMessagePayload> messages = payload?.messages ?? new List<LudoV2ChatMessagePayload>();
+            Debug.Log("Ludo v2 chat history count: " + messages.Count);
+            RunOnMainThread(() => OnChatHistoryReceived?.Invoke(messages));
+        }
+
+        private void RunOnMainThread(Action action)
+        {
+            UnityMainThreadDispatcher.Instance?.Enqueue(action);
+        }
+
+        private void OnEmojiReceived(LudoV2EmojiPayload payload)
+        {
+            if (payload == null || socketNumberEventReceiver?.emojiResponse?.Data == null)
+            {
+                return;
+            }
+
+            socketNumberEventReceiver.emojiResponse.Data.emoji = payload.emoji_id;
+            socketNumberEventReceiver.emojiResponse.Data.seatIndex = Mathf.Max(0, payload.sender?.seat_no - 1 ?? 0);
+            socketNumberEventReceiver.emojiResponse.Data.tableId = payload.room_id ?? latestSnapshot?.room_id ?? string.Empty;
+
+            if (socketNumberEventReceiver.ludoNumberGsNew != null)
+            {
+                socketNumberEventReceiver.ludoNumberGsNew.EmojiSet();
+            }
+        }
+
         private void OnSocketPayloadError(LudoV2ErrorPayload payload)
         {
-            FailMatchmaking(payload?.message ?? "Ludo room error");
+            string message = payload?.message ?? "Ludo room error";
+
+            if (hasEnteredWaitingBoard || hasStartedMatch)
+            {
+                Debug.LogWarning("Ludo v2 room error: " + message);
+                CommonUtil.ShowToast(message);
+                return;
+            }
+
+            FailMatchmaking(message);
         }
 
         private void OnMatchResult(LudoV2MatchResult payload)
@@ -663,12 +819,18 @@ namespace LudoClassicOffline
             }
             dashBoardManager.lobbySelectPanal.SetActive(true);
             dashBoardManager.backButton.SetActive(true);
+            roomChatController?.SetChatAvailability(false);
+            roomChatController?.ClearMessages();
+            friendPanelController?.SetRoomActionAvailability(false);
             CommonUtil.ShowToast(message);
             DisconnectSocket();
         }
 
         private void DisconnectSocket()
         {
+            roomChatController?.SetChatAvailability(false);
+            friendPanelController?.SetRoomActionAvailability(false);
+
             if (socketManager == null)
             {
                 return;
@@ -684,6 +846,11 @@ namespace LudoClassicOffline
             namespaceSocket = null;
             socketManager = null;
             isIntentionalDisconnect = false;
+        }
+
+        public string GetActiveRoomId()
+        {
+            return latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
         }
 
         private bool IsLocalWinner(LudoV2MatchResult payload)
@@ -876,6 +1043,55 @@ namespace LudoClassicOffline
         public string botCode;
         public bool isConnected;
         public bool isReady;
+    }
+
+    [Serializable]
+    public class LudoV2EmojiPayload
+    {
+        public string room_id;
+        public int emoji_id;
+        public LudoV2EmojiSender sender;
+        public string created_at;
+    }
+
+    [Serializable]
+    public class LudoV2ChatHistoryPayload
+    {
+        public string room_id;
+        public List<LudoV2ChatMessagePayload> messages;
+    }
+
+    [Serializable]
+    public class LudoV2ChatMessagePayload
+    {
+        public string message_id;
+        public string room_id;
+        public string match_uuid;
+        public string message_type;
+        public string sender_type;
+        public string message;
+        public LudoV2ChatSenderPayload sender;
+        public string created_at;
+    }
+
+    [Serializable]
+    public class LudoV2ChatSenderPayload
+    {
+        public int? user_id;
+        public int seat_no;
+        public string display_name;
+        public string player_id;
+        public string avatar;
+        public string bot_code;
+    }
+
+    [Serializable]
+    public class LudoV2EmojiSender
+    {
+        public int? user_id;
+        public int seat_no;
+        public string display_name;
+        public string player_type;
     }
 
     [Serializable]

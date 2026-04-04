@@ -40,6 +40,11 @@ public class PaymentManager : MonoBehaviour
     public GameObject selectedRecentTransaction;
 
     public Sprite UploadScreenshort;
+    [Header("Skin")]
+    public Image[] backgroundImages;
+    public Sprite popupBgSprite;        // Pop up.png
+    public Sprite amountBtnSprite;      // add-button.png  (optional, for preset buttons)
+    public Sprite toggleSprite;         // toggle bae.png  (optional, for pay method tabs)
     public USDTManual uSDTManual;
     public TextMeshProUGUI principal,
         bonus,
@@ -47,27 +52,315 @@ public class PaymentManager : MonoBehaviour
     public List<GameObject> buttonsobjs;
 
     public GameObject USDT_AUTO;
+    // payment method: 0 = UPI/Bank, 1 = Crypto
+    private int _paymentMethod = 0;
+    private GameObject _upiTab, _cryptoTab;
+    private GameObject _extrasRoot;   // holds injected UI — destroyed on disable
+
+    void OnDisable()
+    {
+        if (_extrasRoot != null) { Destroy(_extrasRoot); _extrasRoot = null; }
+        _upiTab = null; _cryptoTab = null;
+    }
+
     async void OnEnable()
     {
 #if UNITY_WEBGL
-    USDT_AUTO.SetActive(false);
+        USDT_AUTO.SetActive(false);
 #endif
+        ApplyDirectSkin();
+        InjectAddCashExtras();
         await AvailableChips();
         DefaultSet();
     }
 
+    private void ApplyDirectSkin()
+    {
+        if (popupBgSprite != null)
+        {
+            var rootImg = GetComponent<Image>();
+            if (rootImg != null) rootImg.sprite = popupBgSprite;
+        }
+
+        foreach (Image img in GetComponentsInChildren<Image>(true))
+        {
+            if (img == null) continue;
+            // Skip close/X buttons and small icons by name
+            string n = img.gameObject.name.ToLowerInvariant();
+            if (n.Contains("close") || n.Contains("exit") || n.Contains("btn")
+                || n.Contains("button") || n.Contains("icon") || n.Contains("logo")
+                || n.Contains("chip") || n.Contains("coin") || n.Contains("toggle")) continue;
+            // Skip small images
+            RectTransform rt = img.rectTransform;
+            float w = rt != null ? Mathf.Abs(rt.rect.width)  : 0f;
+            float h = rt != null ? Mathf.Abs(rt.rect.height) : 0f;
+            if (w < 100f || h < 100f) continue;
+
+            Color c = img.color;
+            if (c.r > 0.85f && c.g > 0.85f && c.b > 0.85f && c.a > 0.5f)
+                img.color = new Color32(44, 8, 16, 245);
+        }
+
+        if (backgroundImages != null)
+            foreach (var img in backgroundImages)
+                if (img != null) img.color = new Color32(44, 8, 16, 245);
+    }
+
+    // ── Inject Bank/UPI + Crypto toggle and preset amounts ─────────────────────
+    private void InjectAddCashExtras()
+    {
+        if (content == null) return;
+
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        // Build a standalone GameObject OUTSIDE scroll — sibling of scroll's parent
+        // This avoids any conflict with existing layout on content
+        Transform panel = content.parent?.parent ?? content.parent ?? transform;
+
+        _extrasRoot = new GameObject("_AddCashExtras",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+        _extrasRoot.transform.SetParent(panel, false);
+
+        // Full-width strip anchored below header area
+        var rt = _extrasRoot.GetComponent<RectTransform>();
+        rt.anchorMin        = new Vector2(0f,   0.04f);
+        rt.anchorMax        = new Vector2(1f,   0.82f);
+        rt.offsetMin        = new Vector2(10f,  0f);
+        rt.offsetMax        = new Vector2(-10f, 0f);
+
+        _extrasRoot.GetComponent<Image>().color = new Color32(0, 0, 0, 0); // transparent
+
+        // Vertical stack
+        var vl = _extrasRoot.AddComponent<VerticalLayoutGroup>();
+        vl.spacing               = 16f;
+        vl.padding               = new RectOffset(12, 12, 12, 12);
+        vl.childControlWidth     = true;
+        vl.childControlHeight    = true;
+        vl.childForceExpandWidth  = true;
+        vl.childForceExpandHeight = false;
+        vl.childAlignment        = TextAnchor.UpperCenter;
+
+        // ── UPI / Bank  |  Crypto tabs ─────────────────────────────────────────
+        var methodRow = MakeHRow(_extrasRoot.transform, 12f, 90f);
+        _upiTab    = MakePayMethodBtn(methodRow.transform, font, "UPI / Bank", active: true,  sprite: toggleSprite);
+        _cryptoTab = MakePayMethodBtn(methodRow.transform, font, "Crypto",     active: false, sprite: toggleSprite);
+
+        _upiTab.GetComponent<Button>().onClick.AddListener(() => {
+            _paymentMethod = 0;
+            SetPayMethodStyle(_upiTab,    active: true);
+            SetPayMethodStyle(_cryptoTab, active: false);
+            if (USDT_AUTO != null) USDT_AUTO.SetActive(false);
+        });
+        _cryptoTab.GetComponent<Button>().onClick.AddListener(() => {
+            _paymentMethod = 1;
+            SetPayMethodStyle(_cryptoTab, active: true);
+            SetPayMethodStyle(_upiTab,    active: false);
+            if (USDT_AUTO != null) USDT_AUTO.SetActive(true);
+        });
+
+        // ── "Select Amount" label ──────────────────────────────────────────────
+        MakeLabel(_extrasRoot.transform, font, "Select Amount:", 28);
+
+        // ── Preset buttons — 2 per row ─────────────────────────────────────────
+        int[] presets = { 100, 500, 2500, 5000, 10000 };
+        for (int i = 0; i < presets.Length; i += 2)
+        {
+            var row = MakeHRow(_extrasRoot.transform, 12f, 90f);
+            for (int j = 0; j < 2 && (i + j) < presets.Length; j++)
+            {
+                int amt = presets[i + j];
+                var btn = MakeAmountBtn(row.transform, font, "+" + amt, amountBtnSprite);
+                int captured = amt;
+                btn.onClick.AddListener(() => { if (custom != null) custom.text = captured.ToString(); });
+            }
+            if (presets.Length - i == 1)
+            {
+                var sp = new GameObject("Sp", typeof(RectTransform), typeof(LayoutElement));
+                sp.transform.SetParent(row.transform, false);
+                sp.GetComponent<LayoutElement>().flexibleWidth = 1f;
+            }
+        }
+    }
+
+    private static GameObject MakeHRow(Transform parent, float spacing, float h)
+    {
+        var row = new GameObject("Row",
+            typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        row.transform.SetParent(parent, false);
+        var le = row.GetComponent<LayoutElement>();
+        le.minHeight = le.preferredHeight = h;
+        var hl = row.GetComponent<HorizontalLayoutGroup>();
+        hl.spacing = spacing;
+        hl.childControlWidth = hl.childControlHeight = true;
+        hl.childForceExpandWidth = hl.childForceExpandHeight = true;
+        hl.childAlignment = TextAnchor.MiddleCenter;
+        return row;
+    }
+
+    private static void SetFontSize(GameObject go, int size)
+    {
+        foreach (var t in go.GetComponentsInChildren<Text>(true))
+            t.fontSize = size;
+    }
+
+    private static GameObject MakePayMethodBtn(Transform parent, Font font, string label, bool active, Sprite sprite = null)
+    {
+        var go = new GameObject(label + "Btn",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+            typeof(Button), typeof(LayoutElement));
+        go.transform.SetParent(parent, false);
+
+        var img = go.GetComponent<Image>();
+        if (sprite != null) { img.sprite = sprite; img.type = Image.Type.Sliced; }
+        img.color = active ? new Color32(218, 130, 20, 255) : new Color32(80, 12, 22, 255);
+
+        var le = go.GetComponent<LayoutElement>();
+        le.preferredHeight = 80f;
+        le.minHeight       = 80f;
+
+        var lbl = new GameObject("Lbl",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        lbl.transform.SetParent(go.transform, false);
+        var t = lbl.GetComponent<Text>();
+        t.font               = font;
+        t.text               = label;
+        t.fontSize           = 32;
+        t.fontStyle          = FontStyle.Bold;
+        t.color              = Color.white;
+        t.alignment          = TextAnchor.MiddleCenter;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;   // ← stops vertical stacking
+        t.verticalOverflow   = VerticalWrapMode.Overflow;
+        t.raycastTarget      = false;
+        var lr = lbl.GetComponent<RectTransform>();
+        lr.anchorMin = Vector2.zero; lr.anchorMax = Vector2.one;
+        lr.offsetMin = new Vector2(8, 0); lr.offsetMax = new Vector2(-8, 0);
+
+        var btn = go.GetComponent<Button>();
+        btn.targetGraphic = img;
+        var cb = btn.colors;
+        cb.highlightedColor = new Color32(255, 170, 40, 255);
+        cb.pressedColor     = new Color32(60, 8, 16, 255);
+        btn.colors = cb;
+        return go;
+    }
+
+    private static void SetPayMethodStyle(GameObject tab, bool active)
+    {
+        if (tab == null) return;
+        var img = tab.GetComponent<Image>();
+        if (img != null) img.color = active ? new Color32(218, 130, 20, 255) : new Color32(80, 12, 22, 255);
+        var t = tab.GetComponentInChildren<Text>();
+        if (t != null)
+        {
+            string name = t.text.Contains("UPI") ? "UPI / Bank" : "Crypto";
+            t.text = (active ? "● " : "○ ") + name;
+        }
+    }
+
+    private static Button MakeAmountBtn(Transform parent, Font font, string label, Sprite sprite = null)
+    {
+        var go = new GameObject(label + "Btn",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
+            typeof(Button), typeof(LayoutElement));
+        go.transform.SetParent(parent, false);
+        var le = go.GetComponent<LayoutElement>();
+        le.preferredHeight = 90f;
+        le.minHeight       = 90f;
+        var imgAmt = go.GetComponent<Image>();
+        if (sprite != null) { imgAmt.sprite = sprite; imgAmt.type = Image.Type.Sliced; }
+        imgAmt.color = new Color32(118, 18, 28, 255);
+
+        var btn = go.GetComponent<Button>();
+        btn.targetGraphic = go.GetComponent<Image>();
+        var cb = btn.colors;
+        cb.highlightedColor = new Color32(180, 40, 55, 255);
+        cb.pressedColor     = new Color32(60, 8, 16, 255);
+        btn.colors = cb;
+
+        var lbl = new GameObject("Lbl",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        lbl.transform.SetParent(go.transform, false);
+        var t = lbl.GetComponent<Text>();
+        t.font               = font;
+        t.text               = label;
+        t.fontSize           = 32;
+        t.fontStyle          = FontStyle.Bold;
+        t.color              = new Color32(255, 210, 70, 255);
+        t.alignment          = TextAnchor.MiddleCenter;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+        t.verticalOverflow   = VerticalWrapMode.Overflow;
+        t.raycastTarget      = false;
+        var lr = lbl.GetComponent<RectTransform>();
+        lr.anchorMin = Vector2.zero; lr.anchorMax = Vector2.one;
+        lr.offsetMin = lr.offsetMax = Vector2.zero;
+
+        return btn;
+    }
+
+    private static Text MakeLabel(Transform parent, Font font, string text, int size)
+    {
+        var go = new GameObject("Lbl",
+            typeof(RectTransform), typeof(CanvasRenderer), typeof(Text), typeof(LayoutElement));
+        go.transform.SetParent(parent, false);
+        var le = go.GetComponent<LayoutElement>();
+        le.preferredHeight = size + 18f;
+        le.flexibleWidth   = 1f;
+        var t = go.GetComponent<Text>();
+        t.font               = font;
+        t.text               = text;
+        t.fontSize           = size;
+        t.color              = new Color32(210, 180, 185, 200);
+        t.alignment          = TextAnchor.MiddleLeft;
+        t.horizontalOverflow = HorizontalWrapMode.Overflow;
+        t.verticalOverflow   = VerticalWrapMode.Overflow;
+        t.raycastTarget      = false;
+        return t;
+    }
+
+    // ── Tab styling ────────────────────────────────────────────────────────────
+    private static readonly Color32 TabActive   = new Color32(218, 130,  20, 255);
+    private static readonly Color32 TabInactive = new Color32( 90,  14,  24, 255);
+    private static readonly Color32 TabTextOn   = new Color32(255, 255, 255, 255);
+    private static readonly Color32 TabTextOff  = new Color32(255, 200, 160, 220);
+
+    private static void StyleTab(GameObject tab, bool active)
+    {
+        if (tab == null) return;
+        var img = tab.GetComponent<Image>();
+        if (img != null) img.color = active ? TabActive : TabInactive;
+        foreach (var t in tab.GetComponentsInChildren<Text>(true))
+            t.color = active ? TabTextOn : TabTextOff;
+        foreach (var t in tab.GetComponentsInChildren<TMPro.TMP_Text>(true))
+            t.color = active ? TabTextOn : TabTextOff;
+    }
+
     public void DefaultSet()
     {
-        selectedAddcash.SetActive(true);
-        selectedRecentTransaction.SetActive(false);
+        if (selectedAddcash != null)           selectedAddcash.SetActive(true);
+        if (selectedRecentTransaction != null) selectedRecentTransaction.SetActive(false);
+
+        StyleTab(selectedAddcash,           active: true);
+        StyleTab(selectedRecentTransaction, active: false);
 
         ClickAddCashButton();
 
-        manual_ss_img.sprite = UploadScreenshort;
+        if (manual_ss_img != null)
+        {
+            manual_ss_img.sprite = UploadScreenshort;
+        }
 
-        utr_inputfield.text = "";
-        manual_ss_logo.SetActive(true);
-        custom.text = "";
+        if (utr_inputfield != null)
+        {
+            utr_inputfield.text = "";
+        }
+        if (manual_ss_logo != null)
+        {
+            manual_ss_logo.SetActive(true);
+        }
+        if (custom != null)
+        {
+            custom.text = "";
+        }
     }
 
     #region Add Chips
@@ -76,11 +369,17 @@ public class PaymentManager : MonoBehaviour
     {
         foreach (var obj in transaction_panel_obj)
         {
-            obj.SetActive(false);
+            if (obj != null)
+            {
+                obj.SetActive(false);
+            }
         }
         foreach (var obj in add_cash_panel_obj)
         {
-            obj.SetActive(true);
+            if (obj != null)
+            {
+                obj.SetActive(true);
+            }
         }
     }
 
@@ -98,7 +397,24 @@ public class PaymentManager : MonoBehaviour
 
     public void ShowChips(PlanDetailsWrapper details)
     {
-        var sortedPlanDetails = details.PlanDetails.OrderBy(p => int.Parse(p.coin)).ToList();
+        List<PlanDetailchip> planDetails = details != null && details.PlanDetails != null
+            ? details.PlanDetails
+            : new List<PlanDetailchip>();
+
+        if (planDetails.Count == 0)
+        {
+            CommonUtil.CheckLog("Add Cash plans are empty or unavailable.");
+            return;
+        }
+
+        var sortedPlanDetails = planDetails
+            .Where(p => p != null && !string.IsNullOrWhiteSpace(p.coin))
+            .OrderBy(p =>
+            {
+                int parsedCoin;
+                return int.TryParse(p.coin, out parsedCoin) ? parsedCoin : int.MaxValue;
+            })
+            .ToList();
 
         foreach (var detail in sortedPlanDetails)
         {
@@ -419,14 +735,10 @@ public class PaymentManager : MonoBehaviour
 
     public async void ClickPurchaseTransactionsButton()
     {
-        foreach (var obj in transaction_panel_obj)
-        {
-            obj.SetActive(true);
-        }
-        foreach (var obj in add_cash_panel_obj)
-        {
-            obj.SetActive(false);
-        }
+        foreach (var obj in transaction_panel_obj) obj.SetActive(true);
+        foreach (var obj in add_cash_panel_obj)    obj.SetActive(false);
+        StyleTab(selectedRecentTransaction, active: true);
+        StyleTab(selectedAddcash,           active: false);
         await PurchaseHistoryAPI();
     }
 
@@ -498,6 +810,12 @@ public class PaymentManager : MonoBehaviour
         };
         PlanDetailsWrapper details = new PlanDetailsWrapper();
         details = await APIManager.Instance.Post<PlanDetailsWrapper>(Url, formData);
+
+        if (details == null)
+        {
+            CommonUtil.CheckLog("Add Cash API returned null response.");
+            return;
+        }
 
         ShowChips(details);
     }
@@ -598,5 +916,55 @@ public class PaymentManager : MonoBehaviour
             Debug.Log("RES_CHECK:" + response.message + "CODE:" + response.code);
         }
     }
+
+    private System.Collections.IEnumerator ApplyPopupFallbackSkinDelayed()
+    {
+        yield return null;
+        yield return null;
+        ApplyPopupFallbackSkin();
+    }
+
+    private void ApplyPopupFallbackSkin()
+    {
+        Image[] images = GetComponentsInChildren<Image>(true);
+        for (int i = 0; i < images.Length; i++)
+        {
+            Image image = images[i];
+            if (image == null) continue;
+
+            // Never recolor images that have a meaningful custom sprite (icons, decorations)
+            if (image.sprite != null && !IsDefaultUiSprite(image.sprite)) continue;
+
+            RectTransform rect = image.rectTransform;
+            float width  = rect != null ? Mathf.Abs(rect.rect.width)  : 0f;
+            float height = rect != null ? Mathf.Abs(rect.rect.height) : 0f;
+            string n = image.gameObject.name.ToLowerInvariant();
+
+            bool isLarge = width >= 300f && height >= 80f;
+            bool namedSurface =
+                n.Contains("bg") || n.Contains("panel") || n.Contains("card")
+                || n.Contains("popup") || n.Contains("content") || n.Contains("body")
+                || n.Contains("add cash") || n.Contains("addcash")
+                || n.Contains("withdraw") || n.Contains("head and tail");
+
+            if (!isLarge && !namedSurface) continue;
+
+            if (n.Contains("head and tail"))   { image.color = new Color32(125, 30, 36, 255); continue; }
+            if (n.Contains("card"))            { image.color = new Color32( 48, 10, 18, 245); continue; }
+            // Narrow side-panel / header strip
+            if (width < 320f && height >= 80f) { image.color = new Color32(118, 18, 28, 255); continue; }
+
+            image.color = new Color32(44, 8, 16, 245);
+        }
+    }
+
+    private bool IsDefaultUiSprite(Sprite sprite)
+    {
+        if (sprite == null) return true;
+        string s = sprite.name;
+        return s == "Background" || s == "UISprite"
+            || s == "InputFieldBackground" || s == "UIMask" || s == "Knob";
+    }
+
     #endregion
 }

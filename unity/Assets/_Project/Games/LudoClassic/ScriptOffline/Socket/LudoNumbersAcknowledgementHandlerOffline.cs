@@ -558,6 +558,7 @@ namespace LudoClassicOffline
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.userId = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].userId;
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.username = displayName;
                     ludoNumberPlayerControl[refernceIndex].playerInfoData.userProfile = socketNumberEventReceiver.signUpResponce.data.playerInfo[i].avatar;
+                    LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
                 }
             }
         }
@@ -615,6 +616,7 @@ namespace LudoClassicOffline
                         }
                         ludoNumberPlayerControl[refernceIndex].playerInfoData = socketNumberEventReceiver.joinTableResponse.data.playerInfo[i];
                         ludoNumberPlayerControl[refernceIndex].playerInfoData.username = displayName;
+                        LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
                     }
                 }
             }
@@ -692,6 +694,7 @@ namespace LudoClassicOffline
             }
 
             playerControl.gameObject.SetActive(false);
+            LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
         }
 
         private void SetPlayerSlotVisualState(LudoNumberPlayerControlOffline playerControl, bool isOccupied)

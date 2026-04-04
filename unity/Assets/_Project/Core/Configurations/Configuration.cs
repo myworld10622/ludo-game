@@ -22,6 +22,10 @@ public class Configuration : MonoBehaviour
     public const string UserUrl = BaseUrl + "api/User/";
     public const string LudoV2QueueJoinUrl = BaseUrl + "api/v1/ludo/queue/join";
     public const string LudoV2RoomUrl = BaseUrl + "api/v1/ludo/rooms/";
+    public const string LudoFriendListUrl = BaseUrl + "api/v1/friends";
+    public const string LudoFriendRequestsUrl = BaseUrl + "api/v1/friends/requests";
+    public const string LudoFriendRequestUrl = BaseUrl + "api/v1/friends/request";
+    public const string LudoFriendRequestByPlayerIdUrl = BaseUrl + "api/v1/friends/request/by-player-id";
     public const string TournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string TournamentClaimRoomUrl = BaseUrl + "api/v1/tournaments/";
     public const string LudoV2SocketNamespace = "/ludo_v2";
@@ -95,6 +99,11 @@ public class Configuration : MonoBehaviour
     public const string Signup = "User/register";
     public const string LogIn = "User/login";
     public const string profile = "User/profile";
+
+    // Social OAuth — opens browser; backend handles token callback via deep-link or web
+    public const string SocialGoogleUrl   = Website + "auth/google";
+    public const string SocialFacebookUrl = Website + "auth/facebook";
+    public const string SocialInstagramUrl = Website + "auth/instagram";
     public const string wallet = "User/wallet";
     public const string AviatorHistory = Url + "/User/aviatorHistory";
 
@@ -593,6 +602,17 @@ public class Configuration : MonoBehaviour
     public static string GetLudoTournamentClaimRoomUrl(string tournamentUuid)
     {
         return BaseUrl + "api/v1/tournaments/" + tournamentUuid + "/claim-room";
+    }
+
+    public static string GetLudoSearchUserByPlayerIdUrl(string playerId)
+    {
+        return BaseUrl + "api/v1/users/search-by-player-id/" + UnityWebRequest.EscapeURL(playerId ?? string.Empty);
+    }
+
+    public static string GetLudoFriendRequestActionUrl(string requestUuid, string action)
+    {
+        string normalizedAction = string.IsNullOrWhiteSpace(action) ? "accept" : action.Trim().ToLowerInvariant();
+        return BaseUrl + "api/v1/friends/request/" + UnityWebRequest.EscapeURL(requestUuid ?? string.Empty) + "/" + UnityWebRequest.EscapeURL(normalizedAction);
     }
 
     public static void SetLudoV2Enabled(bool enabled)

@@ -14,9 +14,15 @@ namespace LudoClassicOffline
         public SocketNumberEventReceiverOffline socketNumberEventReceiver;
         public void InsidePopUpEmojiClick(int emojiNo)
         {
-            socketNumberEventReceiver.emojiResponse.Data.emoji = emojiNo;
-            socketNumberEventReceiver.emojiResponse.Data.seatIndex = ResolveEmojiSeatIndex();
+            int seatIndex = ResolveEmojiSeatIndex();
 
+            if (LudoV2MatchmakingBridge.Instance != null && LudoV2MatchmakingBridge.Instance.TrySendEmoji(emojiNo, seatIndex))
+            {
+                return;
+            }
+
+            socketNumberEventReceiver.emojiResponse.Data.emoji = emojiNo;
+            socketNumberEventReceiver.emojiResponse.Data.seatIndex = seatIndex;
             socketNumberEventReceiver.ludoNumberGsNew.EmojiSet();
             //GameManager.instace.socketConnection.SendDataToSocket(GameManager.instace.ludoNumberEventManager.EmojiSendReq(senderId, emojiNo, tabelId),
                 //EmojiAcknowledgement, "EMOJI");

@@ -388,7 +388,9 @@ namespace LudoClassicOffline
 
         private void DiceValueGenerate()
         {
-            if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("NUMBER"))
+            bool isNumberMode = MGPSDK.MGPGameManager.instance != null
+                && MGPSDK.MGPGameManager.instance.sdkConfig?.data?.lobbyData?.gameModeName == "NUMBER";
+            if (isNumberMode)
             {
                 if (moveToken.data.isCapturedToken || ludoNumberGsNew.isTokenReachHome)
                 {

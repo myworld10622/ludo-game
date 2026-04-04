@@ -139,6 +139,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         public string numberFTUE;
         public Button specialOfferBtn;
         private LudoV2MatchmakingBridge ludoV2Bridge;
+        private LudoFriendPanelController ludoFriendPanelController;
         private LudoTournamentPanelOffline ludoTournamentPanel;
         private LudoCreateTournamentPanelOffline ludoCreateTournamentPanel;
         private LudoMyTournamentsPanelOffline ludoMyTournamentsPanel;
@@ -170,6 +171,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             try
             {
                 instance = this;
+                ResolveFriendPanelController();
 
                 // string Json;
                 //  Debug.Log("DashBoardManagerz || Awake =>" + Application.dataPath + "/Resources/" + "newTextFile.txt");
@@ -404,6 +406,10 @@ public class DashBoardManagerOffline : MonoBehaviour
         public void ClickOnLudoGameExitBtn()
         {
             DOTween.KillAll(false);
+            GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
+            GetComponent<LudoRoomChatController>()?.ClearMessages();
+            ResolveFriendPanelController().SetRoomActionAvailability(false);
+            ResolveFriendPanelController().SetHomeShortcutAvailability(false);
 
             if (SceneLoader.Instance != null)
             {
@@ -1216,6 +1222,22 @@ public class DashBoardManagerOffline : MonoBehaviour
             return ludoV2Bridge;
         }
 
+        private LudoFriendPanelController ResolveFriendPanelController()
+        {
+            if (ludoFriendPanelController != null)
+            {
+                return ludoFriendPanelController;
+            }
+
+            ludoFriendPanelController = GetComponent<LudoFriendPanelController>();
+            if (ludoFriendPanelController == null)
+            {
+                ludoFriendPanelController = gameObject.AddComponent<LudoFriendPanelController>();
+            }
+
+            return ludoFriendPanelController;
+        }
+
         private LudoTournamentPanelOffline ResolveTournamentPanel()
         {
             if (ludoTournamentPanel != null)
@@ -1488,31 +1510,44 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         private void UpdateClassicModeTabSelection(int selectedMode)
         {
-            // Active: warm gold highlight so selected tab pops.
-            // Inactive: pure white so the sprite's own color shows — no grey dullness.
-            Color activeColor   = new Color(1f, 0.92f, 0.45f, 1f);  // gold tint
-            Color inactiveColor = Color.white;                        // natural sprite color
+            // Active:   warm gold tint on sprite + dark maroon text — clear "selected" look
+            // Inactive: deep maroon tint on sprite + gold text — matches app red theme, fully readable
+            Color activeTabColor    = new Color(1f,    0.88f, 0.30f, 1f);  // warm gold
+            Color inactiveTabColor  = new Color(0.52f, 0.07f, 0.12f, 1f); // deep maroon
+            Color activeTextColor   = new Color(0.28f, 0.04f, 0.06f, 1f); // dark maroon on gold
+            Color inactiveTextColor = new Color(1f,    0.88f, 0.45f, 1f); // gold on dark red
 
             if (player2Button != null)
             {
                 bool active = selectedMode == 2;
                 player2Button.sprite = active ? selectSprite : unSelectSprite;
-                player2Button.color  = active ? activeColor : inactiveColor;
+                player2Button.color  = active ? activeTabColor : inactiveTabColor;
+                ApplyTabTextColor(player2Button.transform, active ? activeTextColor : inactiveTextColor);
             }
 
             if (player4Button != null)
             {
                 bool active = selectedMode == 4;
                 player4Button.sprite = active ? selectSprite : unSelectSprite;
-                player4Button.color  = active ? activeColor : inactiveColor;
+                player4Button.color  = active ? activeTabColor : inactiveTabColor;
+                ApplyTabTextColor(player4Button.transform, active ? activeTextColor : inactiveTextColor);
             }
 
             if (tournamentTabImage != null)
             {
                 bool active = selectedMode == 0;
                 tournamentTabImage.sprite = active ? selectSprite : unSelectSprite;
-                tournamentTabImage.color  = active ? activeColor : inactiveColor;
+                tournamentTabImage.color  = active ? activeTabColor : inactiveTabColor;
+                ApplyTabTextColor(tournamentTabImage.transform, active ? activeTextColor : inactiveTextColor);
             }
+        }
+
+        private void ApplyTabTextColor(Transform root, Color color)
+        {
+            foreach (Text t in root.GetComponentsInChildren<Text>(true))
+                t.color = color;
+            foreach (TextMeshProUGUI t in root.GetComponentsInChildren<TextMeshProUGUI>(true))
+                t.color = color;
         }
 
         private void HideTournamentSideMenu()
@@ -1663,6 +1698,13 @@ public class DashBoardManagerOffline : MonoBehaviour
                     SetCookiePosition();
                 }
                 socketNumberEventReceiver.PlayerJoinData();
+                LudoRoomChatController debugChatController = GetComponent<LudoRoomChatController>();
+                if (debugChatController == null)
+                {
+                    debugChatController = gameObject.AddComponent<LudoRoomChatController>();
+                }
+                debugChatController.EnableDebugPreview();
+                ResolveFriendPanelController().SetRoomActionAvailability(true);
             }
         }
 
@@ -1732,7 +1774,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             overlayCanvas.sortingOrder = 32760;
 
             Image overlayImage = passNPlayPlayerCountPopup.GetComponent<Image>();
-            overlayImage.color = new Color(0f, 0f, 0f, 0.72f);
+            overlayImage.color = new Color32(8, 6, 10, 190);
 
             GameObject card = new GameObject(
                 "Card",
@@ -1749,7 +1791,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             cardRect.anchorMin = new Vector2(0.5f, 0.5f);
             cardRect.anchorMax = new Vector2(0.5f, 0.5f);
             cardRect.pivot = new Vector2(0.5f, 0.5f);
-            cardRect.sizeDelta = new Vector2(880f, 0f);
+            cardRect.sizeDelta = new Vector2(1120f, 0f);
 
             Image cardImage = card.GetComponent<Image>();
             cardImage.color = new Color32(44, 10, 18, 245);
@@ -1758,8 +1800,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             cardOutline.effectDistance = new Vector2(2f, -2f);
 
             VerticalLayoutGroup cardLayout = card.GetComponent<VerticalLayoutGroup>();
-            cardLayout.padding = new RectOffset(40, 40, 110, 40);
-            cardLayout.spacing = 26f;
+            cardLayout.padding = new RectOffset(60, 60, 132, 52);
+            cardLayout.spacing = 34f;
             cardLayout.childAlignment = TextAnchor.UpperCenter;
             cardLayout.childControlHeight = false;
             cardLayout.childControlWidth = true;
@@ -1781,15 +1823,15 @@ public class DashBoardManagerOffline : MonoBehaviour
             titleBarRect.anchorMin = new Vector2(0f, 1f);
             titleBarRect.anchorMax = new Vector2(1f, 1f);
             titleBarRect.pivot = new Vector2(0.5f, 1f);
-            titleBarRect.sizeDelta = new Vector2(0f, 76f);
-            titleBarRect.anchoredPosition = new Vector2(0f, 34f);
+            titleBarRect.sizeDelta = new Vector2(0f, 88f);
+            titleBarRect.anchoredPosition = Vector2.zero;
             titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
 
             Text title = CreatePopupText(
-                "Choose Player Count",
-                38,
+                "Pass N Play",
+                42,
                 FontStyle.Bold,
-                TextAnchor.MiddleCenter,
+                TextAnchor.MiddleLeft,
                 popupFont,
                 Color.white
             );
@@ -1798,15 +1840,54 @@ public class DashBoardManagerOffline : MonoBehaviour
             titleRect.anchorMin = new Vector2(0f, 0f);
             titleRect.anchorMax = new Vector2(1f, 1f);
             titleRect.offsetMin = new Vector2(28f, 0f);
-            titleRect.offsetMax = new Vector2(-28f, 0f);
+            titleRect.offsetMax = new Vector2(-84f, 0f);
+
+            GameObject closeObj = new GameObject(
+                "CloseButton",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button)
+            );
+            closeObj.transform.SetParent(titleBar.transform, false);
+            RectTransform closeRect = closeObj.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1f, 0.5f);
+            closeRect.anchorMax = new Vector2(1f, 0.5f);
+            closeRect.pivot = new Vector2(1f, 0.5f);
+            closeRect.sizeDelta = new Vector2(56f, 56f);
+            closeRect.anchoredPosition = new Vector2(-22f, 0f);
+            Image closeImage = closeObj.GetComponent<Image>();
+            closeImage.color = new Color32(165, 36, 47, 255);
+            Button closeButton = closeObj.GetComponent<Button>();
+            closeButton.onClick.AddListener(HidePassNPlayPlayerCountPopup);
+
+            GameObject closeLabelObj = new GameObject(
+                "CloseLabel",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Text)
+            );
+            closeLabelObj.transform.SetParent(closeObj.transform, false);
+            Text closeLabel = closeLabelObj.GetComponent<Text>();
+            closeLabel.font = popupFont;
+            closeLabel.fontSize = 28;
+            closeLabel.fontStyle = FontStyle.Bold;
+            closeLabel.alignment = TextAnchor.MiddleCenter;
+            closeLabel.color = Color.white;
+            closeLabel.text = "X";
+            RectTransform closeLabelRect = closeLabelObj.GetComponent<RectTransform>();
+            closeLabelRect.anchorMin = Vector2.zero;
+            closeLabelRect.anchorMax = Vector2.one;
+            closeLabelRect.offsetMin = Vector2.zero;
+            closeLabelRect.offsetMax = Vector2.zero;
 
             Text subtitle = CreatePopupText(
                 "Select how many players will join this Pass N Play match.",
-                28,
+                38,
                 FontStyle.Normal,
                 TextAnchor.MiddleCenter,
                 popupFont,
-                new Color32(230, 220, 220, 255)
+                new Color32(255, 244, 232, 255)
             );
             subtitle.transform.SetParent(card.transform, false);
 
@@ -1818,10 +1899,10 @@ public class DashBoardManagerOffline : MonoBehaviour
             );
             buttonRow.transform.SetParent(card.transform, false);
             LayoutElement buttonRowLayoutElement = buttonRow.GetComponent<LayoutElement>();
-            buttonRowLayoutElement.minHeight = 88f;
+            buttonRowLayoutElement.minHeight = 140f;
 
             HorizontalLayoutGroup buttonRowLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
-            buttonRowLayout.spacing = 22f;
+            buttonRowLayout.spacing = 28f;
             buttonRowLayout.childAlignment = TextAnchor.MiddleCenter;
             buttonRowLayout.childControlWidth = true;
             buttonRowLayout.childControlHeight = false;
@@ -1831,21 +1912,21 @@ public class DashBoardManagerOffline : MonoBehaviour
             CreatePopupChoiceButton(
                 buttonRow.transform,
                 "2 Players",
-                new Color32(214, 140, 38, 255),
+                new Color32(214, 136, 42, 255),
                 popupFont,
                 () => StartPassNPlayMatch(2)
             );
             CreatePopupChoiceButton(
                 buttonRow.transform,
                 "3 Players",
-                new Color32(170, 86, 227, 255),
+                new Color32(165, 36, 47, 255),
                 popupFont,
                 () => StartPassNPlayMatch(3)
             );
             CreatePopupChoiceButton(
                 buttonRow.transform,
                 "4 Players",
-                new Color32(45, 126, 228, 255),
+                new Color32(214, 136, 42, 255),
                 popupFont,
                 () => StartPassNPlayMatch(4)
             );
@@ -1858,7 +1939,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 HidePassNPlayPlayerCountPopup
             );
             RectTransform cancelRect = cancelButton.GetComponent<RectTransform>();
-            cancelRect.sizeDelta = new Vector2(340f, 76f);
+            cancelRect.sizeDelta = new Vector2(360f, 84f);
 
             passNPlayPlayerCountPopup.SetActive(false);
         }
@@ -1925,7 +2006,7 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             Text labelText = CreatePopupText(
                 label,
-                30,
+                42,
                 FontStyle.Bold,
                 TextAnchor.MiddleCenter,
                 font,
@@ -2232,6 +2313,10 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             CloseTournamentPanel();
             HideTournamentClassicTab();
+            GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
+            GetComponent<LudoRoomChatController>()?.ClearMessages();
+            ResolveFriendPanelController().SetRoomActionAvailability(false);
+            ResolveFriendPanelController().SetHomeShortcutAvailability(false);
             selectGameModePanal.SetActive(true);
             backButton.SetActive(false);
             lobbySelectPanal.SetActive(false);

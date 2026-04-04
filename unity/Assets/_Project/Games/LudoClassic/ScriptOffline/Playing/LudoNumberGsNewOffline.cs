@@ -146,9 +146,35 @@ namespace LudoClassicOffline
             // ludoNumbersAcknowledgementHandler.yesBtn.GetComponent<Image>().raycastTarget = false;
             //  ludoNumbersAcknowledgementHandler.noBtn.GetComponent<Image>().raycastTarget = false;
 
-            // Scale up the board container so the board and all cells appear larger on screen
+            // Scale board to fill portrait screen — larger on tall phones, fallback for landscape
             if (board != null && board.transform.parent != null)
-                board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
+            {
+                float boardScale;
+                if (Screen.height > Screen.width)
+                {
+                    // Portrait: fill ~92% of screen width like Ludo King
+                    // Step 1 — canvas width in canvas units (CanvasScaler ref=1080x1920, match=0.5)
+                    float wScale    = (float)Screen.width  / 1080f;
+                    float hScale    = (float)Screen.height / 1920f;
+                    float canvasScale = Mathf.Lerp(wScale, hScale, 0.5f);
+                    float canvasWidth = Screen.width / canvasScale;
+
+                    // Step 2 — actual board rect width at this moment (before we apply scale)
+                    RectTransform boardRect = board.GetComponent<RectTransform>()
+                                          ?? board.transform.parent.GetComponent<RectTransform>();
+                    float boardNativeWidth = boardRect != null ? boardRect.rect.width : 900f;
+                    if (boardNativeWidth < 100f) boardNativeWidth = 900f; // safety if not laid out yet
+
+                    // Step 3 — scale so board = 92% of canvas width
+                    boardScale = (canvasWidth * 0.92f) / boardNativeWidth;
+                    boardScale = Mathf.Clamp(boardScale, 1.05f, 1.40f);
+                }
+                else
+                {
+                    boardScale = 1.10f; // landscape fallback
+                }
+                board.transform.parent.localScale = new Vector3(boardScale, boardScale, 1f);
+            }
 
             ludoNumberUiManager.gameManager.gameState = GameState.run;
             ludoNumberUiManager
@@ -4263,6 +4289,10 @@ namespace LudoClassicOffline
                 // logoImage.SetActive(false);
                 networkIndicator.SetActive(false);
             }
+
+            // Reset board container scale (set to 1.10 in GameTimerStart)
+            if (board != null && board.transform.parent != null)
+                board.transform.parent.localScale = Vector3.one;
         }
         #endregion
     }

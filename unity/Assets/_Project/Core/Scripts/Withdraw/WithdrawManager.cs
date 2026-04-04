@@ -40,15 +40,37 @@ public class WithdrawManager : MonoBehaviour
     public GameObject withdrawSelect;
     public GameObject WithdrawlogSelect;
 
+    [Header("Skin")]
+    public Image[] backgroundImages;
+    public Sprite popupBgSprite;          // withdraw popup background sprite
+    public Sprite amountBoxSprite;        // Payment Amount Box.png (for custom input area)
 
     async void OnEnable()
     {
-        custominput.text = "";
+        ApplyDirectSkin();
+
+        if (custominput != null)
+        {
+            custominput.text = "";
+        }
+
         await ShowWithdrawAPI();
-        total.text = Configuration.GetWallet();
-        bonus.text = Configuration.GetBonus();
-        winning_wallet.text = Configuration.GetWinning();
-        unutilized_wallet.text = Configuration.GetUnutilized();
+        if (total != null)
+        {
+            total.text = Configuration.GetWallet();
+        }
+        if (bonus != null)
+        {
+            bonus.text = Configuration.GetBonus();
+        }
+        if (winning_wallet != null)
+        {
+            winning_wallet.text = Configuration.GetWinning();
+        }
+        if (unutilized_wallet != null)
+        {
+            unutilized_wallet.text = Configuration.GetUnutilized();
+        }
 
 
         SetDefault();
@@ -56,25 +78,41 @@ public class WithdrawManager : MonoBehaviour
 
     public void SetDefault()
     {
-        withdraw.SetActive(true);
-        withdrawSelect.SetActive(true);
-        Withdrawlogs.SetActive(false);
-        WithdrawlogSelect.SetActive(false);
+        if (withdraw != null)        withdraw.SetActive(true);
+        if (withdrawSelect != null)  withdrawSelect.SetActive(true);
+        if (Withdrawlogs != null)    Withdrawlogs.SetActive(false);
+        if (WithdrawlogSelect != null) WithdrawlogSelect.SetActive(false);
+
+        StyleTabButton(withdrawSelect,    active: true);
+        StyleTabButton(WithdrawlogSelect, active: false);
+    }
+
+    // ── Tab button styling ─────────────────────────────────────────────────────
+    private static readonly Color32 TabActive   = new Color32(218, 130,  20, 255); // orange
+    private static readonly Color32 TabInactive = new Color32( 90,  14,  24, 255); // dark red
+    private static readonly Color32 TabTextActive   = new Color32(255, 255, 255, 255);
+    private static readonly Color32 TabTextInactive = new Color32(255, 200, 160, 220);
+
+    private static void StyleTabButton(GameObject tab, bool active)
+    {
+        if (tab == null) return;
+        var img = tab.GetComponent<Image>();
+        if (img != null) img.color = active ? TabActive : TabInactive;
+        foreach (var t in tab.GetComponentsInChildren<Text>(true))
+            t.color = active ? TabTextActive : TabTextInactive;
+        foreach (var t in tab.GetComponentsInChildren<TMPro.TMP_Text>(true))
+            t.color = active ? TabTextActive : TabTextInactive;
     }
 
     #region switch between buttons
 
     public async void ShowTransactions()
     {
-        foreach (var trans in transactionsobj)
-        {
-            trans.SetActive(true);
-        }
+        foreach (var trans in transactionsobj)  trans.SetActive(true);
+        foreach (var withdraw in withdrawobjs)  withdraw.SetActive(false);
 
-        foreach (var withdraw in withdrawobjs)
-        {
-            withdraw.SetActive(false);
-        }
+        StyleTabButton(WithdrawlogSelect, active: true);
+        StyleTabButton(withdrawSelect,    active: false);
 
         await ShowWithdrawTransactionsAPI();
     }
@@ -85,27 +123,35 @@ public class WithdrawManager : MonoBehaviour
         if (set == 0)
         {
             setOption = "0";
-            Bank.SetActive(true);
-            Crypto.SetActive(false);
+            if (Bank != null)
+            {
+                Bank.SetActive(true);
+            }
+            if (Crypto != null)
+            {
+                Crypto.SetActive(false);
+            }
         }
         else
         {
             setOption = "1";
-            Bank.SetActive(false);
-            Crypto.SetActive(true);
+            if (Bank != null)
+            {
+                Bank.SetActive(false);
+            }
+            if (Crypto != null)
+            {
+                Crypto.SetActive(true);
+            }
         }
     }
     public void ShowWithdraw()
     {
-        foreach (var trans in transactionsobj)
-        {
-            trans.SetActive(false);
-        }
+        foreach (var trans in transactionsobj)  trans.SetActive(false);
+        foreach (var withdraw in withdrawobjs)  withdraw.SetActive(true);
 
-        foreach (var withdraw in withdrawobjs)
-        {
-            withdraw.SetActive(true);
-        }
+        StyleTabButton(withdrawSelect,    active: true);
+        StyleTabButton(WithdrawlogSelect, active: false);
     }
 
     #endregion
@@ -114,31 +160,65 @@ public class WithdrawManager : MonoBehaviour
 
     public void ShowRedeem(Redeem_Outputs output)
     {
-        foreach (Transform child in redeem_parent)
+        if (redeem_parent != null)
         {
-            Destroy(child.gameObject);
+            foreach (Transform child in redeem_parent)
+            {
+                Destroy(child.gameObject);
+            }
         }
         instantiatedredeemLogs.Clear();
-        if (output.List.Count > 0)
+
+        List<List> redeemList = output != null && output.List != null
+            ? output.List
+            : new List<List>();
+
+        if (redeemList.Count > 0 && redeem_prefab != null && redeem_parent != null)
         {
             // Check for new logs
-            foreach (var log in output.List)
+            foreach (var log in redeemList)
             {
+                if (log == null)
+                {
+                    continue;
+                }
+
                 GameObject go = Instantiate(redeem_prefab, redeem_parent);
                 go.transform.SetSiblingIndex(0);
 
-                go.transform.GetChild(0).GetComponent<TextMeshProUGUI>().text = log.amount;
+                if (go.transform.childCount > 0)
+                {
+                    TextMeshProUGUI amountText = go.transform.GetChild(0).GetComponent<TextMeshProUGUI>();
+                    if (amountText != null)
+                    {
+                        amountText.text = string.IsNullOrWhiteSpace(log.amount) ? "0" : log.amount;
+                    }
+                }
 
-                go.transform.GetComponent<Button>()
-                    .onClick.AddListener(() => ApplyWithdraw(log.id));
+                Button button = go.transform.GetComponent<Button>();
+                if (button != null)
+                {
+                    string redeemId = log.id;
+                    button.onClick.AddListener(() => ApplyWithdraw(redeemId));
+                }
 
-                instantiatedredeemLogs.Add(log.id, go);
-                no_redeem_data.SetActive(false);
+                if (!string.IsNullOrWhiteSpace(log.id) && !instantiatedredeemLogs.ContainsKey(log.id))
+                {
+                    instantiatedredeemLogs.Add(log.id, go);
+                }
+
+                if (no_redeem_data != null)
+                {
+                    no_redeem_data.SetActive(false);
+                }
             }
         }
         else
         {
-            no_redeem_data.SetActive(true);
+            if (no_redeem_data != null)
+            {
+                no_redeem_data.SetActive(true);
+            }
         }
     }
 
@@ -153,13 +233,17 @@ public class WithdrawManager : MonoBehaviour
 
     public async void ApplyCustomWithdraw()
     {
-        if (custominput.text != "")
+        if (custominput != null && custominput.text != "")
         {
             await WithdrawCustomAPI(custominput.text);
         }
         else
         {
-            LoaderUtil.instance.ShowToast("Please enter amount");
+            string msg = "Please enter amount";
+            if (LoaderUtil.instance != null)
+                LoaderUtil.instance.ShowToast(msg);
+            else
+                EasyUI.Toast.Toast.Show(msg, 3f);
         }
     }
 
@@ -169,22 +253,38 @@ public class WithdrawManager : MonoBehaviour
 
     public void HandleLogs(WithDrawalLogsOutputs logs)
     {
-        foreach (Transform child in transaction_parent)
+        if (transaction_parent != null)
         {
-            Destroy(child.gameObject);
+            foreach (Transform child in transaction_parent)
+            {
+                Destroy(child.gameObject);
+            }
         }
         instantiatedLogs.Clear();
 
-        if (logs.data.Count > 0)
+        List<Datum> logItems = logs != null && logs.data != null ? logs.data : new List<Datum>();
+
+        if (logItems.Count > 0 && transaction_prefab != null && transaction_parent != null)
         {
-            no_data.SetActive(false);
-            // Check for new logs
-            for (int j = logs.data.Count - 1; j >= 0; j--)
+            if (no_data != null)
             {
-                var log = logs.data[j];
+                no_data.SetActive(false);
+            }
+            // Check for new logs
+            for (int j = logItems.Count - 1; j >= 0; j--)
+            {
+                var log = logItems[j];
+                if (log == null)
+                {
+                    continue;
+                }
                 GameObject go = Instantiate(transaction_prefab, transaction_parent);
                 go.transform.SetSiblingIndex(0); // Add to the top of the parent
                 WithdrawtransactionsUI ui = go.GetComponent<WithdrawtransactionsUI>();
+                if (ui == null)
+                {
+                    continue;
+                }
                 Debug.Log("RES_Check + id contains 2");
                 ui.sr_no.text = (j + 1).ToString();
                 Debug.Log("RES_Check + id " + log.id);
@@ -199,13 +299,22 @@ public class WithdrawManager : MonoBehaviour
                 //ui.added_date.text = log.created_date;
                 ui.added_date.text = FormatDateTime(log.created_date);
 
-                instantiatedLogs.Add(log.id, go);
-                no_data.SetActive(false);
+                if (!string.IsNullOrWhiteSpace(log.id) && !instantiatedLogs.ContainsKey(log.id))
+                {
+                    instantiatedLogs.Add(log.id, go);
+                }
+                if (no_data != null)
+                {
+                    no_data.SetActive(false);
+                }
             }
         }
         else
         {
-            no_data.SetActive(true);
+            if (no_data != null)
+            {
+                no_data.SetActive(true);
+            }
         }
     }
 
@@ -242,7 +351,7 @@ public class WithdrawManager : MonoBehaviour
         Redeem_Outputs redeem = new Redeem_Outputs();
         redeem = await APIManager.Instance.Post<Redeem_Outputs>(Url, formData);
 
-        ShowRedeem(redeem);
+        ShowRedeem(redeem ?? new Redeem_Outputs());
     }
 
     public async Task WithdrawAPI(string id)
@@ -294,14 +403,23 @@ public class WithdrawManager : MonoBehaviour
             { "amount", amount },
             { "type", setOption },
         };
-        messageprint output = new messageprint();
-        output = await APIManager.Instance.Post<messageprint>(Url, formData);
+        messageprint output = await APIManager.Instance.Post<messageprint>(Url, formData);
 
-        LoaderUtil.instance.ShowToast(output.message);
+        if (output == null)
+        {
+            EasyUI.Toast.Toast.Show("Withdrawal request failed. Please try again.", 3f);
+            return;
+        }
+
+        string msg = string.IsNullOrWhiteSpace(output.message) ? "Request submitted." : output.message;
+        if (LoaderUtil.instance != null)
+            LoaderUtil.instance.ShowToast(msg);
+        else
+            EasyUI.Toast.Toast.Show(msg, 3f);
+
         PopUpUtil.ButtonCancel(this.gameObject);
         if (output.code == 200)
         {
-            // Debug.Log("SUCCESSFULY WITHDRAWAL");
             StartCoroutine(Profile.UpdateWallet());
         }
     }
@@ -364,5 +482,82 @@ public class WithdrawManager : MonoBehaviour
                 return "";
         }
     }
-}
 
+    private void ApplyDirectSkin()
+    {
+        if (popupBgSprite != null)
+        {
+            var rootImg = GetComponent<Image>();
+            if (rootImg != null) rootImg.sprite = popupBgSprite;
+        }
+
+        // Recolor large white background Images — skip buttons/icons/close by name
+        foreach (Image img in GetComponentsInChildren<Image>(true))
+        {
+            if (img == null) continue;
+            string n = img.gameObject.name.ToLowerInvariant();
+            if (n.Contains("close") || n.Contains("exit") || n.Contains("btn")
+                || n.Contains("button") || n.Contains("icon") || n.Contains("logo")
+                || n.Contains("chip") || n.Contains("coin") || n.Contains("toggle")) continue;
+            RectTransform rt = img.rectTransform;
+            float w = rt != null ? Mathf.Abs(rt.rect.width)  : 0f;
+            float h = rt != null ? Mathf.Abs(rt.rect.height) : 0f;
+            if (w < 100f || h < 100f) continue;
+            Color c = img.color;
+            if (c.r > 0.85f && c.g > 0.85f && c.b > 0.85f && c.a > 0.5f)
+                img.color = new Color32(44, 8, 16, 245);
+        }
+
+        // Also apply any explicitly-assigned background images
+        if (backgroundImages != null)
+            foreach (var img in backgroundImages)
+                if (img != null) img.color = new Color32(44, 8, 16, 245);
+    }
+
+    private void ApplyPopupFallbackSkin()
+    {
+        Image[] images = GetComponentsInChildren<Image>(true);
+        for (int i = 0; i < images.Length; i++)
+        {
+            Image image = images[i];
+            if (image == null) continue;
+
+            // Never recolor meaningful custom sprites (icons, decorations)
+            if (image.sprite != null && !IsDefaultUiSprite(image.sprite)) continue;
+
+            RectTransform rect = image.rectTransform;
+            float width  = rect != null ? Mathf.Abs(rect.rect.width)  : 0f;
+            float height = rect != null ? Mathf.Abs(rect.rect.height) : 0f;
+            string n = image.gameObject.name.ToLowerInvariant();
+
+            bool isLarge = width >= 300f && height >= 80f;
+            bool namedSurface =
+                n.Contains("bg") || n.Contains("panel") || n.Contains("card")
+                || n.Contains("popup") || n.Contains("content") || n.Contains("body")
+                || n.Contains("withdraw") || n.Contains("head and tail");
+
+            if (!isLarge && !namedSurface) continue;
+
+            if (n.Contains("head and tail"))   { image.color = new Color32(125, 30, 36, 255); continue; }
+            if (n.Contains("card"))            { image.color = new Color32( 48, 10, 18, 245); continue; }
+            if (width < 320f && height >= 80f) { image.color = new Color32(118, 18, 28, 255); continue; }
+
+            image.color = new Color32(44, 8, 16, 245);
+        }
+    }
+
+    private bool IsDefaultUiSprite(Sprite sprite)
+    {
+        if (sprite == null)
+        {
+            return true;
+        }
+
+        string spriteName = sprite.name;
+        return spriteName == "Background"
+            || spriteName == "UISprite"
+            || spriteName == "InputFieldBackground"
+            || spriteName == "UIMask"
+            || spriteName == "Knob";
+    }
+}

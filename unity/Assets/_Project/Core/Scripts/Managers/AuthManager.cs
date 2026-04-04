@@ -16,6 +16,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using System.Collections;
 
 //using UnityEngine.Windows.Speech;
 //using static UnityEngine.Rendering.DebugUI;
@@ -80,6 +81,10 @@ namespace AndroApps
         private bool isAnimating = false;
         private bool isOpen = false;
         public GameObject forgotpanel;
+        private GameObject emergencyLoginOverlay;
+        private TMP_InputField emergencyIdInput;
+        private TMP_InputField emergencyPasswordInput;
+        private GameObject emergencyLoginCard;
 
         [Header("Sing up details")]
         string Mobile,
@@ -104,6 +109,9 @@ namespace AndroApps
         public GameObject otp_panel,
             password_panel,
             loginpanel;
+
+        [Header("Login Page Redesign")]
+        public Sprite loginModelSprite;  // Assign Model.png in Inspector
 
         void OnEnable()
         {
@@ -1168,9 +1176,41 @@ namespace AndroApps
             if (SignUpDetail.ReferralCodeInputfield != null)
                 SignUpDetail.ReferralCodeInputfield.text = PlayerPrefs.GetString("Reffral-ID");
 
-            // Patch signup panel with Email/Mobile toggle buttons (code-driven, no scene edit)
-            var patcher = gameObject.AddComponent<SignupTogglePatcher>();
-            patcher.Initialize(this);
+            LoginPageRedesigner loginRedesigner = null;
+
+            try
+            {
+                loginRedesigner = gameObject.GetComponent<LoginPageRedesigner>();
+                if (loginRedesigner == null)
+                {
+                    loginRedesigner = gameObject.AddComponent<LoginPageRedesigner>();
+                }
+
+                loginRedesigner.modelSprite = loginModelSprite;
+                loginRedesigner.Initialize(this);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[AuthManager] LoginPageRedesigner init failed: " + ex);
+            }
+
+            try
+            {
+                // Patch signup panel with Email/Mobile toggle buttons (code-driven, no scene edit)
+                var patcher = gameObject.AddComponent<SignupTogglePatcher>();
+                patcher.Initialize(this);
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[AuthManager] SignupTogglePatcher failed: " + ex);
+            }
+
+            if (loginRedesigner == null || !loginRedesigner.BuildSucceeded)
+            {
+                ApplyOriginalLoginFallback();
+            }
+
+            StartCoroutine(EnsureLoginUiVisible(loginRedesigner));
 
             // Add listeners to each button
             // for (int i = 0; i < buttons.Length; i++)
@@ -1208,6 +1248,80 @@ namespace AndroApps
             ApplyLoginFieldVisuals();
             loginField.ForceLabelUpdate();
         }
+
+        private IEnumerator EnsureLoginUiVisible(LoginPageRedesigner loginRedesigner)
+        {
+            yield return null;
+            yield return null;
+
+            if (loginRedesigner == null || !loginRedesigner.BuildSucceeded)
+            {
+                ApplyOriginalLoginFallback();
+            }
+        }
+
+        private void ApplyOriginalLoginFallback()
+        {
+            if (loginpanel != null)
+            {
+                ForceActivateHierarchy(loginpanel);
+            }
+
+            if (LogInDetail != null && LogInDetail.LogInPnl != null)
+            {
+                ForceActivateHierarchy(LogInDetail.LogInPnl);
+            }
+
+            if (SignUpDetail != null && SignUpDetail.SignUpPnl != null)
+            {
+                SignUpDetail.SignUpPnl.SetActive(false);
+            }
+
+            if (otp_panel != null)
+            {
+                otp_panel.SetActive(false);
+            }
+
+            if (password_panel != null)
+            {
+                password_panel.SetActive(false);
+            }
+
+        }
+
+        private void ForceActivateHierarchy(GameObject rootObject)
+        {
+            if (rootObject == null)
+                return;
+
+            rootObject.SetActive(true);
+            ForceActivateHierarchy(rootObject.transform);
+        }
+
+        private void ForceActivateHierarchy(Transform rootTransform)
+        {
+            if (rootTransform == null)
+                return;
+
+            CanvasGroup canvasGroup = rootTransform.GetComponent<CanvasGroup>();
+            if (canvasGroup != null)
+            {
+                canvasGroup.alpha = 1f;
+                canvasGroup.interactable = true;
+                canvasGroup.blocksRaycasts = true;
+            }
+
+            for (int i = 0; i < rootTransform.childCount; i++)
+            {
+                Transform child = rootTransform.GetChild(i);
+                if (child == null)
+                    continue;
+
+                child.gameObject.SetActive(true);
+                ForceActivateHierarchy(child);
+            }
+        }
+
 
         private void ApplyLoginFieldVisuals()
         {
@@ -1290,6 +1404,38 @@ namespace AndroApps
         public void OnClearSignUpDetails()
         {
             SignUpDetail.Clear();
+
+            LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+            if (redesign != null && redesign.BuildSucceeded)
+            {
+                StartCoroutine(RestoreRedesignAfterSignupFrame(redesign));
+                return;
+            }
+        }
+
+        private IEnumerator RestoreRedesignAfterSignupFrame(LoginPageRedesigner redesign)
+        {
+            yield return null;
+
+            if (SignUpDetail != null && SignUpDetail.SignUpPnl != null)
+            {
+                SignUpDetail.SignUpPnl.SetActive(false);
+            }
+
+            if (LogInDetail != null && LogInDetail.LogInPnl != null)
+            {
+                LogInDetail.LogInPnl.SetActive(false);
+            }
+
+            if (loginpanel != null)
+            {
+                loginpanel.SetActive(false);
+            }
+
+            if (redesign != null)
+            {
+                redesign.RestoreOverlay();
+            }
         }
 
         #endregion

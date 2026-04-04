@@ -36,6 +36,9 @@ namespace LudoClassicOffline
         private Tween _pulseTween;
         private bool _isCritical;
 
+        // Consecutive skip tracking — reset when any player actually rolls
+        private int _consecutiveSkips;
+
         #endregion
         private void OnEnable()
         {
@@ -80,6 +83,8 @@ namespace LudoClassicOffline
                 _timerTransform.localScale = Vector3.one;
             _isCritical = false;
             AllPlayerTimerImage.gameObject.SetActive(false);
+            // Player actually rolled — reset consecutive skip counter
+            _consecutiveSkips = 0;
         }
 
         float turnTime;
@@ -116,13 +121,28 @@ namespace LudoClassicOffline
                 _timerFillImage.fillAmount = 1;
                 _isCritical = false;
                 AllPlayerTimerImage.gameObject.SetActive(false);
-                SoundManagerOffline.instance.TimeSoundStop(SoundManagerOffline.instance.timerAudio);
+                SoundManagerOffline.instance?.TimeSoundStop(SoundManagerOffline.instance.timerAudio);
                 CancelInvoke(nameof(TurnTimeStart));
                 PlayerIndex += 1;
                 TotalTime = 10;
                 isSound = false;
-                //if(!socketNumberEventReceiver.ludoNumberGsNew.tokenMovement)
-                //    socketNumberEventReceiver.ludoNumberGsNew.ChangeTurnSeatIndex();
+
+                if (socketNumberEventReceiver?.ludoNumberGsNew != null
+                    && !socketNumberEventReceiver.ludoNumberGsNew.tokenMovement)
+                {
+                    _consecutiveSkips++;
+                    int maxPlayers = Mathf.Max(2, socketNumberEventReceiver.maxPlayer);
+                    // Cancel match if every active player has skipped twice (maxPlayers * 2)
+                    if (_consecutiveSkips >= maxPlayers * 2)
+                    {
+                        _consecutiveSkips = 0;
+                        CommonUtil.ShowToast("Match cancelled: all players inactive");
+                        if (DashBoardManagerOffline.instance != null)
+                            DashBoardManagerOffline.instance.ClickOnLudoGameExitBtn();
+                        return;
+                    }
+                    socketNumberEventReceiver.ludoNumberGsNew.ChangeTurnSeatIndex();
+                }
             }
 
             if (PlayerIndex == 4)

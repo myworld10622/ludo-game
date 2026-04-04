@@ -15,6 +15,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using LudoClassicOffline;
 
 public class Profile : MonoBehaviour
 {
@@ -131,6 +132,30 @@ public class Profile : MonoBehaviour
     public void PopUpPanelClose(GameObject obj)
     {
         PopUpUtil.ButtonCancel(obj);
+    }
+
+    public void OpenFriendRequests()
+    {
+        GameObject bootstrap = GameObject.Find("HomePageFriendBootstrap");
+        if (bootstrap == null)
+        {
+            bootstrap = new GameObject("HomePageFriendBootstrap");
+        }
+
+        if (bootstrap.GetComponent<LudoFriendApiService>() == null)
+        {
+            bootstrap.AddComponent<LudoFriendApiService>();
+        }
+
+        LudoFriendPanelController controller = bootstrap.GetComponent<LudoFriendPanelController>();
+        if (controller == null)
+        {
+            controller = bootstrap.AddComponent<LudoFriendPanelController>();
+        }
+
+        controller.SetRoomActionAvailability(false);
+        controller.SetHomeShortcutAvailability(false);
+        controller.OpenHomePanelFromShortcut();
     }
 
     #endregion
@@ -919,9 +944,12 @@ public class Profile : MonoBehaviour
             .ToString();
         name.text = Configuration.GetName();
         profilename.text = Configuration.GetName();
-        profilepic.sprite = SpriteManager.Instance.profile_image;
-        profilesettingpic.sprite = SpriteManager.Instance.profile_image;
-        profilesettingpic2.sprite = SpriteManager.Instance.profile_image;
+        if (SpriteManager.Instance != null && SpriteManager.Instance.profile_image != null)
+        {
+            if (profilepic != null)         profilepic.sprite         = SpriteManager.Instance.profile_image;
+            if (profilesettingpic != null)  profilesettingpic.sprite  = SpriteManager.Instance.profile_image;
+            if (profilesettingpic2 != null) profilesettingpic2.sprite = SpriteManager.Instance.profile_image;
+        }
 
         entername.text = Configuration.GetName();
         string masked_email = MaskEmail(Configuration.getemail());
