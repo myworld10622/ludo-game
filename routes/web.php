@@ -31,7 +31,7 @@ Route::get('/privacy', fn() => view('ludo.privacy'))->name('privacy');
 Route::get('/fair-play', fn() => view('ludo.fair-play'))->name('fair-play');
 Route::get('/responsible-gaming', fn() => view('ludo.responsible-gaming'))->name('responsible-gaming');
 
-Route::get('/play', function () {
+Route::get('/ludo', function () {
     return view('ludo.play', [
         'landingUrl' => url('/'),
         'buildBaseUrl' => asset('ludo-webgl/Build'),
