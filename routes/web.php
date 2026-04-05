@@ -6,12 +6,30 @@ use App\Http\Controllers\Web\UserPanelSupportController;
 use App\Http\Controllers\Web\UserPanelTournamentController;
 use Illuminate\Support\Facades\Route;
 
+// Public API: homepage tournament cards
+Route::get('/api/homepage-cards', function () {
+    return response()->json(
+        \App\Models\HomepageTournamentCard::visible()->get([
+            'id', 'name', 'icon', 'description',
+            'card_color', 'status_badge', 'status_text',
+            'meta1_label', 'meta1_value',
+            'meta2_label', 'meta2_value',
+            'meta3_label', 'meta3_value',
+        ])
+    );
+});
+
 Route::get('/', function () {
     return view('ludo.landing', [
         'apkUrl' => env('LUDO_APK_URL', 'https://ludo.betzono.com/ludo.apk'),
         'playUrl' => route('ludo.play'),
     ]);
 });
+
+Route::get('/terms', fn() => view('ludo.terms'))->name('terms');
+Route::get('/privacy', fn() => view('ludo.privacy'))->name('privacy');
+Route::get('/fair-play', fn() => view('ludo.fair-play'))->name('fair-play');
+Route::get('/responsible-gaming', fn() => view('ludo.responsible-gaming'))->name('responsible-gaming');
 
 Route::get('/play', function () {
     return view('ludo.play', [
