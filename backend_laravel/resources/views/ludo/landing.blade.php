@@ -1117,9 +1117,8 @@
 
 <!-- NAVBAR -->
 <nav>
-  <a class="nav-logo" href="#">
-    <img src="{{ asset('logo.png') }}" alt="RoxLudo Logo" onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';">
-    <div class="logo-fallback" id="logoFallback" style="display:none;">L</div>
+  <a class="nav-logo" href="/">
+    <div class="logo-fallback">🎲</div>
     <span class="nav-brand">RoxLudo</span>
   </a>
   <ul class="nav-links">
