@@ -76,7 +76,8 @@ namespace LudoClassicOffline
             panelRoot.GetComponent<Image>().color = BgColor;
             var pr = panelRoot.GetComponent<RectTransform>();
             pr.anchorMin = Vector2.zero; pr.anchorMax = Vector2.one;
-            pr.offsetMin = pr.offsetMax = Vector2.zero;
+            pr.offsetMin = new Vector2(16f, 16f);
+            pr.offsetMax = new Vector2(-16f, -16f);
 
             // ── HD layered background ──────────────────────────────────────────
             var hdTop = new GameObject("BgTopGlow",
@@ -101,38 +102,43 @@ namespace LudoClassicOffline
             card.transform.SetParent(panelRoot.transform, false);
             card.GetComponent<Image>().color = CardColor;
             var cr = card.GetComponent<RectTransform>();
-            cr.anchorMin        = new Vector2(0.05f, 0.08f);
-            cr.anchorMax        = new Vector2(0.95f, 0.92f);
-            cr.offsetMin        = cr.offsetMax = Vector2.zero;
+            // Center card, auto-height via ContentSizeFitter — no blank space
+            cr.anchorMin = new Vector2(0.05f, 0.5f);
+            cr.anchorMax = new Vector2(0.95f, 0.5f);
+            cr.pivot     = new Vector2(0.5f, 0.5f);
+            cr.offsetMin = cr.offsetMax = Vector2.zero;
+            var cardFitter = card.AddComponent<ContentSizeFitter>();
+            cardFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            cardFitter.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
 
             var vl = card.GetComponent<VerticalLayoutGroup>();
-            vl.padding              = new RectOffset(42, 42, 44, 44);
-            vl.spacing              = 26f;
+            vl.padding              = new RectOffset(56, 56, 44, 44);
+            vl.spacing              = 24f;
             vl.childControlWidth    = true;
             vl.childControlHeight   = true;
             vl.childForceExpandWidth  = true;
             vl.childForceExpandHeight = false;
 
             // ── Globe icon ────────────────────────────────────────────────────
-            var icon = MakeText(card.transform, "🌐", 110, FontStyle.Normal, Color.white);
+            var icon = MakeText(card.transform, "🌐", 140, FontStyle.Normal, Color.white);
             icon.alignment = TextAnchor.MiddleCenter;
-            SetFlexHeight(icon.gameObject, 136f);
+            SetFlexHeight(icon.gameObject, 168f);
 
             // ── Heading ───────────────────────────────────────────────────────
             var heading = MakeText(card.transform,
                 "Create Your Tournament on the Web",
-                64, FontStyle.Bold, Color.white);
+                84, FontStyle.Bold, Color.white);
             heading.alignment = TextAnchor.MiddleCenter;
             heading.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(heading.gameObject, 148f);
+            SetFlexHeight(heading.gameObject, 180f);
 
             // ── Sub-text ──────────────────────────────────────────────────────
             var sub = MakeText(card.transform,
                 "Use your personal tournament management panel in the browser.\nCreate, configure and monitor your tournament from any device.",
-                40, FontStyle.Normal, MutedColor);
+                52, FontStyle.Normal, MutedColor);
             sub.alignment   = TextAnchor.MiddleCenter;
             sub.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(sub.gameObject, 148f);
+            SetFlexHeight(sub.gameObject, 180f);
 
             // ── URL box ───────────────────────────────────────────────────────
             var urlBox = new GameObject("UrlBox",
@@ -148,36 +154,36 @@ namespace LudoClassicOffline
             ubVl.childForceExpandWidth  = true;
             ubVl.childForceExpandHeight = false;
             var urlBoxLE = urlBox.AddComponent<LayoutElement>();
-            urlBoxLE.minHeight = 140f;
+            urlBoxLE.minHeight = 170f;
 
             var urlCaption = MakeText(urlBox.transform,
-                "Your Panel URL", 34, FontStyle.Bold,
+                "Your Panel URL", 46, FontStyle.Bold,
                 new Color32(255, 200, 80, 255));
             urlCaption.alignment = TextAnchor.MiddleLeft;
-            SetFlexHeight(urlCaption.gameObject, 50f);
+            SetFlexHeight(urlCaption.gameObject, 64f);
 
             urlLabel = MakeText(urlBox.transform,
                 Configuration.Website + "login",
-                40, FontStyle.Normal, Color.white);
+                52, FontStyle.Normal, Color.white);
             urlLabel.alignment = TextAnchor.MiddleLeft;
             urlLabel.fontStyle  = FontStyle.Normal;
-            SetFlexHeight(urlLabel.gameObject, 60f);
+            SetFlexHeight(urlLabel.gameObject, 74f);
 
             // ── Login hint ────────────────────────────────────────────────────
             var loginHint = MakeText(card.transform,
                 "Login using User ID, username, email address, or mobile number with your password.",
-                38, FontStyle.Normal, MutedColor);
+                50, FontStyle.Normal, MutedColor);
             loginHint.alignment   = TextAnchor.MiddleCenter;
             loginHint.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(loginHint.gameObject, 100f);
+            SetFlexHeight(loginHint.gameObject, 130f);
 
             // ── Email sent notice ─────────────────────────────────────────────
             var notice = MakeText(card.transform,
                 "✓  Open the login page in your browser and sign in to access your panel.",
-                36, FontStyle.Italic, new Color32(80, 220, 130, 230));
+                48, FontStyle.Italic, new Color32(80, 220, 130, 230));
             notice.alignment = TextAnchor.MiddleCenter;
             notice.horizontalOverflow = HorizontalWrapMode.Wrap;
-            SetFlexHeight(notice.gameObject, 76f);
+            SetFlexHeight(notice.gameObject, 104f);
 
             // ── Buttons row ───────────────────────────────────────────────────
             var btnRow = new GameObject("BtnRow",
@@ -190,7 +196,7 @@ namespace LudoClassicOffline
             brHL.childForceExpandWidth  = false;
             brHL.childForceExpandHeight = false;
             var btnRowLE = btnRow.AddComponent<LayoutElement>();
-            btnRowLE.minHeight = 110f;
+            btnRowLE.minHeight = 140f;
 
             // Spacer left
             var sL = new GameObject("SpL", typeof(RectTransform), typeof(LayoutElement));
@@ -198,9 +204,9 @@ namespace LudoClassicOffline
             sL.GetComponent<LayoutElement>().flexibleWidth = 1f;
 
             // "Open Panel" button — opens the login URL in the device browser
-            var closeBtn = MakeButton(btnRow.transform, "🌐  Open Panel", AccentGreen, 52);
-            closeBtn.GetComponent<LayoutElement>().preferredWidth  = 420f;
-            closeBtn.GetComponent<LayoutElement>().preferredHeight = 110f;
+            var closeBtn = MakeButton(btnRow.transform, "🌐  Open Panel", AccentGreen, 66);
+            closeBtn.GetComponent<LayoutElement>().preferredWidth  = 520f;
+            closeBtn.GetComponent<LayoutElement>().preferredHeight = 136f;
             closeBtn.onClick.AddListener(() =>
             {
                 Application.OpenURL(Configuration.Website + "login");
@@ -212,13 +218,13 @@ namespace LudoClassicOffline
             sR.transform.SetParent(btnRow.transform, false);
             sR.GetComponent<LayoutElement>().flexibleWidth = 1f;
 
-            // ── X close (top-right) ───────────────────────────────────────────
-            var xBtn = MakeButton(panelRoot.transform, "✕", new Color32(205, 38, 58, 255), 36);
+            // ── X close (top-right, pulled in from corner for safe zone) ─────
+            var xBtn = MakeButton(panelRoot.transform, "✕", new Color32(205, 38, 58, 255), 40);
             var xR = xBtn.GetComponent<RectTransform>();
             xR.anchorMin        = new Vector2(1f, 1f); xR.anchorMax = new Vector2(1f, 1f);
             xR.pivot            = new Vector2(1f, 1f);
-            xR.anchoredPosition = new Vector2(-58f, -58f);
-            xR.sizeDelta        = new Vector2(90f, 90f);
+            xR.anchoredPosition = new Vector2(-36f, -36f);
+            xR.sizeDelta        = new Vector2(100f, 100f);
             xBtn.onClick.AddListener(ClosePanel);
 
             panelRoot.SetActive(false);

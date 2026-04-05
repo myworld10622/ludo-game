@@ -235,13 +235,24 @@ namespace LudoClassicOffline
             card.transform.SetParent(privatePopup.transform, false);
             card.GetComponent<Image>().color = new Color32(48, 10, 18, 255);
             RectTransform cardRect = card.GetComponent<RectTransform>();
-            cardRect.anchorMin = new Vector2(0.06f, 0.09f);
-            cardRect.anchorMax = new Vector2(0.94f, 0.91f);
-            cardRect.offsetMin = cardRect.offsetMax = Vector2.zero;
+            // Center card and auto-size height to content — no blank space at bottom
+            cardRect.anchorMin = new Vector2(0.5f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRect.pivot     = new Vector2(0.5f, 0.5f);
+            cardRect.sizeDelta = new Vector2(0f, 0f); // width set below, height by ContentSizeFitter
+            ContentSizeFitter cardFitter = card.AddComponent<ContentSizeFitter>();
+            cardFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            cardFitter.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+            // Width: 90% of screen
+            cardRect.anchorMin = new Vector2(0.05f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.95f, 0.5f);
+            cardRect.pivot     = new Vector2(0.5f, 0.5f);
+            cardRect.offsetMin = new Vector2(0f, 0f);
+            cardRect.offsetMax = new Vector2(0f, 0f);
 
             VerticalLayoutGroup vl = card.GetComponent<VerticalLayoutGroup>();
-            vl.padding = new RectOffset(44, 44, 36, 36);
-            vl.spacing = 26;
+            vl.padding = new RectOffset(52, 52, 40, 40);
+            vl.spacing = 24;
             vl.childControlHeight     = true;
             vl.childControlWidth      = true;
             vl.childForceExpandHeight = false;
@@ -253,21 +264,21 @@ namespace LudoClassicOffline
             accentStrip.transform.SetParent(card.transform, false);
             accentStrip.GetComponent<Image>().color = new Color32(218, 165, 32, 255);
             LayoutElement accentLE = accentStrip.GetComponent<LayoutElement>();
-            accentLE.preferredHeight = 6f;
-            accentLE.minHeight = 6f;
+            accentLE.preferredHeight = 7f;
+            accentLE.minHeight = 7f;
 
             // ── Title row: icon label + close button ─────────────────────────
             GameObject titleRow = new GameObject("TitleRow",
                 typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             titleRow.transform.SetParent(card.transform, false);
-            titleRow.GetComponent<LayoutElement>().preferredHeight = 104f;
+            titleRow.GetComponent<LayoutElement>().preferredHeight = 130f;
             HorizontalLayoutGroup thl = titleRow.GetComponent<HorizontalLayoutGroup>();
             thl.childControlHeight     = true;
             thl.childControlWidth      = true;
             thl.childForceExpandHeight = false;
             thl.childForceExpandWidth  = false;
             thl.childAlignment         = TextAnchor.MiddleLeft;
-            thl.spacing = 14;
+            thl.spacing = 18;
 
             // Icon circle
             GameObject iconCircle = new GameObject("IconCircle",
@@ -275,12 +286,12 @@ namespace LudoClassicOffline
             iconCircle.transform.SetParent(titleRow.transform, false);
             iconCircle.GetComponent<Image>().color = new Color32(175, 130, 18, 255);
             LayoutElement iconLE = iconCircle.GetComponent<LayoutElement>();
-            iconLE.preferredWidth  = 96f;
-            iconLE.minWidth        = 96f;
-            iconLE.preferredHeight = 96f;
-            iconLE.minHeight       = 96f;
+            iconLE.preferredWidth  = 120f;
+            iconLE.minWidth        = 120f;
+            iconLE.preferredHeight = 120f;
+            iconLE.minHeight       = 120f;
             iconLE.flexibleWidth   = 0f;
-            Text iconText = CreateLabel(iconCircle.transform, "🔒", 50, FontStyle.Normal, Color.white);
+            Text iconText = CreateLabel(iconCircle.transform, "🔒", 68, FontStyle.Normal, Color.white);
             iconText.alignment = TextAnchor.MiddleCenter;
             iconText.raycastTarget = false;
             RectTransform iconTR = iconText.GetComponent<RectTransform>();
@@ -294,7 +305,7 @@ namespace LudoClassicOffline
             Text titleLbl = titleLblGo.GetComponent<Text>();
             titleLbl.font = GetRuntimeFont();
             titleLbl.text = "Join Private Tournament";
-            titleLbl.fontSize = 52;
+            titleLbl.fontSize = 70;
             titleLbl.fontStyle = FontStyle.Bold;
             titleLbl.color = Color.white;
             titleLbl.horizontalOverflow = HorizontalWrapMode.Wrap;
@@ -305,75 +316,75 @@ namespace LudoClassicOffline
             // Close button — large for easy tap
             Button popupCloseBtn = CreateButton(titleRow.transform, "✕", new Color32(205, 38, 58, 255));
             LayoutElement closeLE = popupCloseBtn.GetComponent<LayoutElement>();
-            closeLE.preferredWidth  = 96f;
-            closeLE.minWidth        = 96f;
-            closeLE.preferredHeight = 86f;
-            closeLE.minHeight       = 86f;
+            closeLE.preferredWidth  = 120f;
+            closeLE.minWidth        = 120f;
+            closeLE.preferredHeight = 112f;
+            closeLE.minHeight       = 112f;
             closeLE.flexibleWidth   = 0f;
-            popupCloseBtn.GetComponentInChildren<Text>().fontSize = 32;
+            popupCloseBtn.GetComponentInChildren<Text>().fontSize = 48;
             popupCloseBtn.onClick.AddListener(() => privatePopup.SetActive(false));
 
             // ── Subtitle / hint line ─────────────────────────────────────────
             Text hintL = CreateLabel(card.transform,
                 "Private tournaments require an invite code shared by the organiser.",
-                34, FontStyle.Normal, new Color32(218, 175, 180, 200));
+                46, FontStyle.Normal, new Color32(218, 175, 180, 200));
             hintL.horizontalOverflow = HorizontalWrapMode.Wrap;
             hintL.alignment = TextAnchor.MiddleLeft;
             LayoutElement hintLE = hintL.gameObject.AddComponent<LayoutElement>();
-            hintLE.preferredHeight = 60f;
-            hintLE.minHeight = 60f;
+            hintLE.preferredHeight = 72f;
+            hintLE.minHeight = 72f;
 
             // ── Invite code field with label ─────────────────────────────────
             Text codeLabel = CreateLabel(card.transform,
-                "INVITE CODE", 34, FontStyle.Bold, new Color32(218, 165, 32, 255));
+                "INVITE CODE", 46, FontStyle.Bold, new Color32(218, 165, 32, 255));
             codeLabel.alignment = TextAnchor.MiddleLeft;
             LayoutElement codeLabelLE = codeLabel.gameObject.AddComponent<LayoutElement>();
-            codeLabelLE.preferredHeight = 46f;
-            codeLabelLE.minHeight = 46f;
+            codeLabelLE.preferredHeight = 62f;
+            codeLabelLE.minHeight = 62f;
 
             inviteCodeField = CreateInputField(card.transform, "e.g.  YAFWGH");
             LayoutElement codeFieldLE = inviteCodeField.GetComponent<LayoutElement>();
-            codeFieldLE.preferredHeight = 100f;
-            codeFieldLE.minHeight       = 100f;
-            ((Text)inviteCodeField.placeholder).fontSize = 38;
+            codeFieldLE.preferredHeight = 120f;
+            codeFieldLE.minHeight       = 120f;
+            ((Text)inviteCodeField.placeholder).fontSize = 50;
             ((Text)inviteCodeField.placeholder).color = new Color32(210, 165, 170, 200);
-            inviteCodeField.textComponent.fontSize = 44;
+            inviteCodeField.textComponent.fontSize = 56;
             inviteCodeField.textComponent.color = new Color32(255, 230, 130, 255);
 
             // ── Password field with label ────────────────────────────────────
             Text passLabel = CreateLabel(card.transform,
-                "PASSWORD  (leave blank if none)", 34, FontStyle.Bold, new Color32(218, 165, 32, 255));
+                "PASSWORD  (leave blank if none)", 46, FontStyle.Bold, new Color32(218, 165, 32, 255));
             passLabel.alignment = TextAnchor.MiddleLeft;
             LayoutElement passLabelLE = passLabel.gameObject.AddComponent<LayoutElement>();
-            passLabelLE.preferredHeight = 46f;
-            passLabelLE.minHeight = 46f;
+            passLabelLE.preferredHeight = 62f;
+            passLabelLE.minHeight = 62f;
 
             invitePasswordField = CreateInputField(card.transform, "optional");
             LayoutElement passFieldLE = invitePasswordField.GetComponent<LayoutElement>();
-            passFieldLE.preferredHeight = 100f;
-            passFieldLE.minHeight       = 100f;
-            ((Text)invitePasswordField.placeholder).fontSize = 38;
+            passFieldLE.preferredHeight = 120f;
+            passFieldLE.minHeight       = 120f;
+            ((Text)invitePasswordField.placeholder).fontSize = 50;
             ((Text)invitePasswordField.placeholder).color = new Color32(210, 165, 170, 200);
-            invitePasswordField.textComponent.fontSize = 44;
+            invitePasswordField.textComponent.fontSize = 56;
             invitePasswordField.textComponent.color = new Color32(255, 230, 130, 255);
             invitePasswordField.inputType = InputField.InputType.Password;
 
             // ── Status / error text ──────────────────────────────────────────
             privateStatusText = CreateLabel(card.transform, string.Empty,
-                36, FontStyle.Italic, new Color32(255, 110, 110, 255));
+                48, FontStyle.Italic, new Color32(255, 110, 110, 255));
             privateStatusText.alignment = TextAnchor.MiddleLeft;
             privateStatusText.horizontalOverflow = HorizontalWrapMode.Wrap;
             LayoutElement statusLE = privateStatusText.gameObject.AddComponent<LayoutElement>();
-            statusLE.preferredHeight = 50f;
-            statusLE.minHeight = 50f;
+            statusLE.preferredHeight = 62f;
+            statusLE.minHeight = 62f;
 
             // ── Button row: Confirm (big) + Cancel ───────────────────────────
             GameObject btnRow = new GameObject("BtnRow",
                 typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             btnRow.transform.SetParent(card.transform, false);
-            btnRow.GetComponent<LayoutElement>().preferredHeight = 108f;
+            btnRow.GetComponent<LayoutElement>().preferredHeight = 128f;
             HorizontalLayoutGroup hl = btnRow.GetComponent<HorizontalLayoutGroup>();
-            hl.spacing                = 20;
+            hl.spacing                = 24;
             hl.childControlHeight     = true;
             hl.childControlWidth      = true;
             hl.childForceExpandWidth  = true;
@@ -381,19 +392,19 @@ namespace LudoClassicOffline
 
             Button confirmBtn = CreateButton(btnRow.transform, "🔍  FIND TOURNAMENT", new Color32(175, 130, 18, 255));
             LayoutElement confirmLayout = confirmBtn.GetComponent<LayoutElement>();
-            confirmLayout.preferredHeight = 100f;
-            confirmLayout.minHeight       = 100f;
-            confirmBtn.GetComponentInChildren<Text>().fontSize = 40;
+            confirmLayout.preferredHeight = 120f;
+            confirmLayout.minHeight       = 120f;
+            confirmBtn.GetComponentInChildren<Text>().fontSize = 52;
             confirmBtn.onClick.AddListener(ConfirmPrivateJoin);
 
             Button cancelBtn = CreateButton(btnRow.transform, "CANCEL", new Color32(130, 22, 40, 255));
             LayoutElement cancelLayout = cancelBtn.GetComponent<LayoutElement>();
-            cancelLayout.preferredHeight = 100f;
-            cancelLayout.minHeight       = 100f;
-            cancelLayout.preferredWidth  = 250f;
-            cancelLayout.minWidth        = 250f;
+            cancelLayout.preferredHeight = 120f;
+            cancelLayout.minHeight       = 120f;
+            cancelLayout.preferredWidth  = 300f;
+            cancelLayout.minWidth        = 300f;
             cancelLayout.flexibleWidth   = 0f;
-            cancelBtn.GetComponentInChildren<Text>().fontSize = 40;
+            cancelBtn.GetComponentInChildren<Text>().fontSize = 52;
             cancelBtn.onClick.AddListener(() => privatePopup.SetActive(false));
 
             privatePopup.SetActive(false);
@@ -745,10 +756,10 @@ namespace LudoClassicOffline
                 typeof(VerticalLayoutGroup), typeof(LayoutElement));
             card.transform.SetParent(listContent, false);
             runtimeRows.Add(card);
-            card.GetComponent<Image>().color = new Color32(48, 10, 18, 255);
+            card.GetComponent<Image>().color = new Color32(72, 20, 32, 255);  // lighter red so content is readable
             var cardLE = card.GetComponent<LayoutElement>();
-            cardLE.preferredHeight = 480f;
-            cardLE.minHeight       = 480f;
+            cardLE.preferredHeight = 460f;
+            cardLE.minHeight       = 460f;
             var cardVL = card.GetComponent<VerticalLayoutGroup>();
             cardVL.padding = new RectOffset(0, 0, 0, 0);
             cardVL.spacing = 0;
@@ -768,11 +779,11 @@ namespace LudoClassicOffline
                 typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
             content.transform.SetParent(card.transform, false);
             var contentLE = content.GetComponent<LayoutElement>();
-            contentLE.preferredHeight = 473f;
-            contentLE.minHeight = 473f;
+            contentLE.preferredHeight = 453f;
+            contentLE.minHeight = 453f;
             var contentVL = content.GetComponent<VerticalLayoutGroup>();
-            contentVL.padding = new RectOffset(32, 32, 24, 22);
-            contentVL.spacing = 18;
+            contentVL.padding = new RectOffset(28, 28, 20, 18);
+            contentVL.spacing = 14;
             contentVL.childControlHeight = true;
             contentVL.childControlWidth = true;
             contentVL.childForceExpandHeight = false;
@@ -791,19 +802,19 @@ namespace LudoClassicOffline
             headerVL.childForceExpandHeight = false;
             headerVL.childForceExpandWidth = true;
 
-            var nameL = CreateLabel(headerCol.transform, tournament.Title, 52, FontStyle.Bold, new Color32(255, 255, 255, 255));
+            var nameL = CreateLabel(headerCol.transform, tournament.Title, 48, FontStyle.Bold, new Color32(255, 255, 255, 255));
             nameL.horizontalOverflow = HorizontalWrapMode.Wrap;
             nameL.alignment = TextAnchor.MiddleLeft;
             var nameLayout = nameL.gameObject.AddComponent<LayoutElement>();
-            nameLayout.preferredHeight = 86f;
-            nameLayout.minHeight = 86f;
+            nameLayout.preferredHeight = 80f;
+            nameLayout.minHeight = 80f;
 
-            var timingL = CreateLabel(headerCol.transform, timingText, 36, FontStyle.Normal,
+            var timingL = CreateLabel(headerCol.transform, timingText, 34, FontStyle.Normal,
                 new Color32(215, 178, 183, 255));
             timingL.alignment = TextAnchor.MiddleLeft;
             var timingLayout = timingL.gameObject.AddComponent<LayoutElement>();
-            timingLayout.preferredHeight = 50f;
-            timingLayout.minHeight = 50f;
+            timingLayout.preferredHeight = 46f;
+            timingLayout.minHeight = 46f;
 
             // ── Status pill + player count on same row ────────────────────
             var badgeRow = new GameObject("BadgeRow",
@@ -831,11 +842,11 @@ namespace LudoClassicOffline
             var pillLE = pillGO.GetComponent<LayoutElement>();
             pillLE.preferredHeight = 62f;
             pillLE.minHeight = 62f;
-            var statusL = CreateLabel(pillGO.transform, statusLabel, 34, FontStyle.Bold, accentColor);
+            var statusL = CreateLabel(pillGO.transform, statusLabel, 32, FontStyle.Bold, accentColor);
             statusL.verticalOverflow = VerticalWrapMode.Overflow;
             statusL.alignment = TextAnchor.MiddleCenter;
 
-            var playersL = CreateLabel(badgeRow.transform, playersStr, 40,
+            var playersL = CreateLabel(badgeRow.transform, playersStr, 38,
                 FontStyle.Normal, new Color32(220, 188, 193, 255));
             playersL.verticalOverflow = VerticalWrapMode.Overflow;
             playersL.alignment = TextAnchor.MiddleLeft;
@@ -853,8 +864,8 @@ namespace LudoClassicOffline
             chipsHL.childForceExpandWidth = false;
             chipsHL.childAlignment = TextAnchor.MiddleLeft;
 
-            MakeMetricChip(chipsRow.transform, "ENTRY FEE", feeValue, new Color32(62, 8, 20, 255), new Color32(218, 165, 32, 255));
-            MakeMetricChip(chipsRow.transform, "PRIZE POOL", prizeValue, new Color32(24, 56, 44, 255), new Color32(60, 215, 110, 255));
+            MakeMetricChip(chipsRow.transform, "ENTRY FEE", feeValue, new Color32(100, 28, 50, 255), new Color32(255, 200, 60, 255));
+            MakeMetricChip(chipsRow.transform, "PRIZE POOL", prizeValue, new Color32(28, 72, 52, 255), new Color32(80, 230, 130, 255));
 
             // ── Footer: note text left, action button right ───────────────
             var footerRow = new GameObject("FooterRow",
@@ -882,7 +893,7 @@ namespace LudoClassicOffline
 
             var noteL = CreateLabel(noteWrap.transform,
                 playable ? "Match is LIVE — tap Play to enter the table now!" : "Tap Details to see prize breakdown, slots and schedule.",
-                36,
+                34,
                 FontStyle.Normal,
                 playable ? new Color32(60, 215, 110, 255) : new Color32(215, 178, 183, 255));
             noteL.alignment = TextAnchor.MiddleLeft;
@@ -911,12 +922,12 @@ namespace LudoClassicOffline
             string btnLabel = playable ? "▶  PLAY NOW" : "  " + GetDetailsButtonLabel(tournament) + "  ";
             var joinBtn = CreateButton(actCol.transform, btnLabel, btnColor);
             var joinBtnLayout = joinBtn.GetComponent<LayoutElement>();
-            joinBtnLayout.preferredHeight = 90f;
-            joinBtnLayout.minHeight = 90f;
-            joinBtnLayout.preferredWidth = 290f;
-            joinBtnLayout.minWidth = 290f;
+            joinBtnLayout.preferredHeight = 88f;
+            joinBtnLayout.minHeight = 88f;
+            joinBtnLayout.preferredWidth = 280f;
+            joinBtnLayout.minWidth = 260f;
             joinBtnLayout.flexibleWidth = 0f;
-            joinBtn.GetComponentInChildren<Text>().fontSize = 36;
+            joinBtn.GetComponentInChildren<Text>().fontSize = 38;
             joinBtn.interactable = playable || shouldOpenDetails;
             joinBtn.onClick.AddListener(() =>
             {
@@ -984,21 +995,21 @@ namespace LudoClassicOffline
             vl.childForceExpandWidth = true;
             vl.childAlignment = TextAnchor.MiddleCenter;
 
-            var labelText = CreateLabel(chip.transform, label, 28, FontStyle.Bold, new Color32(215, 178, 183, 255));
+            var labelText = CreateLabel(chip.transform, label, 30, FontStyle.Bold, new Color32(230, 200, 210, 255));
             labelText.alignment = TextAnchor.MiddleCenter;
             labelText.horizontalOverflow = HorizontalWrapMode.Overflow;
             labelText.verticalOverflow = VerticalWrapMode.Overflow;
             var labelLE = labelText.gameObject.AddComponent<LayoutElement>();
-            labelLE.preferredHeight = 34f;
-            labelLE.minHeight = 34f;
+            labelLE.preferredHeight = 36f;
+            labelLE.minHeight = 36f;
 
-            var valueText = CreateLabel(chip.transform, value, 44, FontStyle.Bold, valueColor);
+            var valueText = CreateLabel(chip.transform, value, 48, FontStyle.Bold, valueColor);
             valueText.alignment = TextAnchor.MiddleCenter;
             valueText.horizontalOverflow = HorizontalWrapMode.Overflow;
             valueText.verticalOverflow = VerticalWrapMode.Overflow;
             var valueLE = valueText.gameObject.AddComponent<LayoutElement>();
-            valueLE.preferredHeight = 48f;
-            valueLE.minHeight = 48f;
+            valueLE.preferredHeight = 52f;
+            valueLE.minHeight = 52f;
 
             return chip;
         }
@@ -1099,7 +1110,9 @@ namespace LudoClassicOffline
             panelRoot.GetComponent<Image>().color = new Color32(14, 3, 7, 255);
             var panelRect = panelRoot.GetComponent<RectTransform>();
             panelRect.anchorMin = Vector2.zero; panelRect.anchorMax = Vector2.one;
-            panelRect.offsetMin = panelRect.offsetMax = Vector2.zero;
+            // Add safe inset padding from all edges so nothing is hidden under device corners
+            panelRect.offsetMin = new Vector2(16f, 16f);
+            panelRect.offsetMax = new Vector2(-16f, -16f);
 
             // ── HD layered background ──────────────────────────────────────────
             var topGlow = new GameObject("BgTopGlow",
@@ -1174,9 +1187,9 @@ namespace LudoClassicOffline
             shieldBtn.transition = Selectable.Transition.None;
 
             // ── Header bar (full-width, fixed height) ─────────────────────────
-            const float headerH = 180f;   // taller = more breathing room from top edge
-            const float actionH = 136f;   // taller action bar for bigger buttons
-            const float statusH = 56f;
+            const float headerH = 180f;   // header bar height
+            const float actionH = 128f;   // action bar for PRIVATE/CREATE/HISTORY buttons
+            const float statusH = 52f;
             const float topTotal = headerH + actionH + statusH;
 
             var headerBg = new GameObject("HeaderBg",
@@ -1190,29 +1203,28 @@ namespace LudoClassicOffline
             hbR.sizeDelta = new Vector2(0f, headerH);
 
             // Title text (left side of header)
-            titleText = CreateLabel(headerBg.transform, "🏆  TOURNAMENTS", 56, FontStyle.Bold, new Color32(255, 220, 80, 255));
+            titleText = CreateLabel(headerBg.transform, "🏆  TOURNAMENTS", 62, FontStyle.Bold, new Color32(255, 220, 80, 255));
             titleText.alignment = TextAnchor.MiddleLeft;
             var titleR = titleText.GetComponent<RectTransform>();
             titleR.anchorMin = Vector2.zero; titleR.anchorMax = Vector2.one;
-            titleR.offsetMin = new Vector2(60f, 10f); titleR.offsetMax = new Vector2(-580f, -10f);
+            titleR.offsetMin = new Vector2(52f, 8f); titleR.offsetMax = new Vector2(-580f, -8f);
 
-            // Refresh button — anchored to bottom of header so both buttons sit in the safe zone
-            // below the top-corner curve. anchorMin/Max (1,0) = bottom-right of header.
+            // Refresh button — centred vertically in header, pulled well away from top-right corner
             refreshButton = MakeHeaderBtn(headerBg.transform, "↺  REFRESH", new Color32(40, 28, 90, 255));
             var rfR = refreshButton.GetComponent<RectTransform>();
-            rfR.anchorMin = new Vector2(1f, 0f); rfR.anchorMax = new Vector2(1f, 0f);
-            rfR.pivot = new Vector2(1f, 0f);
-            rfR.anchoredPosition = new Vector2(-330f, 14f);
-            rfR.sizeDelta = new Vector2(260f, 108f);
+            rfR.anchorMin = new Vector2(1f, 0.5f); rfR.anchorMax = new Vector2(1f, 0.5f);
+            rfR.pivot = new Vector2(1f, 0.5f);
+            rfR.anchoredPosition = new Vector2(-308f, 0f);
+            rfR.sizeDelta = new Vector2(270f, 112f);
             refreshButton.onClick.AddListener(RefreshTournaments);
 
-            // Close button — same bottom-anchor, pulled far from right edge corner
+            // Close button — centred vertically, right side of header
             closeButton = MakeHeaderBtn(headerBg.transform, "✕  CLOSE", new Color32(200, 38, 58, 255));
             var cbR = closeButton.GetComponent<RectTransform>();
-            cbR.anchorMin = new Vector2(1f, 0f); cbR.anchorMax = new Vector2(1f, 0f);
-            cbR.pivot = new Vector2(1f, 0f);
-            cbR.anchoredPosition = new Vector2(-62f, 14f);
-            cbR.sizeDelta = new Vector2(260f, 108f);
+            cbR.anchorMin = new Vector2(1f, 0.5f); cbR.anchorMax = new Vector2(1f, 0.5f);
+            cbR.pivot = new Vector2(1f, 0.5f);
+            cbR.anchoredPosition = new Vector2(-28f, 0f);
+            cbR.sizeDelta = new Vector2(270f, 112f);
             closeButton.onClick.AddListener(ClosePanel);
 
             // ── Action bar (below header) ─────────────────────────────────────
@@ -1234,15 +1246,15 @@ namespace LudoClassicOffline
             abHL.childForceExpandHeight = true; abHL.childForceExpandWidth = true;
 
             joinPrivateBtn = CreateButton(actionBar.transform, "🔒  PRIVATE", new Color32(140, 22, 44, 255));
-            joinPrivateBtn.GetComponentInChildren<Text>().fontSize = 44;
+            joinPrivateBtn.GetComponentInChildren<Text>().fontSize = 46;
             joinPrivateBtn.onClick.AddListener(OpenPrivatePopup);
 
             var createBtn = CreateButton(actionBar.transform, "＋  CREATE", new Color32(185, 140, 20, 255));
-            createBtn.GetComponentInChildren<Text>().fontSize = 44;
+            createBtn.GetComponentInChildren<Text>().fontSize = 46;
             createBtn.onClick.AddListener(() => dashboard?.OpenCreateTournamentPanel());
 
             var histBtn = CreateButton(actionBar.transform, "📋  HISTORY", new Color32(120, 18, 36, 255));
-            histBtn.GetComponentInChildren<Text>().fontSize = 44;
+            histBtn.GetComponentInChildren<Text>().fontSize = 46;
             histBtn.onClick.AddListener(() => dashboard?.OpenMyTournamentsPanel());
 
             // Status text (below action bar)
@@ -1290,9 +1302,9 @@ namespace LudoClassicOffline
 
             var contentLayout = contentRoot.GetComponent<GridLayoutGroup>();
             tournamentGrid = contentLayout;
-            contentLayout.padding = new RectOffset(10, 10, 18, 24);
-            contentLayout.spacing = new Vector2(0f, 32f);
-            contentLayout.cellSize = new Vector2(700f, 560f);
+            contentLayout.padding = new RectOffset(16, 16, 18, 24);
+            contentLayout.spacing = new Vector2(16f, 24f);
+            contentLayout.cellSize = new Vector2(700f, 460f);
             contentLayout.startAxis = GridLayoutGroup.Axis.Horizontal;
             contentLayout.startCorner = GridLayoutGroup.Corner.UpperLeft;
             contentLayout.childAlignment = TextAnchor.UpperCenter;
@@ -1349,13 +1361,18 @@ namespace LudoClassicOffline
             card.transform.SetParent(detailPopup.transform, false);
             card.GetComponent<Image>().color = new Color32(48, 10, 18, 255);
             RectTransform cardRect = card.GetComponent<RectTransform>();
-            cardRect.anchorMin = new Vector2(0.06f, 0.08f);
-            cardRect.anchorMax = new Vector2(0.94f, 0.92f);
+            // Centered card, auto-height — no blank space
+            cardRect.anchorMin = new Vector2(0.05f, 0.5f);
+            cardRect.anchorMax = new Vector2(0.95f, 0.5f);
+            cardRect.pivot     = new Vector2(0.5f, 0.5f);
             cardRect.offsetMin = cardRect.offsetMax = Vector2.zero;
+            ContentSizeFitter detailCardFitter = card.AddComponent<ContentSizeFitter>();
+            detailCardFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            detailCardFitter.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
 
             VerticalLayoutGroup vl = card.GetComponent<VerticalLayoutGroup>();
-            vl.padding = new RectOffset(40, 40, 32, 32);
-            vl.spacing = 18;
+            vl.padding = new RectOffset(48, 48, 36, 36);
+            vl.spacing = 20;
             vl.childControlHeight     = true;
             vl.childControlWidth      = true;
             vl.childForceExpandHeight = false;
@@ -1365,9 +1382,9 @@ namespace LudoClassicOffline
             GameObject headRow = new GameObject("HeadRow",
                 typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             headRow.transform.SetParent(card.transform, false);
-            headRow.GetComponent<LayoutElement>().preferredHeight = 110f;
+            headRow.GetComponent<LayoutElement>().preferredHeight = 130f;
             HorizontalLayoutGroup headLayout = headRow.GetComponent<HorizontalLayoutGroup>();
-            headLayout.spacing                = 12;
+            headLayout.spacing                = 14;
             headLayout.childControlHeight     = true;
             headLayout.childControlWidth      = true;
             headLayout.childForceExpandHeight = false;
@@ -1379,96 +1396,95 @@ namespace LudoClassicOffline
             titleWrap.transform.SetParent(headRow.transform, false);
             titleWrap.GetComponent<LayoutElement>().flexibleWidth = 1f;
             VerticalLayoutGroup titleVL = titleWrap.GetComponent<VerticalLayoutGroup>();
-            titleVL.spacing               = 4;
+            titleVL.spacing               = 6;
             titleVL.childControlHeight    = true;
             titleVL.childControlWidth     = true;
             titleVL.childForceExpandHeight = false;
             titleVL.childForceExpandWidth  = true;
 
-            detailTitleText = CreateLabel(titleWrap.transform, "Tournament", 60, FontStyle.Bold, Color.white);
+            detailTitleText = CreateLabel(titleWrap.transform, "Tournament", 72, FontStyle.Bold, Color.white);
             detailTitleText.alignment          = TextAnchor.MiddleCenter;
             detailTitleText.horizontalOverflow = HorizontalWrapMode.Wrap;
-            detailMetaText  = CreateLabel(titleWrap.transform, string.Empty, 38, FontStyle.Normal, new Color32(215, 178, 183, 255));
+            detailMetaText  = CreateLabel(titleWrap.transform, string.Empty, 48, FontStyle.Normal, new Color32(215, 178, 183, 255));
             detailMetaText.alignment           = TextAnchor.MiddleCenter;
 
             detailCloseButton = CreateButton(headRow.transform, "✕", new Color32(205, 38, 58, 255));
             LayoutElement closeLE = detailCloseButton.GetComponent<LayoutElement>();
-            closeLE.preferredWidth = 100f; closeLE.minWidth  = 100f;
-            closeLE.preferredHeight = 100f; closeLE.minHeight = 100f;
+            closeLE.preferredWidth = 120f; closeLE.minWidth  = 120f;
+            closeLE.preferredHeight = 120f; closeLE.minHeight = 120f;
             closeLE.flexibleWidth  = 0f;
             detailCloseButton.GetComponent<Image>().color = new Color32(205, 38, 58, 255);
-            detailCloseButton.GetComponentInChildren<Text>().fontSize = 42;
+            detailCloseButton.GetComponentInChildren<Text>().fontSize = 52;
             detailCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
 
-            // ── Stats panel: status + wallet (fixed) ──────────────────────────
+            // ── Stats panel: status + wallet ──────────────────────────────────
             GameObject statsPanel = new GameObject("StatsPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup), typeof(LayoutElement));
             statsPanel.transform.SetParent(card.transform, false);
-            statsPanel.GetComponent<Image>().color = new Color32(62, 8, 20, 255);
-            statsPanel.GetComponent<LayoutElement>().preferredHeight = 180f;
+            statsPanel.GetComponent<Image>().color = new Color32(72, 16, 28, 255);
+            statsPanel.GetComponent<LayoutElement>().preferredHeight = 210f;
             VerticalLayoutGroup statsVL = statsPanel.GetComponent<VerticalLayoutGroup>();
-            statsVL.padding               = new RectOffset(20, 20, 18, 18);
-            statsVL.spacing               = 8;
+            statsVL.padding               = new RectOffset(24, 24, 20, 20);
+            statsVL.spacing               = 10;
             statsVL.childControlHeight    = true;
             statsVL.childControlWidth     = true;
             statsVL.childForceExpandHeight = false;
             statsVL.childForceExpandWidth  = true;
-            detailStatsText  = CreateLabel(statsPanel.transform, string.Empty, 46, FontStyle.Bold, new Color32(218, 165, 32, 255));
-            detailWalletText = CreateLabel(statsPanel.transform, string.Empty, 40, FontStyle.Bold, new Color32(120, 220, 160, 255));
+            detailStatsText  = CreateLabel(statsPanel.transform, string.Empty, 54, FontStyle.Bold, new Color32(218, 165, 32, 255));
+            detailWalletText = CreateLabel(statsPanel.transform, string.Empty, 48, FontStyle.Bold, new Color32(120, 220, 160, 255));
             detailStatsText.alignment  = TextAnchor.MiddleCenter;
             detailWalletText.alignment = TextAnchor.MiddleCenter;
-            ConfigureDetailBlockLabel(detailStatsText,  88f, false);
-            ConfigureDetailBlockLabel(detailWalletText, 70f, false);
+            ConfigureDetailBlockLabel(detailStatsText,  100f, false);
+            ConfigureDetailBlockLabel(detailWalletText,  82f, false);
 
-            // ── Info panel: fills ALL remaining space between stats and hint ──
-            // flexibleHeight=1 ensures no blank gap. Text uses verticalOverflow=Overflow.
+            // ── Info panel: prize / entry details ─────────────────────────────
             GameObject infoPanel = new GameObject("InfoPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup), typeof(LayoutElement));
             infoPanel.transform.SetParent(card.transform, false);
             infoPanel.GetComponent<Image>().color = new Color32(42, 7, 16, 255);
             var infoLE = infoPanel.GetComponent<LayoutElement>();
-            infoLE.flexibleHeight = 1f;   // fill all leftover height — no blank space
-            infoLE.minHeight      = 200f; // always show at least 200px of info
+            infoLE.preferredHeight = 320f;
+            infoLE.minHeight       = 260f;
             VerticalLayoutGroup infoVL = infoPanel.GetComponent<VerticalLayoutGroup>();
-            infoVL.padding               = new RectOffset(22, 22, 18, 18);
+            infoVL.padding               = new RectOffset(28, 28, 22, 22);
             infoVL.spacing               = 0;
             infoVL.childControlHeight    = true;
             infoVL.childControlWidth     = true;
-            infoVL.childForceExpandHeight = true;  // prize text fills the panel
+            infoVL.childForceExpandHeight = true;
             infoVL.childForceExpandWidth  = true;
-            detailPrizeText = CreateLabel(infoPanel.transform, string.Empty, 40, FontStyle.Normal, Color.white);
-            detailPrizeText.lineSpacing        = 1.32f;
+            detailPrizeText = CreateLabel(infoPanel.transform, string.Empty, 48, FontStyle.Normal, Color.white);
+            detailPrizeText.lineSpacing        = 1.4f;
             detailPrizeText.alignment          = TextAnchor.UpperLeft;
             detailPrizeText.horizontalOverflow = HorizontalWrapMode.Wrap;
             detailPrizeText.verticalOverflow   = VerticalWrapMode.Overflow;
 
-            // ── Hint panel: green banner, auto-height ─────────────────────────
+            // ── Hint panel: green banner ──────────────────────────────────────
             GameObject hintPanel = new GameObject("HintPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup), typeof(LayoutElement));
             hintPanel.transform.SetParent(card.transform, false);
             hintPanel.GetComponent<Image>().color = new Color32(24, 58, 46, 255);
-            hintPanel.GetComponent<LayoutElement>().preferredHeight = 130f;
+            hintPanel.GetComponent<LayoutElement>().preferredHeight = 160f;
             VerticalLayoutGroup hintVL = hintPanel.GetComponent<VerticalLayoutGroup>();
-            hintVL.padding               = new RectOffset(20, 20, 18, 18);
+            hintVL.padding               = new RectOffset(24, 24, 20, 20);
             hintVL.childControlHeight    = true;
             hintVL.childControlWidth     = true;
             hintVL.childForceExpandHeight = true;
             hintVL.childForceExpandWidth  = true;
-            detailHintText = CreateLabel(hintPanel.transform, string.Empty, 42, FontStyle.Italic, new Color32(216, 244, 232, 255));
+            detailHintText = CreateLabel(hintPanel.transform, string.Empty, 50, FontStyle.Italic, new Color32(216, 244, 232, 255));
             detailHintText.alignment          = TextAnchor.MiddleCenter;
             detailHintText.horizontalOverflow = HorizontalWrapMode.Wrap;
             detailHintText.verticalOverflow   = VerticalWrapMode.Overflow;
 
-            // ── Button row (pinned bottom) ────────────────────────────────────
+            // ── Button row ────────────────────────────────────────────────────
             GameObject buttonRow = new GameObject("ButtonRow",
                 typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
             buttonRow.transform.SetParent(card.transform, false);
-            buttonRow.GetComponent<LayoutElement>().preferredHeight = 110f;
+            buttonRow.GetComponent<LayoutElement>().preferredHeight = 128f;
             HorizontalLayoutGroup btnLayout = buttonRow.GetComponent<HorizontalLayoutGroup>();
-            btnLayout.spacing                = 16;
+            btnLayout.spacing                = 20;
             btnLayout.childControlHeight     = true;
             btnLayout.childControlWidth      = true;
             btnLayout.childForceExpandHeight = false;
@@ -1477,17 +1493,17 @@ namespace LudoClassicOffline
 
             detailPrimaryButton     = CreateButton(buttonRow.transform, "Register", new Color32(175, 130, 18, 255));
             detailPrimaryButtonText = detailPrimaryButton.GetComponentInChildren<Text>();
-            detailPrimaryButtonText.fontSize = 44;
+            detailPrimaryButtonText.fontSize = 52;
             LayoutElement primaryLE = detailPrimaryButton.GetComponent<LayoutElement>();
-            primaryLE.preferredWidth = 340f; primaryLE.minWidth      = 280f;
-            primaryLE.preferredHeight = 100f; primaryLE.flexibleWidth = 0f;
+            primaryLE.preferredWidth = 400f; primaryLE.minWidth      = 320f;
+            primaryLE.preferredHeight = 118f; primaryLE.flexibleWidth = 0f;
             detailPrimaryButton.onClick.AddListener(OnDetailPrimaryButtonPressed);
 
             Button secondaryCloseButton = CreateButton(buttonRow.transform, "Close", new Color32(130, 22, 40, 255));
-            secondaryCloseButton.GetComponentInChildren<Text>().fontSize = 44;
+            secondaryCloseButton.GetComponentInChildren<Text>().fontSize = 52;
             LayoutElement secondaryLE = secondaryCloseButton.GetComponent<LayoutElement>();
-            secondaryLE.preferredWidth = 250f; secondaryLE.minWidth      = 200f;
-            secondaryLE.preferredHeight = 100f; secondaryLE.flexibleWidth = 0f;
+            secondaryLE.preferredWidth = 290f; secondaryLE.minWidth      = 240f;
+            secondaryLE.preferredHeight = 118f; secondaryLE.flexibleWidth = 0f;
             secondaryCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
 
             detailPopup.SetActive(false);
@@ -1612,7 +1628,7 @@ namespace LudoClassicOffline
             cb.highlightedColor = new Color32((byte)Mathf.Clamp(color.r + 22, 0, 255), (byte)Mathf.Clamp(color.g + 22, 0, 255), (byte)Mathf.Clamp(color.b + 22, 0, 255), 255);
             cb.pressedColor   = new Color32((byte)Mathf.Clamp(color.r - 22, 0, 255), (byte)Mathf.Clamp(color.g - 22, 0, 255), (byte)Mathf.Clamp(color.b - 22, 0, 255), 255);
             btn.colors = cb;
-            var t = CreateLabel(go.transform, label, 28, FontStyle.Bold, Color.white);
+            var t = CreateLabel(go.transform, label, 36, FontStyle.Bold, Color.white);
             t.alignment = TextAnchor.MiddleCenter; t.raycastTarget = false;
             var r = t.GetComponent<RectTransform>();
             r.anchorMin = Vector2.zero; r.anchorMax = Vector2.one;
@@ -1676,11 +1692,29 @@ namespace LudoClassicOffline
                 return;
             }
 
-            // Single-column portrait layout: card fills the full usable width
-            float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right;
-            float cardWidth = Mathf.Max(usableWidth, 200f);
-            listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
-            tournamentGrid.cellSize = new Vector2(cardWidth, 560f);
+            float viewportHeight = tournamentViewport.rect.height;
+            // Landscape if width > height (game screen is always landscape)
+            bool isLandscape = viewportWidth > viewportHeight;
+
+            if (isLandscape)
+            {
+                // 2 cards per row in landscape — wide cards with comfortable height
+                tournamentGrid.constraintCount = 2;
+                float spacing = tournamentGrid.spacing.x;
+                float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right - spacing;
+                float cardWidth = Mathf.Max(usableWidth / 2f, 200f);
+                listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
+                tournamentGrid.cellSize = new Vector2(cardWidth, 460f);
+            }
+            else
+            {
+                // Portrait: single column
+                tournamentGrid.constraintCount = 1;
+                float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right;
+                float cardWidth = Mathf.Max(usableWidth, 200f);
+                listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
+                tournamentGrid.cellSize = new Vector2(cardWidth, 480f);
+            }
         }
 
         private Button CreateButton(Transform parent, string label, Color32 color)

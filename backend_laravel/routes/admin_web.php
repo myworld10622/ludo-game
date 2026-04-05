@@ -9,6 +9,7 @@ use App\Http\Controllers\Admin\Web\MatchMonitorController;
 use App\Http\Controllers\Admin\Web\SupportTicketController;
 use App\Http\Controllers\Admin\Web\TournamentController;
 use App\Http\Controllers\Admin\Web\UserController;
+use App\Http\Controllers\Admin\Web\HomepageCardController;
 use App\Http\Controllers\Admin\Web\WalletTransactionController;
 use Illuminate\Support\Facades\Route;
 
@@ -52,6 +53,14 @@ Route::middleware('web')->group(function () {
             Route::post('/support-tickets/{ticket}/status', [SupportTicketController::class, 'updateStatus'])->name('support.status');
             Route::get('/wallet-transactions', [WalletTransactionController::class, 'index'])->name('wallet-transactions.index');
             Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+            // Homepage Tournament Cards
+            Route::get('/homepage-cards',                        [HomepageCardController::class, 'index'])->name('homepage-cards.index');
+            Route::post('/homepage-cards',                       [HomepageCardController::class, 'store'])->name('homepage-cards.store');
+            Route::post('/homepage-cards/reorder',               [HomepageCardController::class, 'reorder'])->name('homepage-cards.reorder');
+            Route::put('/homepage-cards/{homepageCard}',         [HomepageCardController::class, 'update'])->name('homepage-cards.update');
+            Route::delete('/homepage-cards/{homepageCard}',      [HomepageCardController::class, 'destroy'])->name('homepage-cards.destroy');
+
             Route::post('/logout', [AdminAuthController::class, 'logout'])->name('logout');
         });
     });

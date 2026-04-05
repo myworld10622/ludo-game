@@ -327,6 +327,7 @@
         <a class="nav-link {{ request()->routeIs('admin.support.*') ? 'active' : '' }}" href="{{ route('admin.support.index') }}">Support Tickets</a>
         <a class="nav-link {{ request()->routeIs('admin.wallet-transactions.*') ? 'active' : '' }}" href="{{ route('admin.wallet-transactions.index') }}">Wallet Transactions</a>
         <a class="nav-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}" href="{{ route('admin.audit-logs.index') }}">Audit Logs</a>
+        <a class="nav-link {{ request()->routeIs('admin.homepage-cards.*') ? 'active' : '' }}" href="{{ route('admin.homepage-cards.index') }}">🏠 Homepage Cards</a>
     </aside>
     <main class="content">
         <div class="topbar">

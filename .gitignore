@@ -32,3 +32,6 @@ node/.env
 # Backend
 backend/.env
 backend/vendor/
+
+# Claude Code local config
+.claude/
