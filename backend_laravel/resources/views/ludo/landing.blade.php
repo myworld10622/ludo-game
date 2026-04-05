@@ -1129,7 +1129,7 @@
     <li><a href="#" onclick="openModal('guideModal')">Guide</a></li>
     <li><a href="#" onclick="openModal('faqModal')">FAQ</a></li>
   </ul>
-  <a href="#" class="btn-login" onclick="openModal('loginModal')">Login →</a>
+  <a href="/login" class="btn-login">Login →</a>
 </nav>
 
 <!-- HERO -->
@@ -1148,7 +1148,7 @@
       Real-time multiplayer Ludo with <strong>live tournaments</strong>, massive prize pools, and your own private matches. Compete, win, dominate.
     </p>
     <div class="hero-cta">
-      <a href="#" class="btn-primary" onclick="openModal('loginModal')">🎲 Start Playing Free</a>
+      <a href="/login" class="btn-primary">🎲 Start Playing Free</a>
       <a href="#" class="btn-apk" onclick="openModal('apkModal')">📱 Download APK</a>
       <a href="#" class="btn-secondary" onclick="openModal('guideModal')">📖 How to Play</a>
       <a href="#" class="btn-secondary" onclick="openModal('faqModal')">❓ FAQ</a>
