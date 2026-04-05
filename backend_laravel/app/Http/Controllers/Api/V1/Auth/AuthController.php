@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\V1\Auth\LoginRequest;
 use App\Http\Requests\Api\V1\Auth\ProfileRequest;
 use App\Http\Requests\Api\V1\Auth\RegisterRequest;
+use App\Http\Requests\Api\V1\Auth\SocialLoginRequest;
 use App\Http\Resources\Api\V1\AuthTokenResource;
 use App\Http\Resources\Api\V1\UserResource;
 use App\Services\Auth\AuthService;
@@ -45,6 +46,24 @@ class AuthController extends Controller
         return $this->successResponse(
             new AuthTokenResource($result),
             'Login completed successfully.'
+        );
+    }
+
+    public function socialLogin(SocialLoginRequest $request): JsonResponse
+    {
+        try {
+            $result = $this->authService->socialLogin($request->validated());
+        } catch (HttpException $exception) {
+            return $this->errorResponse(
+                $exception->getMessage(),
+                ['provider' => [$exception->getMessage()]],
+                $exception->getStatusCode()
+            );
+        }
+
+        return $this->successResponse(
+            new AuthTokenResource($result),
+            'Social login completed successfully.'
         );
     }
 

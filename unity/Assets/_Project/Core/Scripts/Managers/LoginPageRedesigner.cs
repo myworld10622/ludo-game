@@ -144,55 +144,69 @@ namespace AndroApps
             Stretch(_landingPanel.GetComponent<RectTransform>());
 
             Font font = GetFont();
+            EnsureModelSprite();
 
-            var heroPanel = new GameObject("HeroPanel",
-                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            heroPanel.transform.SetParent(_landingPanel.transform, false);
-            heroPanel.GetComponent<Image>().color = new Color32(78, 8, 20, 178);
-            var heroRect = heroPanel.GetComponent<RectTransform>();
-            heroRect.anchorMin = new Vector2(0.04f, 0.06f);
-            heroRect.anchorMax = new Vector2(0.96f, 0.94f);
-            heroRect.offsetMin = heroRect.offsetMax = Vector2.zero;
+            // ── Left panel — Model (30% width) ───────────────────────────────
+            var leftPanel = new GameObject("LeftPanel",
+                typeof(RectTransform), typeof(CanvasRenderer));
+            leftPanel.transform.SetParent(_landingPanel.transform, false);
+            var lp = leftPanel.GetComponent<RectTransform>();
+            lp.anchorMin = new Vector2(0f, 0f);
+            lp.anchorMax = new Vector2(0.32f, 1f);
+            lp.offsetMin = lp.offsetMax = Vector2.zero;
 
-            if (_sceneLogoSprite != null)
-            {
-                var logoGo = new GameObject("LogoImage",
-                    typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                logoGo.transform.SetParent(heroPanel.transform, false);
-                var logoImage = logoGo.GetComponent<Image>();
-                logoImage.sprite = _sceneLogoSprite;
-                logoImage.preserveAspect = true;
-                logoImage.color = Color.white;
-                var logoRect = logoGo.GetComponent<RectTransform>();
-                logoRect.anchorMin = new Vector2(0.04f, 0.50f);
-                logoRect.anchorMax = new Vector2(0.96f, 0.88f);
-                logoRect.offsetMin = logoRect.offsetMax = Vector2.zero;
-            }
-            else if (modelSprite != null)
+            if (modelSprite != null)
             {
                 var modelGo = new GameObject("ModelImage",
                     typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                modelGo.transform.SetParent(heroPanel.transform, false);
+                modelGo.transform.SetParent(leftPanel.transform, false);
                 var img = modelGo.GetComponent<Image>();
                 img.sprite = modelSprite;
                 img.preserveAspect = true;
                 img.color = Color.white;
                 var mr = modelGo.GetComponent<RectTransform>();
-                mr.anchorMin = new Vector2(0.18f, 0.54f);
-                mr.anchorMax = new Vector2(0.82f, 0.82f);
+                mr.anchorMin = new Vector2(0f, 0f);
+                mr.anchorMax = new Vector2(1f, 0.90f);   // bottom-anchored character
                 mr.offsetMin = mr.offsetMax = Vector2.zero;
             }
 
+            // ── Right panel — Buttons (68% width) ────────────────────────────
+            var rightPanel = new GameObject("RightPanel",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            rightPanel.transform.SetParent(_landingPanel.transform, false);
+            rightPanel.GetComponent<Image>().color = new Color32(60, 6, 16, 200);
+            var rp = rightPanel.GetComponent<RectTransform>();
+            rp.anchorMin = new Vector2(0.32f, 0f);
+            rp.anchorMax = new Vector2(1f, 1f);
+            rp.offsetMin = rp.offsetMax = Vector2.zero;
+
+            // Logo at top of right panel
+            if (_sceneLogoSprite != null)
+            {
+                var logoGo = new GameObject("LogoImage",
+                    typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+                logoGo.transform.SetParent(rightPanel.transform, false);
+                var logoImage = logoGo.GetComponent<Image>();
+                logoImage.sprite = _sceneLogoSprite;
+                logoImage.preserveAspect = true;
+                logoImage.color = Color.white;
+                var logoRect = logoGo.GetComponent<RectTransform>();
+                logoRect.anchorMin = new Vector2(0.02f, 0.58f);
+                logoRect.anchorMax = new Vector2(0.98f, 0.96f);
+                logoRect.offsetMin = logoRect.offsetMax = Vector2.zero;
+            }
+
+            // Content (buttons) in the right panel
             var content = new GameObject("LandingContent",
                 typeof(RectTransform), typeof(VerticalLayoutGroup));
-            content.transform.SetParent(heroPanel.transform, false);
+            content.transform.SetParent(rightPanel.transform, false);
             var contentRect = content.GetComponent<RectTransform>();
-            contentRect.anchorMin = new Vector2(0.08f, 0.10f);
-            contentRect.anchorMax = new Vector2(0.92f, 0.50f);
+            contentRect.anchorMin = new Vector2(0.06f, 0.08f);
+            contentRect.anchorMax = new Vector2(0.94f, _sceneLogoSprite != null ? 0.56f : 0.90f);
             contentRect.offsetMin = contentRect.offsetMax = Vector2.zero;
 
             var layout = content.GetComponent<VerticalLayoutGroup>();
-            layout.spacing = 20f;
+            layout.spacing = 22f;
             layout.childControlWidth = true;
             layout.childControlHeight = true;
             layout.childForceExpandWidth = true;
@@ -201,30 +215,34 @@ namespace AndroApps
 
             if (_sceneLogoSprite == null)
             {
-                AddLabel(content.transform, font, "REX LUDO", 100, FontStyle.Bold, AccentGold, 154f)
+                AddLabel(content.transform, font, "ROX LUDO", 96, FontStyle.Bold, AccentGold, 130f)
                     .alignment = TextAnchor.MiddleCenter;
             }
 
-            AddLabel(content.transform, font, "Play. Win. Rule.", 46, FontStyle.Italic, MutedText, 68f)
+            AddLabel(content.transform, font, "Play. Win. Rule.", 42, FontStyle.Italic, MutedText, 60f)
                 .alignment = TextAnchor.MiddleCenter;
-            Spacer(content.transform, 14f);
+            Spacer(content.transform, 10f);
 
-            var loginBtn = MakeBtn(content.transform, font, "Login Account",
-                AccentRed, Color.white, 56, 122f);
+            // "I've played before" label like Zynga Poker
+            AddLabel(content.transform, font, "I've played before.", 36, FontStyle.Normal, MutedText, 50f)
+                .alignment = TextAnchor.MiddleCenter;
+
+            var loginBtn = MakeBtn(content.transform, font, "Login with existing account",
+                new Color32(34, 170, 80, 255), Color.white, 48, 116f);
             loginBtn.onClick.AddListener(ShowLoginForm);
 
-            AddLabel(content.transform, font, "OR", 38, FontStyle.Normal, MutedText, 48f)
+            AddLabel(content.transform, font, "OR", 36, FontStyle.Normal, MutedText, 46f)
                 .alignment = TextAnchor.MiddleCenter;
 
-            var signupBtn = MakeBtn(content.transform, font, "Create New Account",
-                new Color32(0, 0, 0, 0), AccentGold, 56, 122f);
-            var signupOutline = signupBtn.gameObject.AddComponent<Outline>();
-            signupOutline.effectColor = AccentGold;
-            signupOutline.effectDistance = new Vector2(2f, -2f);
+            AddLabel(content.transform, font, "I'm new and would like to play.", 36, FontStyle.Normal, MutedText, 50f)
+                .alignment = TextAnchor.MiddleCenter;
+
+            var signupBtn = MakeBtn(content.transform, font, "Create new account",
+                AccentGold, new Color32(30, 10, 0, 255), 48, 116f);
             signupBtn.onClick.AddListener(ShowSignup);
 
             var guestBtn = MakeBtn(content.transform, font, "Play as Guest",
-                new Color32(0, 0, 0, 0), MutedText, 44, 76f);
+                new Color32(0, 0, 0, 0), new Color32(235, 215, 220, 220), 40, 72f);
             guestBtn.onClick.AddListener(DoGuestLogin);
 
             // Exit App button — top-right corner of landing panel
@@ -271,30 +289,50 @@ namespace AndroApps
             Stretch(_loginFormPanel.GetComponent<RectTransform>());
 
             Font font = GetFont();
+            EnsureModelSprite();
+
+            // ── Left — Model (30%) ────────────────────────────────────────────
+            var leftPanel = new GameObject("LeftPanel",
+                typeof(RectTransform), typeof(CanvasRenderer));
+            leftPanel.transform.SetParent(_loginFormPanel.transform, false);
+            var lp = leftPanel.GetComponent<RectTransform>();
+            lp.anchorMin = new Vector2(0f, 0f);
+            lp.anchorMax = new Vector2(0.32f, 1f);
+            lp.offsetMin = lp.offsetMax = Vector2.zero;
 
             if (modelSprite != null)
             {
-                var modelGo = new GameObject("ModelSmall",
+                var modelGo = new GameObject("ModelImage",
                     typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-                modelGo.transform.SetParent(_loginFormPanel.transform, false);
+                modelGo.transform.SetParent(leftPanel.transform, false);
                 var img = modelGo.GetComponent<Image>();
                 img.sprite = modelSprite;
                 img.preserveAspect = true;
                 img.color = Color.white;
                 var mr = modelGo.GetComponent<RectTransform>();
-                mr.anchorMin = new Vector2(0.20f, 0.74f);
-                mr.anchorMax = new Vector2(0.80f, 0.96f);
+                mr.anchorMin = new Vector2(0f, 0.04f);
+                mr.anchorMax = new Vector2(1f, 0.88f);
                 mr.offsetMin = mr.offsetMax = Vector2.zero;
             }
 
+            // ── Right — Login form (68%) ──────────────────────────────────────
+            var rightPanel = new GameObject("RightPanel",
+                typeof(RectTransform), typeof(CanvasRenderer));
+            rightPanel.transform.SetParent(_loginFormPanel.transform, false);
+            var rp = rightPanel.GetComponent<RectTransform>();
+            rp.anchorMin = new Vector2(0.32f, 0f);
+            rp.anchorMax = new Vector2(1f, 1f);
+            rp.offsetMin = rp.offsetMax = Vector2.zero;
+
+            // Card fills the right panel
             var card = new GameObject("LoginCard",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup));
-            card.transform.SetParent(_loginFormPanel.transform, false);
+            card.transform.SetParent(rightPanel.transform, false);
             card.GetComponent<Image>().color = CardColor;
             var cr = card.GetComponent<RectTransform>();
-            cr.anchorMin = new Vector2(0.03f, 0.04f);
-            cr.anchorMax = new Vector2(0.97f, 0.76f);
+            cr.anchorMin = new Vector2(0.02f, 0.03f);
+            cr.anchorMax = new Vector2(0.98f, 0.97f);
             cr.offsetMin = cr.offsetMax = Vector2.zero;
 
             var cvl = card.GetComponent<VerticalLayoutGroup>();
@@ -324,11 +362,11 @@ namespace AndroApps
 
             Spacer(card.transform, 4f);
 
-            // Login button — vivid orange-gold, white text, full contrast like social buttons
-            var loginBtn = MakeBtn(card.transform, font, "LOGIN WITH REX LUDO",
-                new Color32(255, 140, 0, 255), Color.white, 50, 116f);
+            // Login button — green, stylish decorated text
+            var loginBtn = MakeBtn(card.transform, font, "✦  LOGIN WITH ROX LUDO  ✦",
+                new Color32(34, 170, 80, 255), Color.white, 50, 116f);
             var loginShadow = loginBtn.gameObject.AddComponent<Shadow>();
-            loginShadow.effectColor    = new Color32(140, 60, 0, 200);
+            loginShadow.effectColor    = new Color32(10, 80, 25, 200);
             loginShadow.effectDistance = new Vector2(0f, -4f);
             loginBtn.onClick.AddListener(DoLogin);
 
@@ -349,9 +387,9 @@ namespace AndroApps
             shl.childForceExpandHeight = false;
             shl.childAlignment       = TextAnchor.MiddleCenter;
 
-            AddSocialBtn(socialRow.transform, font, "Google",    new Color32(219,  68,  55, 255), Configuration.SocialGoogleUrl,    36);
-            AddSocialBtn(socialRow.transform, font, "Facebook",  new Color32( 24, 119, 242, 255), Configuration.SocialFacebookUrl,  36);
-            AddSocialBtn(socialRow.transform, font, "Instagram", new Color32(193,  53, 132, 255), Configuration.SocialInstagramUrl, 36);
+            AddSocialBtn(socialRow.transform, font, "Google",    new Color32(219,  68,  55, 255), () => _auth?.OnClickGoogleLogin(), 36);
+            AddSocialBtn(socialRow.transform, font, "Facebook",  new Color32( 24, 119, 242, 255), () => _auth?.OnClickFacebookLogin(), 36);
+            AddSocialBtn(socialRow.transform, font, "Instagram", new Color32(193,  53, 132, 255), () => _auth?.OnClickInstagramLogin(), 36);
 
             // Guest — lighter, bigger
             var guestBtn = MakeBtn(card.transform, font, "Play as Guest",
@@ -744,7 +782,7 @@ namespace AndroApps
         }
 
         private static void AddSocialBtn(Transform parent, Font font,
-            string label, Color32 bg, string url, int fontSize)
+            string label, Color32 bg, System.Action onClick, int fontSize)
         {
             var go = new GameObject(label + "SBtn",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
@@ -773,8 +811,10 @@ namespace AndroApps
             lr.anchorMax = Vector2.one;
             lr.offsetMin = lr.offsetMax = Vector2.zero;
 
-            string capturedUrl = url;
-            btn.onClick.AddListener(() => Application.OpenURL(capturedUrl));
+            if (onClick != null)
+            {
+                btn.onClick.AddListener(() => onClick());
+            }
         }
 
         private static void Spacer(Transform parent, float height)
@@ -853,6 +893,16 @@ namespace AndroApps
 
         private static Font GetFont() =>
             Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        // Loads Model.png if modelSprite not yet assigned via Inspector
+        private void EnsureModelSprite()
+        {
+            if (modelSprite != null) return;
+#if UNITY_EDITOR
+            modelSprite = UnityEditor.AssetDatabase.LoadAssetAtPath<Sprite>(
+                "Assets/_Project/Core/UI/Common/Models/Model.png");
+#endif
+        }
 
         private static Color32 Lighten(Color32 c, int amt) =>
             new Color32(

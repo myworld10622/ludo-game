@@ -122,24 +122,24 @@ namespace LudoClassicOffline
             row.transform.SetParent(listContent, false);
 
             Image rowImg = row.GetComponent<Image>();
-            rowImg.color = new Color32(60, 12, 22, 235);
+            rowImg.color = new Color32(58, 12, 22, 240);
 
             HorizontalLayoutGroup hl = row.GetComponent<HorizontalLayoutGroup>();
-            hl.padding              = new RectOffset(18, 18, 14, 14);
-            hl.spacing              = 12;
+            hl.padding              = new RectOffset(22, 22, 18, 18);
+            hl.spacing              = 16;
             hl.childControlHeight   = true;
             hl.childControlWidth    = true;
             hl.childForceExpandHeight = true;
             hl.childForceExpandWidth  = false;
 
             LayoutElement rowLE = row.GetComponent<LayoutElement>();
-            rowLE.preferredHeight = canViewBracket ? 170f : 140f;
-            rowLE.minHeight       = canViewBracket ? 150f : 120f;
+            rowLE.preferredHeight = canViewBracket ? 210f : 175f;
+            rowLE.minHeight       = canViewBracket ? 190f : 155f;
 
             // ── Left column: name + status + optional bracket btn ──────────────
             GameObject left = MakeVStack(row.transform, flexWidth: 2f);
-            MakeLabel(left.transform, tName, 38, FontStyle.Bold, Color.white);
-            MakeLabel(left.transform, StatusLabel(status), 32, FontStyle.Normal, StatusColor(status));
+            MakeLabel(left.transform, tName, 44, FontStyle.Bold, Color.white);
+            MakeLabel(left.transform, StatusLabel(status), 36, FontStyle.Normal, StatusColor(status));
 
             if (canViewBracket)
             {
@@ -149,26 +149,26 @@ namespace LudoClassicOffline
 
                 Button bracketBtn = CreateButton(left.transform, "📋 View Bracket",
                     new Color32(175, 130, 18, 255));
-                LayoutElement btnLE = bracketBtn.GetComponent<LayoutElement>();
-                btnLE.preferredHeight = 56f;
-                btnLE.minHeight       = 50f;
-                bracketBtn.GetComponentInChildren<Text>().fontSize = 30;
+                bracketBtn.GetComponentInChildren<Text>().fontSize = 38;
+                var bbLE = bracketBtn.gameObject.AddComponent<LayoutElement>();
+                bbLE.preferredHeight = 72f;
+                bbLE.minHeight = 62f;
                 bracketBtn.onClick.AddListener(() =>
                     dashboard?.OpenBracketViewerPanel(capturedId, capturedName));
             }
 
             // ── Center column: fee / prize ─────────────────────────────────────
             GameObject center = MakeVStack(row.transform, flexWidth: 1f);
-            MakeLabel(center.transform, feePaid > 0 ? $"₹{feePaid:0} paid" : "Free", 32, FontStyle.Normal, new Color32(230, 205, 210, 255));
+            MakeLabel(center.transform, feePaid > 0 ? $"₹{feePaid:0} paid" : "Free", 36, FontStyle.Normal, new Color32(230, 205, 210, 255));
             if (prizeWon > 0)
                 MakeLabel(center.transform, $"🏆 ₹{prizeWon:0}", 36, FontStyle.Bold, new Color32(255, 210, 40, 255));
 
             // ── Right column: position ─────────────────────────────────────────
             GameObject right = MakeVStack(row.transform, flexWidth: 0.7f);
             if (position.HasValue)
-                MakeLabel(right.transform, $"#{position.Value}", 44, FontStyle.Bold, PositionColor(position.Value));
+                MakeLabel(right.transform, $"#{position.Value}", 52, FontStyle.Bold, PositionColor(position.Value));
             else
-                MakeLabel(right.transform, "—", 38, FontStyle.Normal, new Color32(190, 155, 160, 200));
+                MakeLabel(right.transform, "—", 44, FontStyle.Normal, new Color32(210, 165, 170, 200));
         }
 
         // ── UI layout helpers ─────────────────────────────────────────────────
@@ -254,54 +254,70 @@ namespace LudoClassicOffline
             panelRoot = new GameObject("MyTournamentsPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
-            panelRoot.GetComponent<Image>().color = new Color32(28, 5, 10, 255);
+            panelRoot.GetComponent<Image>().color = new Color32(14, 3, 7, 255);
             RectTransform pr = panelRoot.GetComponent<RectTransform>();
             pr.anchorMin = Vector2.zero;
             pr.anchorMax = Vector2.one;
             pr.offsetMin = pr.offsetMax = Vector2.zero;
 
+            // ── HD layered background ──────────────────────────────────────────
+            var hdTop = new GameObject("BgTopGlow",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            hdTop.transform.SetParent(panelRoot.transform, false);
+            hdTop.GetComponent<Image>().color = new Color32(110, 16, 30, 110);
+            var hdTopR = hdTop.GetComponent<RectTransform>();
+            hdTopR.anchorMin = new Vector2(0f, 0.65f); hdTopR.anchorMax = Vector2.one;
+            hdTopR.offsetMin = hdTopR.offsetMax = Vector2.zero;
+            var hdBot = new GameObject("BgBottomVig",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            hdBot.transform.SetParent(panelRoot.transform, false);
+            hdBot.GetComponent<Image>().color = new Color32(0, 0, 0, 130);
+            var hdBotR = hdBot.GetComponent<RectTransform>();
+            hdBotR.anchorMin = Vector2.zero; hdBotR.anchorMax = new Vector2(1f, 0.25f);
+            hdBotR.offsetMin = hdBotR.offsetMax = Vector2.zero;
+
             // ── Header: title + close btn ─────────────────────────────────────
-            Text header = MakeLabel(panelRoot.transform, "My Tournaments", 58, FontStyle.Bold, Color.white);
+            Text header = MakeLabel(panelRoot.transform, "My Tournaments", 70, FontStyle.Bold, Color.white);
             RectTransform hr = header.GetComponent<RectTransform>();
             hr.anchorMin = new Vector2(0.05f, 1f); hr.anchorMax = new Vector2(0.75f, 1f);
             hr.pivot     = new Vector2(0f, 1f);
             hr.anchoredPosition = new Vector2(0f, -28f);
             hr.sizeDelta        = new Vector2(0f, 80f);
 
-            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(80, 12, 22, 255));
+            Button refreshBtn = CreateButton(panelRoot.transform, "↻ Refresh", new Color32(110, 18, 32, 255));
             RectTransform rfRect = refreshBtn.GetComponent<RectTransform>();
             rfRect.anchorMin = new Vector2(1f, 1f); rfRect.anchorMax = new Vector2(1f, 1f);
             rfRect.pivot     = new Vector2(1f, 1f);
-            rfRect.anchoredPosition = new Vector2(-320f, -24f);
-            rfRect.sizeDelta        = new Vector2(280f, 90f);
+            rfRect.anchoredPosition = new Vector2(-360f, -55f);
+            rfRect.sizeDelta        = new Vector2(310f, 110f);
             refreshBtn.onClick.AddListener(Refresh);
 
-            Button closeBtn = CreateButton(panelRoot.transform, "✕ Close", new Color32(180, 40, 55, 255));
+            Button closeBtn = CreateButton(panelRoot.transform, "✕ Close", new Color32(205, 38, 58, 255));
             RectTransform cbRect = closeBtn.GetComponent<RectTransform>();
             cbRect.anchorMin = new Vector2(1f, 1f); cbRect.anchorMax = new Vector2(1f, 1f);
             cbRect.pivot     = new Vector2(1f, 1f);
-            cbRect.anchoredPosition = new Vector2(-24f, -24f);
-            cbRect.sizeDelta        = new Vector2(260f, 90f);
+            cbRect.anchoredPosition = new Vector2(-55f, -55f);
+            cbRect.sizeDelta        = new Vector2(290f, 110f);
             closeBtn.onClick.AddListener(ClosePanel);
 
             // ── Column headers ────────────────────────────────────────────────
             GameObject colHeader = new GameObject("ColHeader",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(HorizontalLayoutGroup));
             colHeader.transform.SetParent(panelRoot.transform, false);
-            colHeader.GetComponent<Image>().color = new Color32(118, 18, 28, 220);
+            colHeader.GetComponent<Image>().color = new Color32(140, 22, 36, 230);
             RectTransform ch = colHeader.GetComponent<RectTransform>();
             ch.anchorMin = new Vector2(0.02f, 1f); ch.anchorMax = new Vector2(0.98f, 1f);
             ch.pivot     = new Vector2(0.5f, 1f);
-            ch.anchoredPosition = new Vector2(0f, -118f);
-            ch.sizeDelta        = new Vector2(0f, 56f);
+            ch.anchoredPosition = new Vector2(0f, -136f);
+            ch.sizeDelta        = new Vector2(0f, 64f);
             HorizontalLayoutGroup chl = colHeader.GetComponent<HorizontalLayoutGroup>();
             chl.padding  = new RectOffset(18, 18, 6, 6);
             chl.spacing  = 12;
             chl.childControlHeight = chl.childControlWidth = true;
             chl.childForceExpandHeight = false; chl.childForceExpandWidth = false;
-            MakeLabel(colHeader.transform, "Tournament", 30, FontStyle.Bold, new Color32(255, 210, 70, 255), 2f).alignment = TextAnchor.MiddleLeft;
-            MakeLabel(colHeader.transform, "Fee / Prize", 30, FontStyle.Bold, new Color32(255, 210, 70, 255), 1f).alignment = TextAnchor.MiddleLeft;
-            MakeLabel(colHeader.transform, "Rank",        30, FontStyle.Bold, new Color32(255, 210, 70, 255), 0.7f).alignment = TextAnchor.MiddleLeft;
+            MakeLabel(colHeader.transform, "Tournament", 36, FontStyle.Bold, new Color32(255, 218, 80, 255), 2f).alignment = TextAnchor.MiddleLeft;
+            MakeLabel(colHeader.transform, "Fee / Prize", 36, FontStyle.Bold, new Color32(255, 218, 80, 255), 1f).alignment = TextAnchor.MiddleLeft;
+            MakeLabel(colHeader.transform, "Rank",        36, FontStyle.Bold, new Color32(255, 218, 80, 255), 0.7f).alignment = TextAnchor.MiddleLeft;
 
             // ── Scroll list ───────────────────────────────────────────────────
             // NO Mask on scrollRoot — only viewport gets Mask (alpha=0 on Mask Image discards all children)
@@ -311,7 +327,7 @@ namespace LudoClassicOffline
             scrollRoot.GetComponent<Image>().color = Color.clear;
             RectTransform sr = scrollRoot.GetComponent<RectTransform>();
             sr.anchorMin = new Vector2(0.02f, 0.06f);
-            sr.anchorMax = new Vector2(0.98f, 0.80f);
+            sr.anchorMax = new Vector2(0.98f, 0.78f);
             sr.offsetMin = sr.offsetMax = Vector2.zero;
 
             // Viewport alpha MUST be > 0 for Mask stencil to clip children correctly
@@ -352,7 +368,7 @@ namespace LudoClassicOffline
             scroll.scrollSensitivity = 70f;
 
             // Status text — centered in scroll area when empty
-            statusText = MakeLabel(panelRoot.transform, string.Empty, 42, FontStyle.Normal, new Color32(220, 185, 190, 200));
+            statusText = MakeLabel(panelRoot.transform, string.Empty, 48, FontStyle.Normal, new Color32(225, 190, 195, 210));
             RectTransform stRect = statusText.GetComponent<RectTransform>();
             stRect.anchorMin = new Vector2(0.1f, 0.35f); stRect.anchorMax = new Vector2(0.9f, 0.65f);
             stRect.offsetMin = stRect.offsetMax = Vector2.zero;

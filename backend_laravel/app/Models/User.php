@@ -120,6 +120,11 @@ class User extends Authenticatable
         return $this->hasMany(UserFriend::class, 'user_id');
     }
 
+    public function socialAccounts(): HasMany
+    {
+        return $this->hasMany(UserSocialAccount::class);
+    }
+
     public static function defaultPanelPermissions(): array
     {
         return [

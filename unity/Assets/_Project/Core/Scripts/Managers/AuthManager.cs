@@ -199,6 +199,39 @@ namespace AndroApps
             CommonUtil.OpenPrivacyPolicy();
         }
 
+        public void OnClickGoogleLogin()
+        {
+            BeginSocialLogin("google", Configuration.SocialGoogleUrl);
+        }
+
+        public void OnClickFacebookLogin()
+        {
+            BeginSocialLogin("facebook", Configuration.SocialFacebookUrl);
+        }
+
+        public void OnClickInstagramLogin()
+        {
+            ShowAuthErrorMessage(
+                "Instagram direct sign-in abhi supported nahi hai. Google ya Facebook use karein, ya backend OAuth credentials configure karein.",
+                "Instagram Login"
+            );
+        }
+
+        private void BeginSocialLogin(string provider, string url)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+            {
+                ShowAuthErrorMessage("Social login URL configured nahi hai.", "Social Login");
+                return;
+            }
+
+            ShowAuthErrorMessage(
+                $"Browser me {provider} login open ho raha hai. Provider callback aur app deep-link setup hone ke baad user app me wapas sign in hoga.",
+                "Social Login"
+            );
+            Application.OpenURL(url);
+        }
+
         public static string GenerateToken()
         {
             return System.Guid.NewGuid().ToString();

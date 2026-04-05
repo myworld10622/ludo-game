@@ -210,7 +210,7 @@ namespace LudoClassicOffline
             rootPanel.anchorMin = new Vector2(1f, 0f);
             rootPanel.anchorMax = new Vector2(1f, 0f);
             rootPanel.pivot = new Vector2(1f, 0f);
-            rootPanel.sizeDelta = new Vector2(430f, 700f);
+            rootPanel.sizeDelta = new Vector2(320f, 700f);
             rootPanel.anchoredPosition = new Vector2(-18f, 210f); // sits above the toggle
 
             Image panelImage = panelObject.AddComponent<Image>();
@@ -266,7 +266,7 @@ namespace LudoClassicOffline
             RectTransform scrollRoot = CreateUiObject("ScrollRoot", rootPanel).AddComponent<RectTransform>();
             scrollRoot.anchorMin = new Vector2(0f, 0f);
             scrollRoot.anchorMax = new Vector2(1f, 1f);
-            scrollRoot.offsetMin = new Vector2(0f, 68f);
+            scrollRoot.offsetMin = new Vector2(0f, 85f);
             scrollRoot.offsetMax = new Vector2(0f, -62f);
             Image scrollImage = scrollRoot.gameObject.AddComponent<Image>();
             scrollImage.color = new Color32(11, 20, 26, 255); // same as panel bg
@@ -302,7 +302,7 @@ namespace LudoClassicOffline
             composer.anchorMin = new Vector2(0f, 0f);
             composer.anchorMax = new Vector2(1f, 0f);
             composer.pivot = new Vector2(0.5f, 0f);
-            composer.sizeDelta = new Vector2(0f, 68f);
+            composer.sizeDelta = new Vector2(0f, 85f);
             composer.anchoredPosition = Vector2.zero;
             Image composerBg = composer.gameObject.AddComponent<Image>();
             composerBg.color = new Color32(32, 44, 51, 255); // WA composer bar
@@ -313,7 +313,7 @@ namespace LudoClassicOffline
             inputRect.anchorMin = new Vector2(0f, 0.5f);
             inputRect.anchorMax = new Vector2(1f, 0.5f);
             inputRect.pivot = new Vector2(0f, 0.5f);
-            inputRect.sizeDelta = new Vector2(-100f, 50f);
+            inputRect.sizeDelta = new Vector2(-100f, 65f);
             inputRect.anchoredPosition = new Vector2(12f, 0f);
             Image inputImage = inputObject.AddComponent<Image>();
             inputImage.color = new Color32(42, 57, 66, 255); // WA input bg
@@ -324,14 +324,14 @@ namespace LudoClassicOffline
 
             RectTransform placeholderRect = CreateUiObject("Placeholder", inputRect).AddComponent<RectTransform>();
             StretchRect(placeholderRect, new Vector2(14f, 6f), new Vector2(-14f, -6f));
-            Text placeholder = CreateLegacyText(placeholderRect, "Type a message...", 22, FontStyle.Italic);
+            Text placeholder = CreateLegacyText(placeholderRect, "Type a message...", 28, FontStyle.Italic);
             placeholder.color = new Color32(100, 115, 122, 255);
             placeholder.alignment = TextAnchor.MiddleLeft;
             StretchRect(placeholder.rectTransform, Vector2.zero, Vector2.zero);
 
             RectTransform textRect = CreateUiObject("Text", inputRect).AddComponent<RectTransform>();
             StretchRect(textRect, new Vector2(14f, 6f), new Vector2(-14f, -6f));
-            Text inputText = CreateLegacyText(textRect, string.Empty, 22, FontStyle.Normal);
+            Text inputText = CreateLegacyText(textRect, string.Empty, 28, FontStyle.Normal);
             inputText.color = new Color32(232, 228, 222, 255); // WA message text
             inputText.alignment = TextAnchor.MiddleLeft;
             StretchRect(inputText.rectTransform, Vector2.zero, Vector2.zero);

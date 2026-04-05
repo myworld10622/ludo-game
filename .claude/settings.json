@@ -28,7 +28,14 @@
       "Bash(uipro init:*)",
       "Bash(grep -l \"AuthManager\\\\|LoginRegister\\\\|loginpanel\\\\|SceneLoader\" \"d:/Live-Code/games/unity/Assets/_Project/Core/Scripts/Managers/\"*.cs)",
       "Bash(grep -v \"Debug\\\\|Log\\\\|//\")",
-      "Bash(find \"d:/Live-Code/games/unity/Assets/_Project\" -name \"*.cs\" -type f -exec grep -l \"History\\\\|history\" {} \\\\;)"
+      "Bash(find \"d:/Live-Code/games/unity/Assets/_Project\" -name \"*.cs\" -type f -exec grep -l \"History\\\\|history\" {} \\\\;)",
+      "Bash(python3 -c ':*)",
+      "Bash(grep \"\\\\.meta$\")",
+      "Bash(python3 -c \" import os for root, dirs, files in os.walk\\('d:/Live-Code/games/unity/Assets'\\): for f in files: if f.endswith\\('.meta'\\): path = os.path.join\\(root, f\\) try: with open\\(path, 'r'\\) as mf: content = mf.read\\(\\) if '6cbced407dcc9a04ba5834ab1b6d05b4' in content: print\\(path\\) except: pass \")",
+      "Bash(grep \"guid:\" echo \"---\")",
+      "Bash(xargs -I{} sh -c 'cat \"{}.meta\" 2>/dev/null | grep \"guid:\" | sed \"s/.*guid: //;s/ .*//\" | xargs -I{} echo \"{} {} \"')",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(xargs -I{} basename {})"
     ]
   },
   "hooks": {

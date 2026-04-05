@@ -141,9 +141,10 @@ public class LevelWiseReferHistory : MonoBehaviour
 
             yield return request.SendWebRequest();
 
-            if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError)
+            if (request.result == UnityWebRequest.Result.ConnectionError || request.result == UnityWebRequest.Result.ProtocolError || request.responseCode == 404)
             {
-                Debug.LogError("Error: " + request.error);
+                Debug.LogWarning("LevelWiseRefer: " + request.responseCode + " " + request.error + " — skipping.");
+                yield break;
             }
             else
             {

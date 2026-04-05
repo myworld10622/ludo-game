@@ -326,7 +326,7 @@ public class CPV_Socket_Manager : MonoBehaviour
         if (SceneManager.GetActiveScene().name == "ColorVerticle")
         {
             Debug.Log("RES_Check + Portrait");
-            Screen.orientation = ScreenOrientation.Portrait;
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
         }
         else
         {
@@ -337,7 +337,7 @@ public class CPV_Socket_Manager : MonoBehaviour
         if (SceneManager.GetActiveScene().name == "ColorVerticle")
         {
             Debug.Log("RES_Check + Portrait");
-            Screen.orientation = ScreenOrientation.Portrait;
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
         }
         else
         {

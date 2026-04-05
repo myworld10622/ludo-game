@@ -17,6 +17,7 @@ namespace LudoClassicOffline
         private static LudoFriendPanelController instance;
         private const string HomeFriendIconAssetPath = "Assets/_Project/Core/UI/HomePage/Icons/friends-icon.png";
         private const string HomePopupBackgroundAssetPath = "Assets/_Project/Core/UI/Common/Popups/home-notification-banner-bg.png";
+        private const string BoxSpriteAssetPath = "Assets/_Project/Core/UI/HomePage/Icons/Box.png";
         private enum FriendUiMode
         {
             Hidden,
@@ -177,20 +178,20 @@ namespace LudoClassicOffline
             rootPanel.anchorMin = new Vector2(0.5f, 0.5f);
             rootPanel.anchorMax = new Vector2(0.5f, 0.5f);
             rootPanel.pivot = new Vector2(0.5f, 0.5f);
-            rootPanel.sizeDelta = new Vector2(980f, 680f);
+            rootPanel.sizeDelta = new Vector2(1200f, 820f);
             rootPanel.anchoredPosition = new Vector2(0f, 10f);
             Image panelImage = panelObject.AddComponent<Image>();
-            panelImage.color = new Color32(255, 255, 255, 255);
-            Sprite panelBackgroundSprite = ResolvePopupBackgroundSprite("home-notification-banner-bg");
+            panelImage.color = new Color32(33, 23, 25, 245);
+            Sprite panelBackgroundSprite = ResolveBoxSprite();
+            if (panelBackgroundSprite == null)
+            {
+                panelBackgroundSprite = ResolvePopupBackgroundSprite("home-notification-banner-bg");
+            }
             if (panelBackgroundSprite != null)
             {
                 panelImage.sprite = panelBackgroundSprite;
                 panelImage.type = Image.Type.Simple;
                 panelImage.preserveAspect = false;
-            }
-            else
-            {
-                panelImage.color = new Color32(33, 23, 25, 245);
             }
 
             VerticalLayoutGroup panelLayout = panelObject.AddComponent<VerticalLayoutGroup>();
@@ -202,32 +203,42 @@ namespace LudoClassicOffline
             panelLayout.childForceExpandWidth = true;
 
             RectTransform headerRow = CreateUiObject("HeaderRow", rootPanel).AddComponent<RectTransform>();
-            headerRow.sizeDelta = new Vector2(0f, 64f);
-            HorizontalLayoutGroup headerLayout = headerRow.gameObject.AddComponent<HorizontalLayoutGroup>();
-            headerLayout.spacing = 12f;
-            headerLayout.childControlHeight = true;
-            headerLayout.childControlWidth = true;
-            headerLayout.childForceExpandHeight = false;
-            headerLayout.childForceExpandWidth = false;
+            headerRow.sizeDelta = new Vector2(0f, 88f);
+            // No layout group — children use absolute anchoring within this fixed-height row
 
-            TextMeshProUGUI title = CreateTmpLabel(headerRow, "Friend Requests", 30, FontStyles.Bold);
-            title.alignment = TextAlignmentOptions.Left;
-            title.color = new Color32(255, 240, 204, 255);
-            LayoutElement titleLayout = title.gameObject.AddComponent<LayoutElement>();
-            titleLayout.flexibleWidth = 1f;
+            // Centered title badge — matches Referral History popup header style
+            GameObject titleBadge = CreateUiObject("TitleBadge", headerRow);
+            RectTransform titleBadgeRect = titleBadge.AddComponent<RectTransform>();
+            titleBadgeRect.anchorMin = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.anchorMax = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.pivot = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.sizeDelta = new Vector2(380f, 64f);
+            titleBadgeRect.anchoredPosition = Vector2.zero;
+            Image titleBadgeImage = titleBadge.AddComponent<Image>();
+            titleBadgeImage.color = new Color32(130, 80, 10, 230);
+            Outline titleBadgeOutline = titleBadge.AddComponent<Outline>();
+            titleBadgeOutline.effectColor = new Color32(255, 200, 80, 200);
+            titleBadgeOutline.effectDistance = new Vector2(2f, -2f);
+            TextMeshProUGUI title = CreateTmpLabel(titleBadgeRect, "Friends", 34, FontStyles.Bold);
+            title.alignment = TextAlignmentOptions.Center;
+            title.color = new Color32(255, 240, 180, 255);
+            StretchRect(title.rectTransform, new Vector2(8f, 4f), new Vector2(-8f, -4f));
 
-            Button closePanelButton = CreateActionButton(headerRow, "X", new Color32(88, 33, 36, 224));
-            LayoutElement closeLayout = closePanelButton.gameObject.AddComponent<LayoutElement>();
-            closeLayout.minWidth = 74f;
-            closeLayout.preferredWidth = 74f;
-            closeLayout.preferredHeight = 54f;
+            // X close button — anchored top-right corner (red circle like Referral History popup)
+            Button closePanelButton = CreateActionButton(headerRow, "X", new Color32(180, 30, 40, 235));
+            RectTransform closeRect = closePanelButton.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1f, 1f);
+            closeRect.anchorMax = new Vector2(1f, 1f);
+            closeRect.pivot = new Vector2(1f, 1f);
+            closeRect.sizeDelta = new Vector2(64f, 64f);
+            closeRect.anchoredPosition = new Vector2(-6f, -6f);
             closePanelButton.onClick.AddListener(() => SetPanelOpen(false));
 
-            TextMeshProUGUI subtitle = CreateTmpLabel(rootPanel, "Search by user ID, username, email, or mobile and manage incoming requests.", 18, FontStyles.Normal);
+            TextMeshProUGUI subtitle = CreateTmpLabel(rootPanel, "Search by user ID, username, email, or mobile and manage incoming requests.", 24, FontStyles.Normal);
             subtitle.color = new Color32(255, 232, 196, 255);
 
             RectTransform inputRow = CreateUiObject("InputRow", rootPanel).AddComponent<RectTransform>();
-            inputRow.sizeDelta = new Vector2(0f, 72f);
+            inputRow.sizeDelta = new Vector2(0f, 88f);
             HorizontalLayoutGroup inputLayout = inputRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             inputLayout.spacing = 10f;
             inputLayout.childControlHeight = true;
@@ -248,11 +259,11 @@ namespace LudoClassicOffline
             RectTransform textArea = CreateUiObject("TextArea", inputRect).AddComponent<RectTransform>();
             StretchRect(textArea, new Vector2(12f, 8f), new Vector2(-12f, -8f));
 
-            TextMeshProUGUI placeholder = CreateTmpLabel(textArea, "Enter ID, username, email, or mobile", 19, FontStyles.Italic);
+            TextMeshProUGUI placeholder = CreateTmpLabel(textArea, "Enter ID, username, email, or mobile", 24, FontStyles.Italic);
             placeholder.color = new Color32(120, 94, 83, 255);
             StretchRect(placeholder.rectTransform, Vector2.zero, Vector2.zero);
 
-            TextMeshProUGUI inputText = CreateTmpLabel(textArea, string.Empty, 20, FontStyles.Normal);
+            TextMeshProUGUI inputText = CreateTmpLabel(textArea, string.Empty, 24, FontStyles.Normal);
             inputText.color = new Color32(53, 34, 33, 255);
             StretchRect(inputText.rectTransform, Vector2.zero, Vector2.zero);
 
@@ -278,9 +289,9 @@ namespace LudoClassicOffline
             resultLayout.childForceExpandHeight = false;
             resultLayout.childForceExpandWidth = true;
 
-            resultTitleText = CreateTmpLabel(resultCard, "Player search ready", 22, FontStyles.Bold);
+            resultTitleText = CreateTmpLabel(resultCard, "Player search ready", 26, FontStyles.Bold);
             resultTitleText.color = new Color32(255, 241, 214, 255);
-            resultSubtitleText = CreateTmpLabel(resultCard, "Find a player and send a friend request.", 17, FontStyles.Normal);
+            resultSubtitleText = CreateTmpLabel(resultCard, "Find a player and send a friend request.", 22, FontStyles.Normal);
             resultSubtitleText.color = new Color32(255, 223, 196, 255);
 
             addByIdButton = CreateActionButton(rootPanel, "SEND REQUEST", new Color32(54, 126, 72, 235));
@@ -322,7 +333,7 @@ namespace LudoClassicOffline
             requestsHeaderLayout.childForceExpandHeight = true;
             requestsHeaderLayout.childForceExpandWidth = false;
 
-            listSectionTitleText = CreateTmpLabel(requestsHeader, "Incoming Requests", 21, FontStyles.Bold);
+            listSectionTitleText = CreateTmpLabel(requestsHeader, "Incoming Requests", 26, FontStyles.Bold);
             listSectionTitleText.color = new Color32(255, 240, 204, 255);
             LayoutElement requestsTitleLayout = listSectionTitleText.gameObject.AddComponent<LayoutElement>();
             requestsTitleLayout.flexibleWidth = 1f;
@@ -336,7 +347,7 @@ namespace LudoClassicOffline
 
             RectTransform requestsScrollRoot = CreateUiObject("RequestsScrollRoot", rootPanel).AddComponent<RectTransform>();
             LayoutElement requestsScrollLayout = requestsScrollRoot.gameObject.AddComponent<LayoutElement>();
-            requestsScrollLayout.preferredHeight = 290f;
+            requestsScrollLayout.preferredHeight = 380f;
             Image requestsScrollImage = requestsScrollRoot.gameObject.AddComponent<Image>();
             requestsScrollImage.color = new Color32(59, 18, 25, 150);
             Mask requestsMask = requestsScrollRoot.gameObject.AddComponent<Mask>();
@@ -367,7 +378,7 @@ namespace LudoClassicOffline
             requestsScrollRect.viewport = requestsScrollRoot;
             requestsScrollRect.content = requestsContent;
 
-            requestsStateText = CreateTmpLabel(requestsContent, "Loading requests...", 17, FontStyles.Italic);
+            requestsStateText = CreateTmpLabel(requestsContent, "Loading requests...", 22, FontStyles.Italic);
             requestsStateText.color = new Color32(255, 226, 194, 255);
 
             BuildRoomPopup(rootCanvas.transform);
@@ -738,12 +749,13 @@ namespace LudoClassicOffline
             toggleRect.pivot = new Vector2(0.5f, 0.5f);
             toggleRect.anchoredPosition = new Vector2(localPoint.x + 4f, localPoint.y + 10f);
 
+            // Keep panel centered (same as Referral History popup — fixed center of screen)
             if (rootPanel != null)
             {
-                rootPanel.anchorMin = new Vector2(1f, 0f);
-                rootPanel.anchorMax = new Vector2(1f, 0f);
-                rootPanel.pivot = new Vector2(1f, 0f);
-                rootPanel.anchoredPosition = new Vector2(-86f, 180f);
+                rootPanel.anchorMin = new Vector2(0.5f, 0.5f);
+                rootPanel.anchorMax = new Vector2(0.5f, 0.5f);
+                rootPanel.pivot = new Vector2(0.5f, 0.5f);
+                rootPanel.anchoredPosition = new Vector2(0f, 10f);
             }
         }
 
@@ -1388,6 +1400,28 @@ namespace LudoClassicOffline
                 if (string.Equals(transform.name, objectName, StringComparison.OrdinalIgnoreCase))
                 {
                     return transform;
+                }
+            }
+
+            return null;
+        }
+
+        private Sprite ResolveBoxSprite()
+        {
+#if UNITY_EDITOR
+            Sprite editorSprite = AssetDatabase.LoadAssetAtPath<Sprite>(BoxSpriteAssetPath);
+            if (editorSprite != null)
+            {
+                return editorSprite;
+            }
+#endif
+            Sprite[] loadedSprites = Resources.FindObjectsOfTypeAll<Sprite>();
+            for (int i = 0; i < loadedSprites.Length; i++)
+            {
+                Sprite sprite = loadedSprites[i];
+                if (sprite != null && string.Equals(sprite.name, "Box", StringComparison.OrdinalIgnoreCase))
+                {
+                    return sprite;
                 }
             }
 

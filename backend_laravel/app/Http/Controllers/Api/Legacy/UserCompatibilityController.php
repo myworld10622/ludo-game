@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\LegacyOtp;
 use App\Models\User;
+use App\Models\UserSocialAccount;
 use App\Models\Wallet;
+use App\Services\Auth\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -193,6 +196,58 @@ class UserCompatibilityController extends Controller
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json($this->loginPayload($user, $token, 'Login successful.'));
+    }
+
+    public function socialLogin(Request $request, AuthService $authService): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'provider' => ['required', 'string', 'in:google,facebook,instagram'],
+            'provider_user_id' => ['required', 'string', 'max:191'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'name' => ['nullable', 'string', 'max:255'],
+            'avatar_url' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => $validator->errors()->first() ?: 'Invalid social login payload.',
+                'user_data' => [],
+                'user_kyc' => [],
+                'user_bank_details' => [],
+                'avatar' => [],
+                'setting' => $this->settingsPayload(),
+                'notification_image' => '',
+                'app_banner' => [],
+                'code' => 404,
+            ]);
+        }
+
+        try {
+            $result = $authService->socialLogin([
+                'provider' => $request->input('provider'),
+                'provider_user_id' => $request->input('provider_user_id'),
+                'email' => $request->input('email'),
+                'name' => $request->input('name'),
+                'avatar_url' => $request->input('avatar_url'),
+                'device_name' => 'mobile-social-login',
+            ]);
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'user_data' => [],
+                'user_kyc' => [],
+                'user_bank_details' => [],
+                'avatar' => [],
+                'setting' => $this->settingsPayload(),
+                'notification_image' => '',
+                'app_banner' => [],
+                'code' => 404,
+            ]);
+        }
+
+        return response()->json(
+            $this->loginPayload($result['user'], $result['token'], 'Social login successful.')
+        );
     }
 
     public function profile(Request $request): JsonResponse

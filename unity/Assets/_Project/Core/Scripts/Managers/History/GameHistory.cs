@@ -29,22 +29,13 @@ public class GameHistory : MonoBehaviour
 
     private void Start()
     {
-        Transform abButton = m_allChild.Find(button => button.gameObject.name == "andar_bahar");
-        if (abButton != null)
-        {
-            ClickButton(abButton);
-        }
-        m_allChild.ForEach(x => x.GetComponent<Button>().onClick.AddListener(() => ClickButton(x)));
-        // PostGetPointRummy(Configuration.AviatorMyHistory);
-        PostGetABPlus(Configuration.AndarBaharPlusHistory);
+        // Hide game-selection panel — show only Ludo history
+        if (m_Gameselection != null)
+            m_Gameselection.gameObject.SetActive(false);
 
-#if UNITY_WEBGL
-        m_allChild
-            .Find(x => x.gameObject.name == "color_prediction_vertical")
-            .gameObject.SetActive(false);
-#endif
-        ////PostGetHNT(Configuration.HeadAndTileGameHistory);
-        ///
+        GameTitle.text = "History";
+        NodataPenal.SetActive(true);
+        PostGetLudoStatement(Configuration.Url + Configuration.Statement);
     }
 
     void OnEnable()
@@ -1544,6 +1535,47 @@ public class GameHistory : MonoBehaviour
         var deserializedResponse = JsonUtility.FromJson(jsonResponse, type);
 
         return deserializedResponse;
+    }
+
+    #endregion
+
+    #region Ludo History
+
+    public async Task PostGetLudoStatement(string url)
+    {
+        GameTitle.text = "History";
+        var formData = new Dictionary<string, string>
+        {
+            { "user_id", Configuration.GetId() },
+            { "token", Configuration.GetToken() },
+        };
+
+        StatementOutputs output = await APIManager.Instance.Post<StatementOutputs>(url, formData);
+
+        if (myhistoryobjects.Count > 0)
+        {
+            for (int i = 0; i < myhistoryobjects.Count; i++)
+                Destroy(myhistoryobjects[i]);
+            myhistoryobjects.Clear();
+        }
+
+        if (output != null && output.code == 200 && output.statement != null && output.statement.Count > 0)
+        {
+            NodataPenal.SetActive(false);
+            for (int i = 0; i < output.statement.Count; i++)
+            {
+                GameObject go = Instantiate(Prefab, parent.transform);
+                go.transform.GetChild(1).GetComponent<Text>().text = (i + 1).ToString();
+                go.transform.GetChild(2).GetComponent<Text>().text = output.statement[i].amount;
+                go.transform.GetChild(3).GetComponent<Text>().text = output.statement[i].admin_commission;
+                go.transform.GetChild(4).GetComponent<Text>().text = FormatDateTime(output.statement[i].added_date);
+                myhistoryobjects.Add(go);
+            }
+        }
+        else
+        {
+            NodataPenal.SetActive(true);
+        }
     }
 
     #endregion

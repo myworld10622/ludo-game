@@ -30,7 +30,7 @@ namespace LudoClassicOffline
                 instace = this;
 
             Input.multiTouchEnabled = false;
-            Screen.orientation = ScreenOrientation.Portrait;
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
         }
 
         public void Signup() =>
