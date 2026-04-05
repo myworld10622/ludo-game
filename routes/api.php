@@ -45,6 +45,7 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/send_otp', [UserCompatibilityController::class, 'sendOtp']);
         Route::post('/register', [UserCompatibilityController::class, 'register']);
         Route::post('/login', [UserCompatibilityController::class, 'login']);
+        Route::post('/social_login', [UserCompatibilityController::class, 'socialLogin']);
         Route::post('/profile', [UserCompatibilityController::class, 'profile']);
         Route::post('/wallet', [UserCompatibilityController::class, 'wallet']);
         Route::post('/randomBoatUsers', [UserCompatibilityController::class, 'randomBoatUsers']);
@@ -76,6 +77,7 @@ Route::prefix($version)
             Route::post('/register', [AuthController::class, 'register']);
             Route::post('/signup', [AuthController::class, 'register']);
             Route::post('/login', [AuthController::class, 'login']);
+            Route::post('/social-login', [AuthController::class, 'socialLogin']);
             Route::post('/logout', [AuthController::class, 'logout'])->middleware('api.auth');
         });
 

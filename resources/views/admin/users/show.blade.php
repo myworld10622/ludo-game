@@ -50,6 +50,111 @@
     <div class="panel">
         <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;">
             <div>
+                <div style="font-size:18px;font-weight:700;">Edit User Details</div>
+                <div class="muted" style="margin-top:4px;">Update core account fields, profile details, and account status from one place.</div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ route('admin.users.update', $user) }}" class="stack">
+            @csrf
+            @method('PUT')
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+                <div>
+                    <label>User Code</label>
+                    <input type="text" name="user_code" value="{{ old('user_code', $user->user_code) }}" maxlength="8">
+                </div>
+                <div>
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ old('username', $user->username) }}">
+                </div>
+                <div>
+                    <label>Email</label>
+                    <input type="email" name="email" value="{{ old('email', $user->email) }}">
+                </div>
+                <div>
+                    <label>Mobile</label>
+                    <input type="text" name="mobile" value="{{ old('mobile', $user->mobile) }}">
+                </div>
+                <div>
+                    <label>Referral Code</label>
+                    <input type="text" name="referral_code" value="{{ old('referral_code', $user->referral_code) }}">
+                </div>
+                <div>
+                    <label>Language</label>
+                    <input type="text" name="language" value="{{ old('language', $user->profile?->language) }}">
+                </div>
+                <div>
+                    <label>First Name</label>
+                    <input type="text" name="first_name" value="{{ old('first_name', $user->profile?->first_name) }}">
+                </div>
+                <div>
+                    <label>Last Name</label>
+                    <input type="text" name="last_name" value="{{ old('last_name', $user->profile?->last_name) }}">
+                </div>
+                <div>
+                    <label>Date of Birth</label>
+                    <input type="date" name="date_of_birth" value="{{ old('date_of_birth', $user->profile?->date_of_birth?->format('Y-m-d')) }}">
+                </div>
+                <div>
+                    <label>Gender</label>
+                    <select name="gender">
+                        @php($genderValue = old('gender', $user->profile?->gender))
+                        <option value="">Select gender</option>
+                        <option value="male" {{ $genderValue === 'male' ? 'selected' : '' }}>Male</option>
+                        <option value="female" {{ $genderValue === 'female' ? 'selected' : '' }}>Female</option>
+                        <option value="other" {{ $genderValue === 'other' ? 'selected' : '' }}>Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Country Code</label>
+                    <input type="text" name="country_code" value="{{ old('country_code', $user->profile?->country_code) }}">
+                </div>
+                <div>
+                    <label>State</label>
+                    <input type="text" name="state" value="{{ old('state', $user->profile?->state) }}">
+                </div>
+                <div>
+                    <label>City</label>
+                    <input type="text" name="city" value="{{ old('city', $user->profile?->city) }}">
+                </div>
+                <div style="grid-column:span 2;">
+                    <label>Avatar URL</label>
+                    <input type="url" name="avatar_url" value="{{ old('avatar_url', $user->profile?->avatar_url) }}">
+                </div>
+            </div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;">
+                <div>
+                    <label>New Password</label>
+                    <input type="password" name="password" placeholder="Leave blank to keep current password">
+                </div>
+                <div>
+                    <label>Confirm New Password</label>
+                    <input type="password" name="password_confirmation" placeholder="Repeat new password">
+                </div>
+            </div>
+
+            <div style="display:flex;gap:18px;flex-wrap:wrap;">
+                <label style="display:flex;align-items:center;gap:10px;margin:0;">
+                    <input type="checkbox" name="is_active" value="1" {{ old('is_active', $user->is_active) ? 'checked' : '' }} style="width:auto;">
+                    <span>Active Account</span>
+                </label>
+                <label style="display:flex;align-items:center;gap:10px;margin:0;">
+                    <input type="checkbox" name="is_banned" value="1" {{ old('is_banned', $user->is_banned) ? 'checked' : '' }} style="width:auto;">
+                    <span>Banned</span>
+                </label>
+            </div>
+
+            <div>
+                <button type="submit" class="btn">Save User Details</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="panel">
+        <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap;margin-bottom:14px;">
+            <div>
                 <div style="font-size:18px;font-weight:700;">User Panel Permission Matrix</div>
                 <div class="muted" style="margin-top:4px;">Enable or hide modules for this specific user panel.</div>
             </div>
