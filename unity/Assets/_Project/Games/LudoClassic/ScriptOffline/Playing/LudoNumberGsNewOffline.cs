@@ -1670,7 +1670,7 @@ namespace LudoClassicOffline
                                     );
                                     ludoNumberPlayerControl[i]
                                         .ludoNumbersUserData.playerCoockie.ForEach(
-                                            (coockie) => coockie.transform.localScale = new Vector3(1.15f, 1.15f, 1f)
+                                            (coockie) => coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
                                         );
                                 }
                             }
@@ -1717,7 +1717,7 @@ namespace LudoClassicOffline
                                     );
                                     ludoNumberPlayerControl[i]
                                         .ludoNumbersUserData.playerCoockieForClassicMode.ForEach(
-                                            (coockie) => coockie.transform.localScale = new Vector3(1.15f, 1.15f, 1f)
+                                            (coockie) => coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
                                         );
                                 }
                             }
@@ -1924,7 +1924,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockieForClassicMode[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -1998,7 +1998,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetComponent<Image>()
@@ -2156,7 +2156,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockieForClassicMode[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -2230,7 +2230,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetComponent<Image>()
@@ -3305,7 +3305,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         ludoNumbersAcknowledgementHandler
                                             .ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
@@ -3325,7 +3325,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.15f, 1.15f, 1f);
+                                            .localScale = new Vector3(1.28f, 1.28f, 1f);
                                     }
                                 }
                             }
@@ -3500,7 +3500,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.25f, 1.25f, 1f);
+                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
                                         Debug.Log(
                                             "Cukii name User turn after Scale = > "
                                                 + ludoNumbersAcknowledgementHandler
@@ -3537,7 +3537,7 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData
                                             .playerCoockie[j]
                                             .transform
-                                            .localScale = new Vector3(1.15f, 1.15f, 1f);
+                                            .localScale = new Vector3(1.28f, 1.28f, 1f);
                                     }
                                 }
                             }
@@ -3821,7 +3821,7 @@ namespace LudoClassicOffline
                                     .ludoNumberPlayerControl[i]
                                     .ludoNumbersUserData.playerCoockie.ForEach(
                                         (coockie) =>
-                                            coockie.transform.localScale = new Vector3(1.15f, 1.15f, 1f)
+                                            coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
                                     );
                             }
                         }

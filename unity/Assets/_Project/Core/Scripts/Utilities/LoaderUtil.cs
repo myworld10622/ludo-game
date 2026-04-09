@@ -17,6 +17,8 @@ public class LoaderUtil : MonoBehaviour
     void Awake()
     {
         Application.runInBackground = true;
+        Application.targetFrameRate = 60;
+        QualitySettings.vSyncCount = 0;
 
         if (instance == null)
         {

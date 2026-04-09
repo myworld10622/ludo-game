@@ -52,8 +52,9 @@ namespace LudoClassicOffline
         public int seatIndex;
         public bool isSafeMode;
 
-        private const float TapCooldown = 0.12f;
-        private const float MinTapTargetSize = 96f;
+        private const float TapCooldown = 0.08f;
+        private const float MinTapTargetSize = 128f;
+        private const float TapTargetPaddingMultiplier = 1.35f;
 
         private RectTransform _rectTransform;
         private Image _tokenImage;
@@ -265,8 +266,8 @@ namespace LudoClassicOffline
             proxyRect.pivot = new Vector2(0.5f, 0.5f);
             proxyRect.anchoredPosition = Vector2.zero;
             proxyRect.sizeDelta = new Vector2(
-                Mathf.Max(_rectTransform.rect.width, MinTapTargetSize),
-                Mathf.Max(_rectTransform.rect.height, MinTapTargetSize)
+                Mathf.Max(_rectTransform.rect.width * TapTargetPaddingMultiplier, MinTapTargetSize),
+                Mathf.Max(_rectTransform.rect.height * TapTargetPaddingMultiplier, MinTapTargetSize)
             );
             proxyRect.localScale = Vector3.one;
 

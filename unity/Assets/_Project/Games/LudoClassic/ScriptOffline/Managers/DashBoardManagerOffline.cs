@@ -549,15 +549,192 @@ public class DashBoardManagerOffline : MonoBehaviour
         }
 
         public string fileName = "newTextFile.txt";
+        private const string ProfileInitialLabelName = "ProfileInitialLabel";
+        private static Sprite cachedNeutralProfileAvatarSprite;
+
+        private static readonly Color NeutralAvatarFillColor = new Color32(0x2F, 0x3A, 0x4A, 0xFF);
+        private static readonly Color NeutralAvatarRingColor = new Color32(0xF2, 0xC9, 0x4C, 0xFF);
+
+        private Sprite GetNeutralProfileAvatarSprite()
+        {
+            if (cachedNeutralProfileAvatarSprite != null)
+            {
+                return cachedNeutralProfileAvatarSprite;
+            }
+
+            const int textureSize = 128;
+            const float outerRadius = 61f;
+            const float innerRadius = 53f;
+
+            Texture2D texture = new Texture2D(textureSize, textureSize, TextureFormat.ARGB32, false);
+            texture.name = "NeutralProfileAvatar";
+            texture.filterMode = FilterMode.Bilinear;
+            texture.wrapMode = TextureWrapMode.Clamp;
+
+            Vector2 center = new Vector2((textureSize - 1) * 0.5f, (textureSize - 1) * 0.5f);
+            Color clear = new Color(0f, 0f, 0f, 0f);
+
+            for (int y = 0; y < textureSize; y++)
+            {
+                for (int x = 0; x < textureSize; x++)
+                {
+                    float distance = Vector2.Distance(new Vector2(x, y), center);
+                    Color pixelColor = clear;
+
+                    if (distance <= outerRadius)
+                    {
+                        pixelColor = distance >= innerRadius ? NeutralAvatarRingColor : NeutralAvatarFillColor;
+                    }
+
+                    texture.SetPixel(x, y, pixelColor);
+                }
+            }
+
+            texture.Apply(false, false);
+
+            cachedNeutralProfileAvatarSprite = Sprite.Create(
+                texture,
+                new Rect(0, 0, texture.width, texture.height),
+                new Vector2(0.5f, 0.5f),
+                100f
+            );
+            cachedNeutralProfileAvatarSprite.name = "NeutralProfileAvatarSprite";
+            return cachedNeutralProfileAvatarSprite;
+        }
+
+        private string ResolveProfileDisplayName()
+        {
+            if (userName != null && !string.IsNullOrWhiteSpace(userName.text))
+            {
+                return userName.text.Trim();
+            }
+
+            if (userInfoName != null && !string.IsNullOrWhiteSpace(userInfoName.text))
+            {
+                return userInfoName.text.Trim();
+            }
+
+            if (!string.IsNullOrWhiteSpace(playerUserNameStore))
+            {
+                return playerUserNameStore.Trim();
+            }
+
+            string savedUserName = PlayerPrefs.GetString("userName", string.Empty);
+            if (!string.IsNullOrWhiteSpace(savedUserName))
+            {
+                return savedUserName.Trim();
+            }
+
+            return "Player";
+        }
+
+        private string ResolveProfileInitial(string displayName)
+        {
+            if (!string.IsNullOrWhiteSpace(displayName))
+            {
+                for (int i = 0; i < displayName.Length; i++)
+                {
+                    char currentChar = displayName[i];
+                    if (char.IsLetterOrDigit(currentChar))
+                    {
+                        return currentChar.ToString().ToUpperInvariant();
+                    }
+                }
+            }
+
+            return "P";
+        }
+
+        private TextMeshProUGUI EnsureProfileInitialLabel(Image targetImage)
+        {
+            if (targetImage == null)
+            {
+                return null;
+            }
+
+            Transform existingLabelTransform = targetImage.transform.Find(ProfileInitialLabelName);
+            TextMeshProUGUI label =
+                existingLabelTransform != null
+                    ? existingLabelTransform.GetComponent<TextMeshProUGUI>()
+                    : null;
+
+            if (label != null)
+            {
+                return label;
+            }
+
+            GameObject labelObject = new GameObject(ProfileInitialLabelName, typeof(RectTransform));
+            RectTransform labelRect = labelObject.GetComponent<RectTransform>();
+            labelRect.SetParent(targetImage.transform, false);
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+
+            label = labelObject.AddComponent<TextMeshProUGUI>();
+            label.raycastTarget = false;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 18f;
+            label.fontSizeMax = 64f;
+            label.fontSize = 48f;
+            label.color = Color.white;
+            label.fontStyle = FontStyles.Bold;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+
+            if (TMP_Settings.defaultFontAsset != null)
+            {
+                label.font = TMP_Settings.defaultFontAsset;
+            }
+
+            return label;
+        }
+
+        private void ApplyInitialAvatarToImage(Image targetImage, string initial)
+        {
+            if (targetImage == null)
+            {
+                return;
+            }
+
+            targetImage.sprite = GetNeutralProfileAvatarSprite();
+            targetImage.color = Color.white;
+            targetImage.preserveAspect = true;
+
+            TextMeshProUGUI label = EnsureProfileInitialLabel(targetImage);
+            if (label != null)
+            {
+                label.text = initial;
+            }
+        }
+
+        private void ApplyProfileAvatar(string displayName)
+        {
+            string initial = ResolveProfileInitial(displayName);
+            Sprite neutralAvatar = GetNeutralProfileAvatarSprite();
+
+            ApplyInitialAvatarToImage(playerProfile, initial);
+            ApplyInitialAvatarToImage(playerInfoProfile, initial);
+            ApplyInitialAvatarToImage(gamePlayProfile, initial);
+            ApplyInitialAvatarToImage(player2WinProfile, initial);
+            ApplyInitialAvatarToImage(player4WinProfile, initial);
+
+            if (SpriteManager.Instance != null)
+            {
+                SpriteManager.Instance.profile_image = neutralAvatar;
+            }
+        }
 
         public void UpdateProfilePic(int no)
         {
             try
             {
-                for (int i = 0; i < avatar.players.Count; i++)
+                if (avatar != null && avatar.players != null)
                 {
-                    if (no == i)
-                        avatar.players[i].isActive = true;
+                    for (int i = 0; i < avatar.players.Count; i++)
+                    {
+                        avatar.players[i].isActive = (no == i);
+                    }
                 }
 
                 string Json = JsonUtility.ToJson(avatar, true);
@@ -572,14 +749,7 @@ public class DashBoardManagerOffline : MonoBehaviour
 
 
                 //Debug.Log("Text file created at: " + filePath);
-
-
-
-                playerProfile.sprite = SpriteManager.Instance.profile_image;
-                playerInfoProfile.sprite = SpriteManager.Instance.profile_image;
-                gamePlayProfile.sprite = SpriteManager.Instance.profile_image;
-                player2WinProfile.sprite = SpriteManager.Instance.profile_image;
-                player4WinProfile.sprite = SpriteManager.Instance.profile_image;
+                ApplyProfileAvatar(ResolveProfileDisplayName());
 
                 PlayerPrefs.SetInt("avtarNo", no);
             }
@@ -604,6 +774,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             userName.text = name;
             userInfoName.text = name;
+            playerUserNameStore = name;
+            ApplyProfileAvatar(ResolveProfileDisplayName());
         }
 
         public void UpdateChips(float chips)
