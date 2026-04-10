@@ -1,22 +1,20 @@
 <footer class="footer">
     <div class="footer_main">
         <div class="top">
-            <?= PROJECT_NAME ?> - The Most Popular Indian Cards Games, play <?= PROJECT_NAME ?> online win real rupees
-            with Millions of Players
-            around the world in real-time!
+            <?= t('footer_top') ?>
         </div>
         <div class="footer_item">
-            <a href="<?= base_url() ?>">Home</a>
-            <a href="<?= base_url('download') ?>">Download</a>
-            <a href="<?= base_url('faq') ?>">FAQ</a>
-            <a href="<?= base_url('about-us') ?>">About Us</a>
-            <a href="<?= base_url('privacy-policy') ?>">Privacy Policy</a>
-            <a href="<?= base_url('terms-conditions') ?>">Terms & Conditions</a>
-            <a href="<?= base_url('refund-policy') ?>">Refund Policy</a>
-            <a href="<?= base_url('security') ?>">Security</a>
-            <a href="<?= base_url('contact-us') ?>">Contact us</a>
+            <a href="<?= base_url() ?>"><?= t('nav_home') ?></a>
+            <a href="<?= base_url('download') ?>"><?= t('nav_download') ?></a>
+            <a href="<?= base_url('faq') ?>"><?= t('nav_faq') ?></a>
+            <a href="<?= base_url('about-us') ?>"><?= t('nav_about') ?></a>
+            <a href="<?= base_url('privacy-policy') ?>"><?= t('nav_privacy') ?></a>
+            <a href="<?= base_url('terms-conditions') ?>"><?= t('nav_terms') ?></a>
+            <a href="<?= base_url('refund-policy') ?>"><?= t('nav_refund') ?></a>
+            <a href="<?= base_url('security') ?>"><?= t('nav_security') ?></a>
+            <a href="<?= base_url('contact-us') ?>"><?= t('nav_contact') ?></a>
         </div>
-        <div class="copy"> © <?= date('Y') ?> <?= PROJECT_NAME ?> All rights reserved</div>
+        <div class="copy"> © <?= date('Y') ?> <?= PROJECT_NAME ?> <?= t('footer_copy') ?></div>
     </div>
 
     <div class="share-right">
@@ -75,10 +73,8 @@
     </div>
     <div class="other-share">
         <div class="other-share-main">
-            <div class="title"><?= PROJECT_NAME ?></div>
-            <div class="subtitle">Download and play <?= PROJECT_NAME ?> to win real money rupees in cash. Classic Indian
-                Cards Games
-                for all player.</div>
+            <div class="title"><?= t('share_title') ?></div>
+            <div class="subtitle"><?= t('share_subtitle') ?></div>
             <div class="list">
                 <a class="social_share" data-type="fb">
                     <i class="share-fb"></i>

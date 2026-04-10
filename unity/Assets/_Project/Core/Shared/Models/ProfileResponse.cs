@@ -324,6 +324,8 @@ public class newSignUpOutputs
     public string message;
     public string user_id;
     public string token;
+    public string username;
+    public string login_id;
     public int code;
 }
 

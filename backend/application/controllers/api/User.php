@@ -209,7 +209,8 @@ class User extends REST_Controller
     public function register_post()
     {
         // if($this->Users_model->OTPConfirm($this->data['otp_id'], $this->data['otp'], $this->data['mobile']) || $this->data['otp']==$this->Setting_model->Setting()->default_otp)
-        if ($this->Users_model->OTPConfirm($this->data['otp_id'], $this->data['otp'], $this->data['mobile']) || $this->data['otp'] == DEFAULT_OTP) {
+        $skip_otp = $this->input->post('skip_otp');
+        if ($skip_otp == '1' || $this->Users_model->OTPConfirm($this->data['otp_id'], $this->data['otp'], $this->data['mobile']) || $this->data['otp'] == DEFAULT_OTP) {
             $token = md5(uniqid(rand(), true));
             $user = $this->Users_model->UserProfileByMobile($this->data['mobile']);
 
@@ -270,11 +271,27 @@ class User extends REST_Controller
 
                 $gender = (strtolower(trim($this->input->post('gender'))) == 'female') ? 'f' : 'm';
                 $setting = $this->Users_model->Setting();
-                $user_id = $this->Users_model->RegisterUser($this->data['mobile'], $this->data['name'], $profile_pic, $gender, $token, $this->input->post('password'), $setting->bonus_amount, $this->input->post('app'), $this->input->post('email'), $setting->level_1);
+                $generated_username = $this->Users_model->GenerateUsernameFromMobile($this->data['mobile']);
+                $user_id = $this->Users_model->RegisterUser($this->data['mobile'], $generated_username, $profile_pic, $gender, $token, $this->input->post('password'), $setting->bonus_amount, $this->input->post('app'), $this->input->post('email'), $setting->level_1);
                 $this->Users_model->UpdateReferralCode($user_id, $setting->referral_id);
                 if (!empty($referral_user)) {
                     $this->Users_model->UpdateRefferId($referral_user[0]->id, $user_id);
                     // Optional: Referral bonus logic
+                }
+
+                $email = $this->input->post('email');
+                if (!empty($email)) {
+                    $email_data = [
+                        'project_name' => PROJECT_NAME,
+                        'user_id' => $user_id,
+                        'username' => $generated_username,
+                        'email' => $email,
+                        'mobile' => $this->data['mobile'],
+                        'password' => $this->input->post('password'),
+                        'login_url' => 'https://roxludo.com/login',
+                        'app_url' => 'https://roxludo.com',
+                    ];
+                    send_email($email, PROJECT_NAME . ' - Welcome', 'welcome_register', $email_data);
                 }
 
                 // Step 7: Demo email handling
@@ -310,6 +327,8 @@ class User extends REST_Controller
                 $this->response([
                     'message' => 'Success',
                     'user_id' => $user_id,
+                    'username' => $generated_username,
+                    'login_id' => $generated_username,
                     'token' => $token,
                     'code' => HTTP_OK
                 ], HTTP_OK);

@@ -1,8 +1,8 @@
  <div class="container-main">
      <div class="banner banner_small">
          <div class="text">
-             <h1>Contact us</h1>
-             <p>Contact <?= PROJECT_NAME ?> Team for more help</p>
+             <h1><?= t('nav_contact') ?></h1>
+             <p><?= t('contact_page_subtitle') ?></p>
          </div>
      </div>
      <div class="container" style="width: auto">
@@ -13,10 +13,10 @@
                  </div>
                  <div class="text">
                      <p><?= PROJECT_NAME ?></p>
-                     <p>Install and Play <?= PROJECT_NAME ?> to win real rupees in cash!</p>
+                     <p><?= t('common_cta') ?></p>
                  </div>
                  <div class="down">
-                     <a href="<?= base_url('game.apk') ?>" download>Download APK</a>
+                     <a href="<?= base_url('game.apk') ?>" download><?= t('download_apk') ?></a>
                  </div>
              </div>
          </div>
@@ -47,8 +47,8 @@
          </div> -->
          <div class="right_box">
              <div class="box">
-                 <h3>Contact Us</h3>
-                 <?= $Setting->contact_us ?>
+                 <h3><?= t('nav_contact') ?></h3>
+                 <?= localize_content($Setting->contact_us) ?>
              </div>
          </div>
          <div class="clear"></div>

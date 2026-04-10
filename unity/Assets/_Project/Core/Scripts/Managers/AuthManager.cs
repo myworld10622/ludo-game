@@ -29,6 +29,7 @@ namespace AndroApps
         private GameObject authErrorPopup;
         private Text authErrorTitleText;
         private Text authErrorMessageText;
+        private Action onAuthPopupClosed;
 
         [Header("LogIn Fields")]
         public newLogInDetails LogInDetail;
@@ -494,6 +495,57 @@ namespace AndroApps
             if (authErrorPopup != null)
             {
                 authErrorPopup.SetActive(false);
+            }
+
+            if (onAuthPopupClosed != null)
+            {
+                var callback = onAuthPopupClosed;
+                onAuthPopupClosed = null;
+                callback.Invoke();
+            }
+        }
+
+        private bool ShowSignupDetailsPopup(
+            string identifierLabel,
+            string identifierValue,
+            string userId,
+            string username,
+            string password,
+            Action onClose
+        )
+        {
+            if (!EnsureAuthErrorPopup())
+                return false;
+
+            string safeIdentifier = string.IsNullOrWhiteSpace(identifierValue) ? "-" : identifierValue;
+            string safeUserId = string.IsNullOrWhiteSpace(userId) ? "-" : userId;
+            string safeUsername = string.IsNullOrWhiteSpace(username) ? "-" : username;
+            string safePassword = string.IsNullOrWhiteSpace(password) ? "-" : password;
+
+            authErrorTitleText.text = "Account Created";
+            authErrorMessageText.text =
+                $"{identifierLabel}: {safeIdentifier}\n" +
+                $"ID: {safeUserId}\n" +
+                $"Username: {safeUsername}\n" +
+                $"Password: {safePassword}\n\n" +
+                "You can login with email/mobile, username, or ID.";
+
+            onAuthPopupClosed = onClose;
+            authErrorPopup.transform.SetAsLastSibling();
+            authErrorPopup.SetActive(true);
+            return true;
+        }
+
+        private void LoadHomeAfterSignup()
+        {
+            if (SceneLoader.Instance != null)
+            {
+                SceneLoader.Instance.LoadScene("HomePage");
+            }
+            else
+            {
+                Debug.LogWarning("SceneLoader.Instance is null after signup. Falling back to SceneManager.LoadScene.");
+                SceneManager.LoadScene("HomePage");
             }
         }
 
@@ -985,7 +1037,7 @@ namespace AndroApps
                 // Auto-generate name from mobile number (Name field is hidden)
                 Name = "User" + mobileText.Substring(mobileText.Length - 4);
 
-                PostUserSendOtp(Mobile, "register");
+                PostDirectSignup(Name, Mobile, Password, Referral, Application.productName);
             }
         }
 
@@ -1039,18 +1091,28 @@ namespace AndroApps
                 PlayerPrefs.SetString("id", v1Response.data.user.user_code);
                 PlayerPrefs.SetString("token", v1Response.data.token);
                 PlayerPrefs.SetString("MyEmail", email);
+                if (!string.IsNullOrWhiteSpace(v1Response.data.user.username))
+                    PlayerPrefs.SetString("username", v1Response.data.user.username);
                 PlayerPrefs.Save();
 
                 SignUpDetail?.Clear();
                 if (SignUpDetail?.SignUpPnl  != null) SignUpDetail.SignUpPnl.SetActive(false);
                 if (LogInDetail?.LogInPnl    != null) LogInDetail.LogInPnl.SetActive(false);
 
-                showtoastmessage("Registered Successfully");
+                bool popupShown = ShowSignupDetailsPopup(
+                    "Email",
+                    email,
+                    v1Response.data.user.user_code,
+                    v1Response.data.user.username,
+                    password,
+                    LoadHomeAfterSignup
+                );
 
-                if (SceneLoader.Instance != null)
-                    SceneLoader.Instance.LoadScene("HomePage");
-                else
-                    UnityEngine.SceneManagement.SceneManager.LoadScene("HomePage");
+                if (!popupShown)
+                {
+                    showtoastmessage("Registered Successfully");
+                    LoadHomeAfterSignup();
+                }
             }
             else
             {
@@ -1060,6 +1122,13 @@ namespace AndroApps
 
         public async void PostUserSendOtp(string mobile, string type)
         {
+            if (type == "register")
+            {
+                // OTP flow disabled for mobile signup — directly create account
+                PostDirectSignup(Name, mobile, Password, Referral, Application.productName);
+                return;
+            }
+
             string Url = Configuration.Url + Configuration.Usersendotp;
             var formData = new Dictionary<string, string>
             {
@@ -1147,44 +1216,100 @@ namespace AndroApps
             SignUpOutput = await APIManager.Instance.Post<newSignUpOutputs>(Url, formData);
             if (SignUpOutput.code == 200)
             {
-                PlayerPrefs.SetString("id", SignUpOutput.user_id);
-                PlayerPrefs.SetString("token", SignUpOutput.token);
-                PlayerPrefs.Save();
-
-                if (SignUpDetail != null)
-                {
-                    SignUpDetail.MobileInputfield.text =
-                        SignUpDetail.PasswordInputfield.text =
-                        SignUpDetail.NameInputfield.text = "";
-
-                    if (SignUpDetail.SignUpPnl != null)
-                        SignUpDetail.SignUpPnl.SetActive(false);
-
-                    if (SignUpDetail.OtpPanel != null)
-                        SignUpDetail.OtpPanel.SetActive(false);
-                }
-
-                if (LogInDetail != null && LogInDetail.LogInPnl != null)
-                {
-                    LogInDetail.LogInPnl.SetActive(false);
-                }
-
-                CommonUtil.CheckLog("RES_Check + Register");
-                showtoastmessage("Registered Successfully");
-
-                if (SceneLoader.Instance != null)
-                {
-                    SceneLoader.Instance.LoadScene("HomePage");
-                }
-                else
-                {
-                    Debug.LogWarning("SceneLoader.Instance is null after signup. Falling back to SceneManager.LoadScene.");
-                    SceneManager.LoadScene("HomePage");
-                }
+                HandleMobileSignupSuccess(mobile, Password, SignUpOutput, true);
             }
             else
             {
                 ShowAuthErrorMessage(NormalizeAuthMessage(SignUpOutput.message, "Sign up failed. Please try again."), "Sign Up Error");
+            }
+        }
+
+        private async void PostDirectSignup(
+            string Name,
+            string mobile,
+            string Password,
+            string Referrel,
+            string app
+        )
+        {
+            string Url = Configuration.Url + Configuration.Signup;
+
+            var formData = new Dictionary<string, string>
+            {
+                { "name", Name },
+                { "mobile", mobile },
+                { "password", Password },
+                { "type", "register" },
+                { "otp_id", "0" },
+                { "otp", Configuration.DefaultOtp },
+                { "skip_otp", "1" },
+                { "gender", "m" },
+                { "app", app },
+                { "referral_code", Referrel },
+            };
+
+            SignUpOutput = new newSignUpOutputs();
+            SignUpOutput = await APIManager.Instance.Post<newSignUpOutputs>(Url, formData);
+
+            if (SignUpOutput.code == 200)
+            {
+                HandleMobileSignupSuccess(mobile, Password, SignUpOutput, false);
+            }
+            else
+            {
+                ShowAuthErrorMessage(NormalizeAuthMessage(SignUpOutput.message, "Sign up failed. Please try again."), "Sign Up Error");
+            }
+        }
+
+        private void HandleMobileSignupSuccess(
+            string mobile,
+            string password,
+            newSignUpOutputs output,
+            bool usedOtpFlow
+        )
+        {
+            PlayerPrefs.SetString("id", output.user_id);
+            PlayerPrefs.SetString("token", output.token);
+            if (!string.IsNullOrWhiteSpace(output.username))
+                PlayerPrefs.SetString("username", output.username);
+            PlayerPrefs.Save();
+
+            if (SignUpDetail != null)
+            {
+                SignUpDetail.MobileInputfield.text =
+                    SignUpDetail.PasswordInputfield.text =
+                    SignUpDetail.NameInputfield.text = "";
+
+                if (SignUpDetail.SignUpPnl != null)
+                    SignUpDetail.SignUpPnl.SetActive(false);
+
+                if (usedOtpFlow && SignUpDetail.OtpPanel != null)
+                    SignUpDetail.OtpPanel.SetActive(false);
+            }
+
+            if (LogInDetail != null && LogInDetail.LogInPnl != null)
+            {
+                LogInDetail.LogInPnl.SetActive(false);
+            }
+
+            CommonUtil.CheckLog("RES_Check + Register");
+            string loginId = !string.IsNullOrWhiteSpace(output.login_id)
+                ? output.login_id
+                : output.user_id;
+
+            bool popupShown = ShowSignupDetailsPopup(
+                "Mobile",
+                mobile,
+                loginId,
+                output.username,
+                password,
+                LoadHomeAfterSignup
+            );
+
+            if (!popupShown)
+            {
+                showtoastmessage("Registered Successfully");
+                LoadHomeAfterSignup();
             }
         }
 

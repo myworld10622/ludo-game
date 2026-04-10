@@ -13,7 +13,7 @@ class Auth extends CI_Controller
 
     public function login()
     {
-        $data['title'] = 'Sign In';
+        $data['title'] = t('login_button');
         $data['Setting'] = $this->Setting_model->Setting();
         $this->load->view('login', $data);
     }
@@ -24,7 +24,7 @@ class Auth extends CI_Controller
             redirect('backend/dashboard');
         }
         // <editor-fold defaultstate="collapsed" desc="login ">
-        $data['title'] = 'Sign In';
+        $data['title'] = t('login_button');
         $data['Setting'] = $this->Setting_model->Setting();
         if ($this->form_validation->run('login') === false) {
             $this->load->view('login', $data);

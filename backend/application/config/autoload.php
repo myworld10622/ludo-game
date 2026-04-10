@@ -90,7 +90,7 @@ $autoload['drivers'] = array();
 |
 |	$autoload['helper'] = array('url', 'file');
 */
-$autoload['helper'] = array('url','html','phpmailer','servertoken','template');
+$autoload['helper'] = array('url','html','phpmailer','servertoken','template','localization');
 
 /*
 | -------------------------------------------------------------------

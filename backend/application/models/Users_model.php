@@ -617,14 +617,45 @@ class Users_model extends MY_Model
         $this->db->update('tbl_users');
     }
 
-    public function LoginUser($MobileNo, $Password)
+    public function LoginUser($identity, $Password)
     {
-        $this->db->where('mobile', $MobileNo);
+        $this->db->group_start();
+        $this->db->where('mobile', $identity);
+        $this->db->or_where('email', $identity);
+        $this->db->or_where('name', $identity);
+        $this->db->or_where('id', $identity);
+        $this->db->group_end();
         $this->db->where('password', $Password);
         $this->db->where('isDeleted', false);
         $user = $this->db->get('tbl_users');
 
         return $user->result();
+    }
+
+    public function GenerateUsernameFromMobile($mobile)
+    {
+        $digits = preg_replace('/\D+/', '', (string) $mobile);
+        $suffix = substr($digits, -5);
+
+        if ($suffix === '' || strlen($suffix) < 5) {
+            $suffix = str_pad($suffix, 5, '0', STR_PAD_LEFT);
+        }
+
+        $base = 'rox' . $suffix;
+        $candidate = $base;
+        $attempts = 0;
+
+        while ($this->db->where('name', $candidate)->get('tbl_users')->row()) {
+            $attempts++;
+            $candidate = $base . random_int(10, 99);
+
+            if ($attempts > 10) {
+                $candidate = $base . random_int(100, 999);
+                break;
+            }
+        }
+
+        return $candidate;
     }
 
     public function UserProfile($id)

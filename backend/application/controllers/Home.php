@@ -21,7 +21,7 @@ class Home extends CI_Controller
          }
 
         $data = [
-            'title' => 'Home',
+            'title' => t('nav_home'),
             'banner' => $this->Banner_model->view(),
             'Setting' => $this->Setting_model->Setting(),
         ];
@@ -39,7 +39,7 @@ class Home extends CI_Controller
     public function download()
     {
         $data = [
-            'title' => 'Downlaod',
+            'title' => t('nav_download'),
             'banner' => $this->Banner_model->view(),
             'Setting' => $this->Setting_model->Setting(),
         ];
@@ -49,7 +49,7 @@ class Home extends CI_Controller
     public function faq()
     {
         $data = [
-            'title' => 'FAQ',
+            'title' => t('nav_faq'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/faq', $data);
@@ -58,7 +58,7 @@ class Home extends CI_Controller
     public function about_us()
     {
         $data = [
-            'title' => 'About Us',
+            'title' => t('nav_about'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/about-us', $data);
@@ -67,7 +67,7 @@ class Home extends CI_Controller
     public function refund_policy()
     {
         $data = [
-            'title' => 'Refund Policy',
+            'title' => t('nav_refund'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/refund-policy', $data);
@@ -76,7 +76,7 @@ class Home extends CI_Controller
     public function privacy_policy()
     {
         $data = [
-            'title' => 'Privacy Policy',
+            'title' => t('nav_privacy'),
             'Setting' => $this->Setting_model->Setting(),
         ];
 
@@ -86,7 +86,7 @@ class Home extends CI_Controller
     public function terms_conditions()
     {
         $data = [
-            'title' => 'Terms & Conditions',
+            'title' => t('nav_terms'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/t-and-c', $data);
@@ -95,7 +95,7 @@ class Home extends CI_Controller
     public function security()
     {
         $data = [
-            'title' => 'Security',
+            'title' => t('nav_security'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/security', $data);
@@ -104,7 +104,7 @@ class Home extends CI_Controller
     public function contact_us()
     {
         $data = [
-            'title' => 'Contact us',
+            'title' => t('nav_contact'),
             'Setting' => $this->Setting_model->Setting(),
         ];
         website('website/Contact', $data);
@@ -113,7 +113,7 @@ class Home extends CI_Controller
     public function download2()
     {
         $data = [
-            'title' => 'Download',
+            'title' => t('nav_download'),
             'banner' => $this->Banner_model->view(),
             'Setting' => $this->Setting_model->Setting(),
         ];

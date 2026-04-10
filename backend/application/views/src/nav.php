@@ -24,10 +24,24 @@ $role = $this->session->userdata("role");
              <ul class="navbar-right list-inline float-right mb-0">
                  <li class="dropdown notification-list list-inline-item d-none d-md-inline-block"><a
                          class="nav-link waves-effect" href="#" id="btn-fullscreen"><b><?php if($role == 1) {
-                            echo "SUB ADMIN";
+                            echo t('role_subadmin');
                          } else if($role == 2) {
-                            echo "AGENT";
+                            echo t('role_agent');
                          } ?></b></a></li>
+                 <li class="dropdown notification-list list-inline-item d-none d-md-inline-block">
+                     <div class="d-flex align-items-center" style="gap:8px;padding-top:15px;">
+                         <select class="form-control form-control-sm" style="min-width:120px;" onchange="if (this.value) { window.location.href = this.value; }" aria-label="<?= t('toggle_language') ?>">
+                             <?php foreach (supported_languages() as $code => $label) { ?>
+                                 <option value="<?= language_switch_url($code) ?>" <?= current_language() === $code ? 'selected' : '' ?>><?= $label ?></option>
+                             <?php } ?>
+                         </select>
+                         <select class="form-control form-control-sm" style="min-width:90px;" onchange="if (this.value) { window.location.href = this.value; }" aria-label="<?= t('toggle_currency') ?>">
+                             <?php foreach (supported_currencies() as $code => $details) { ?>
+                                 <option value="<?= currency_switch_url($code) ?>" <?= current_currency() === $code ? 'selected' : '' ?>><?= $details['label'] ?></option>
+                             <?php } ?>
+                         </select>
+                     </div>
+                 </li>
                  <!-- full screen -->
                  <!-- Full Screen -->
                  <li class="dropdown notification-list list-inline-item d-none d-md-inline-block">
@@ -60,10 +74,10 @@ $role = $this->session->userdata("role");
                          </a>
                          <div class="dropdown-menu dropdown-menu-right profile-dropdown">
                              <a class="dropdown-item" href="<?= base_url('backend/Profile/add'); ?>"><i
-                                     class="mdi mdi-account-circle m-r-5"></i> Profile</a>
+                                     class="mdi mdi-account-circle m-r-5"></i> <?= t('top_profile') ?></a>
                              <div class="dropdown-divider"></div>
                              <a class="dropdown-item text-danger" href="<?= base_url('backend/auth/logout')?>"><i
-                                     class="mdi mdi-power text-danger"></i> Logout</a>
+                                     class="mdi mdi-power text-danger"></i> <?= t('top_logout') ?></a>
                          </div>
                      </div>
                  </li>

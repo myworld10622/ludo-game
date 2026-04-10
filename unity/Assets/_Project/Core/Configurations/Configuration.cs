@@ -98,6 +98,7 @@ public class Configuration : MonoBehaviour
 
     public const string Signup = "User/register";
     public const string LogIn = "User/login";
+    public const string DefaultOtp = "9999";
     public const string profile = "User/profile";
 
     // Social OAuth — opens browser; backend handles token callback via deep-link or web

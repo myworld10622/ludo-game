@@ -55,6 +55,8 @@ $route['translate_uri_dashes'] = true;
 $route['backend'] = 'backend/Auth';
 
 $route['index'] = 'home';
+$route['preferences/language/(:any)'] = 'preferences/set_language/$1';
+$route['preferences/currency/(:any)'] = 'preferences/set_currency/$1';
 $route['download'] = 'home/download';
 $route['download2'] = 'home/download2';
 $route['faq'] = 'home/faq';

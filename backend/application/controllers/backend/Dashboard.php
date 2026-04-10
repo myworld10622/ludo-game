@@ -20,19 +20,19 @@ class Dashboard extends MY_Controller
 
         if ($role == "2") {
             $data = [
-                'title' => 'Agent Dashboard',
+                'title' => t('agent_dashboard'),
                 'ActiveUser' => $this->AgentUser_model->AllAgentUserList($adminId),
                 'AdminCoins' => $this->Agent_model->getAgentBalance($adminId),
             ];
         } else if ($role == DISTRIBUTOR) {
             $data = [
-                'title' => 'Dashboard',
+                'title' => t('admin_dashboard'),
                 'AllAgent' => $this->Agent_model->AllAgentList(),
                 'AdminCoins' => $this->Agent_model->getDistributprBalance($adminId),
             ];
         } else {
             $data = [
-                'title' => 'Dashboard',
+                'title' => t('admin_dashboard'),
                 'AdminCoins' => $this->Setting_model->Setting()->admin_coin,
                 'JackpotCoins' => $this->Setting_model->Setting()->jackpot_coin,
                 'JackpotStatus' => $this->Setting_model->Setting()->jackpot_status,

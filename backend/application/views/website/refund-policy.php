@@ -1,8 +1,8 @@
     <div class="container-main">
         <div class="banner banner_small">
             <div class="text">
-                <h1>Refund Policy</h1>
-                <p>Contact <?= PROJECT_NAME ?> Team for more help</p>
+                <h1><?= t('nav_refund') ?></h1>
+                <p><?= t('refund_page_subtitle') ?></p>
             </div>
         </div>
         <div class="container" style="width: auto">
@@ -13,17 +13,17 @@
                     </div>
                     <div class="text">
                         <p><?= PROJECT_NAME ?></p>
-                        <p>Install and Play <?= PROJECT_NAME ?> to win real rupees in cash!</p>
+                        <p><?= t('common_cta') ?></p>
                     </div>
                     <div class="down">
-                        <a href="<?= base_url('game.apk') ?>" download>Download APK</a>
+                        <a href="<?= base_url('game.apk') ?>" download><?= t('download_apk') ?></a>
                     </div>
                 </div>
             </div>
             <div class="right_box">
                 <div class="box">
-                    <h3>Refund Policy</h3>
-                    <?= $Setting->refund_policy ?>
+                    <h3><?= t('nav_refund') ?></h3>
+                    <?= localize_content($Setting->refund_policy) ?>
                 </div>
             </div>
             <div class="clear"></div>

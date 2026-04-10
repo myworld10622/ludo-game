@@ -16,10 +16,10 @@
 if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
     ?>
     <div class="col-md-12">
-        <h4 style="color:green; text-align:center">In case of more clarification/support, please connect on this number
+        <h4 style="color:green; text-align:center"><?= t('support_note') ?>
             <br>Mob/Whatsapp-
             <?= ($this->session->id != 1) ? '<span style="color:red">' . $this->session->mobile_text . ' <br>or <br>' . $this->session->email_text . '<br></span>' : CONTACT_DETAILS ?>
-            Otherwise, we will not be responsible for the fraud.<br>
+            <br>
         </h4>
     </div>
     <?php
@@ -35,7 +35,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                     <div class="mb-4">
                         <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/coin.png") ?>"
                                 alt=""></div>
-                        <h5 class="font-14 text-uppercase mt-0 text-white-50"> Total My Coins</h5>
+                        <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_my_coins') ?></h5>
                         <h4 class="font-500"><?= number_format($AdminCoins) ?></h4>
                     </div>
                 </div>
@@ -48,7 +48,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                     <div class="mb-4">
                         <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/artisan.png") ?>"
                                 alt=""></div>
-                        <h5 class="font-14 text-uppercase mt-0 text-white-50">Active User</h5>
+                        <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('active_user') ?></h5>
                         <h4 class="font-500"><?= number_format(count($ActiveUser)) ?></h4>
                     </div>
                 </div>
@@ -61,7 +61,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                         <div class="mb-4">
                             <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/coin.png") ?>"
                                     alt=""></div>
-                            <h5 class="font-14 text-uppercase mt-0 text-white-50"> Total My Coins</h5>
+                            <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_my_coins') ?></h5>
                             <h4 class="font-500"><?= number_format($AdminCoins) ?></h4>
                         </div>
                     </div>
@@ -74,7 +74,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                         <div class="mb-4">
                             <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/artisan.png") ?>"
                                     alt=""></div>
-                            <h5 class="font-14 text-uppercase mt-0 text-white-50">Active Agent</h5>
+                            <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('active_agent') ?></h5>
                             <h4 class="font-500"><?= number_format(count($AllAgent)) ?></h4>
                         </div>
                     </div>
@@ -92,9 +92,9 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                 </div>
                                 <h5 class="font-14 text-uppercase mt-0 text-white-50"
                                     style="font-size: 1rem; margin: 0; line-height: 1.2;">
-                                    Admin Wallet</h5>
+                                    <?= t('admin_wallet') ?></h5>
                                 <h4 class="font-500" style="font-size: 1.5rem; margin: 5px 0;">
-                            <?= number_format($AdminCoins) ?>
+                            <?= format_money($AdminCoins) ?>
                                 </h4>
                             </div>
                         </a>
@@ -102,11 +102,11 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                         <div class="d-flex justify-content-center" style="gap: 5px; padding: 10px 0;">
                             <button class="btn btn-danger btn-sm btn-rounded shadow-sm mr-4"
                                 style="font-size: 0.8rem; padding: 4px 10px;" data-toggle="modal" data-target="#deductModal">
-                                <i class="fa fa-minus"></i> Deduct
+                                <i class="fa fa-minus"></i> <?= t('deduct') ?>
                             </button>
                             <button class="btn btn-success btn-sm btn-rounded shadow-sm"
                                 style="font-size: 0.8rem; padding: 4px 10px;" data-toggle="modal" data-target="#addModal">
-                                <i class="fa fa-plus"></i> Add
+                                <i class="fa fa-plus"></i> <?= t('add') ?>
                             </button>
                         </div>
                     </div>
@@ -118,21 +118,21 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-success text-white">
-                                <h5 class="modal-title" id="addModalTitle">Add to Admin Wallet</h5>
+                                <h5 class="modal-title" id="addModalTitle"><?= t('add_admin_wallet') ?></h5>
                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
-                                <p>Enter the amount to add to the admin wallet:</p>
+                                <p><?= t('enter_amount_add') ?></p>
                                 <div class="form-group">
-                                    <label for="addAmount">Amount</label>
-                                    <input type="number" class="form-control" id="addAmount" placeholder="Enter amount">
+                                    <label for="addAmount"><?= t('amount') ?></label>
+                                    <input type="number" class="form-control" id="addAmount" placeholder="<?= t('amount') ?>">
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-success" onclick="submitAdd()">Submit</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= t('cancel') ?></button>
+                                <button type="button" class="btn btn-success" onclick="submitAdd()"><?= t('submit') ?></button>
                             </div>
                         </div>
                     </div>
@@ -143,21 +143,21 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                     <div class="modal-dialog" role="document">
                         <div class="modal-content">
                             <div class="modal-header bg-danger text-white">
-                                <h5 class="modal-title" id="deductModalTitle">Deduct from Admin Wallet</h5>
+                                <h5 class="modal-title" id="deductModalTitle"><?= t('deduct_admin_wallet') ?></h5>
                                 <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                                     <span aria-hidden="true">&times;</span>
                                 </button>
                             </div>
                             <div class="modal-body">
-                                <p>Enter the amount to deduct from the admin wallet:</p>
+                                <p><?= t('enter_amount_deduct') ?></p>
                                 <div class="form-group">
-                                    <label for="deductAmount">Amount</label>
-                                    <input type="number" class="form-control" id="deductAmount" placeholder="Enter amount">
+                                    <label for="deductAmount"><?= t('amount') ?></label>
+                                    <input type="number" class="form-control" id="deductAmount" placeholder="<?= t('amount') ?>">
                                 </div>
                             </div>
                             <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                <button type="button" class="btn btn-danger" onclick="submitDeduct()">Submit</button>
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal"><?= t('cancel') ?></button>
+                                <button type="button" class="btn btn-danger" onclick="submitDeduct()"><?= t('submit') ?></button>
                             </div>
                         </div>
                     </div>
@@ -170,7 +170,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                             <div class="mb-4">
                                 <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/artisan.png") ?>"
                                         alt=""></div>
-                                <h5 class="font-14 text-uppercase mt-0 text-white-50">Active User</h5>
+                                <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('active_user') ?></h5>
                                 <h4 class="font-500"><?= number_format(count($ActiveUser)) ?></h4>
                             </div>
                         </div>
@@ -183,7 +183,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                 <div class="mb-4">
                                     <div class="float-left mini-stat-img mr-4"><img
                                             src="<?= base_url("assets/images/customer.png") ?>" alt=""></div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Total User</h5>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_user') ?></h5>
                                     <h4 class="font-500"><?= number_format(count($AllUserList)) ?></h4>
                                 </div>
                             </div>
@@ -199,12 +199,12 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url("assets/images/money-bag.png") ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Total Deposit</h5>
-                                    <h4 class="font-500"><?= number_format((float) $TotalCoins) ?></h4>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_deposit') ?></h5>
+                                    <h4 class="font-500"><?= format_money((float) $TotalCoins) ?></h4>
 
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Today Deposit :
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('today_deposit') ?> :
                                         <span class="font-500 text-white" style="font-size: 1.5rem;">
-                                    <?= number_format((float) $TodayCoins) ?></span>
+                                    <?= format_money((float) $TodayCoins) ?></span>
                                     </h5>
 
                                 </div>
@@ -220,8 +220,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url("assets/images/money-bag.png") ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Pending Deposit</h5>
-                                    <h7 class="font-500"><?= $formatted = preg_replace('/\B(?=(\d{3})+(?!\d))/u', ',', (string) ($PendingCoins ?? 0235424)); ?></h7>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('pending_deposit') ?></h5>
+                                    <h7 class="font-500"><?= format_money((float) ($PendingCoins ?? 0)) ?></h7>
                                 </div>
                             </div>
                         </div>
@@ -235,8 +235,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url("assets/images/money-bag.png") ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Rejected Deposit</h5>
-                                    <h4 class="font-500"><?= number_format((float) $RejectedCoins) ?></h4>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('rejected_deposit') ?></h5>
+                                    <h4 class="font-500"><?= format_money((float) $RejectedCoins) ?></h4>
 
                                 </div>
                             </div>
@@ -252,12 +252,12 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url('assets/images/money-bag.png') ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Total Withdraw</h5>
-                                    <h4 class="font-500"><?= number_format((float) $TotalWithdraw) ?></h4>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_withdraw') ?></h5>
+                                    <h4 class="font-500"><?= format_money((float) $TotalWithdraw) ?></h4>
 
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Today Withdraw :
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('today_withdraw') ?> :
                                         <span class="font-500 text-white" style="font-size: 1.5rem;">
-                                    <?= number_format((float) $TodayWithdraw) ?>
+                                    <?= format_money((float) $TodayWithdraw) ?>
                                         </span>
                                     </h5>
                                 </div>
@@ -273,8 +273,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url('assets/images/money-bag.png') ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Pending Withdraw</h5>
-                                    <h4 class="font-500"><?= number_format((float) $PendingWithdraw) ?></h4>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('pending_withdraw') ?></h5>
+                                    <h4 class="font-500"><?= format_money((float) $PendingWithdraw) ?></h4>
 
                                 </div>
                             </div>
@@ -289,8 +289,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="float-left mini-stat-img mr-4">
                                         <img src="<?= base_url('assets/images/money-bag.png') ?>" alt="">
                                     </div>
-                                    <h5 class="font-14 text-uppercase mt-0 text-white-50">Rejected Withdraw</h5>
-                                    <h4 class="font-500"><?= number_format((float) $RejectedWithdraw) ?></h4>
+                                    <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('rejected_withdraw') ?></h5>
+                                    <h4 class="font-500"><?= format_money((float) $RejectedWithdraw) ?></h4>
 
                                 </div>
                             </div>
@@ -304,8 +304,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                 <div class="float-left mini-stat-img mr-4">
                                     <img src="<?= base_url("assets/images/customer.png") ?>" alt="">
                                 </div>
-                                <h5 class="font-14 text-uppercase mt-0 text-white-50">Total Bot Balance</h5>
-                                <h4 class="font-500"><?= number_format((float) $BotBalance) ?></h4>
+                                <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('total_bot_balance') ?></h5>
+                                <h4 class="font-500"><?= format_money((float) $BotBalance) ?></h4>
                             </div>
                         </div>
                     </div>
@@ -317,7 +317,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                 <div class="float-left mini-stat-img mr-4">
                                     <img src="<?= base_url("assets/images/artisan.png") ?>" alt="">
                                 </div>
-                                <h5 class="font-14 text-uppercase mt-0 text-white-50">Today New Users</h5>
+                                <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('today_new_users') ?></h5>
                                 <h4 class="font-500"><?= number_format((int) $TodayNewUsers) ?></h4>
                             </div>
                         </div>
@@ -325,10 +325,10 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                 </div>
         <?php if (JACKPOT == true) { ?>
                     <div class="col-xl-3 col-md-6">
-                        <label>Jackpot Status</label>
+                        <label><?= t('jackpot_status') ?></label>
                         <select class="form-control" onchange="ChangeStatus(this.value)">
-                            <option value="0" <?= (($JackpotStatus == 0) ? 'selected' : '') ?>>OFF</option>
-                            <option value="1" <?= (($JackpotStatus == 1) ? 'selected' : '') ?>>ON</option>
+                            <option value="0" <?= (($JackpotStatus == 0) ? 'selected' : '') ?>><?= t('status_off') ?></option>
+                            <option value="1" <?= (($JackpotStatus == 1) ? 'selected' : '') ?>><?= t('status_on') ?></option>
                         </select><br>
                         <a href="#">
                             <div class="card bg_dasbord_box mini-stat bg-primary text-white">
@@ -336,8 +336,8 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                     <div class="mb-4">
                                         <div class="float-left mini-stat-img mr-4"><img src="<?= base_url("assets/images/coin.png") ?>"
                                                 alt=""></div>
-                                        <h5 class="font-14 text-uppercase mt-0 text-white-50">Jackpot Coin</h5>
-                                        <h4 class="font-500"><?= number_format($JackpotCoins) ?></h4>
+                                        <h5 class="font-14 text-uppercase mt-0 text-white-50"><?= t('jackpot_coin') ?></h5>
+                                        <h4 class="font-500"><?= format_money($JackpotCoins) ?></h4>
                                         <!-- <div class="mini-stat-label bg-success">
                                         <p class="mb-0">+ 12%</p>
                                     </div>  -->
@@ -368,7 +368,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                     <div class="col-xl-3 col-md-3">
                         <form id="searchUserForm">
                             <div class="text-center">
-                                <label>Search User by Mobile Number</label>
+                                <label><?= t('search_user_mobile') ?></label>
                             </div>
                             <div class="input-group">
                                 <!-- <div class="input-group-prepend">
@@ -384,13 +384,13 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                                         <i class=" fa fa-search"></i>
                                 </div>
                             </div>
-                            <small id="mobile-error" style="color: red; display: none;">Mobile number must be 10 digits.</small>
+                            <small id="mobile-error" style="color: red; display: none;"><?= t('mobile_length_error') ?></small>
                         </form>
                         <br>
                         <div class="input-group mt-2">
-                            <input type="text" class="form-control" name="user_name" id="user_name" placeholder="User Name"
+                            <input type="text" class="form-control" name="user_name" id="user_name" placeholder="<?= t('user_name') ?>"
                                 value="<?= $search_user ? $search_user->name : '' ?>">
-                            <input type="text" class="form-control" name="user_id" id="user_id" placeholder="User ID"
+                            <input type="text" class="form-control" name="user_id" id="user_id" placeholder="<?= t('user_id') ?>"
                                 value="<?= $search_user ? $search_user->id : '' ?>">
                         </div><br>
                         <div class="text-center">
@@ -440,7 +440,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
             },
             success: function (data) {
                 if (data) {
-                    alert('Successfully Change status');
+                    alert('<?= t('status_changed') ?>');
                 }
                 location.reload();
             }
@@ -456,7 +456,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
             },
             success: function (data) {
                 if (data) {
-                    alert('Successfully Change status');
+                    alert('<?= t('status_changed') ?>');
                 }
                 location.reload();
             }
@@ -472,7 +472,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
             },
             success: function (data) {
                 if (data) {
-                    alert('Successfully Change status');
+                    alert('<?= t('status_changed') ?>');
                 }
                 location.reload();
             }
@@ -485,7 +485,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
         const adminCommission = parseFloat($('#addAmount').val());
 
         if (isNaN(adminCommission) || adminCommission <= 0) {
-            alert('Please enter a valid amount greater than 0.');
+            alert('<?= t('amount_validation') ?>');
             return;
         }
 
@@ -500,7 +500,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                 location.reload(); // Page reload will display flash message
             },
             error: function () {
-                alert("Something went wrong. Please try again.");
+                alert('<?= t('generic_error') ?>');
             },
         });
     }
@@ -510,7 +510,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
         const adminCommission = parseFloat($('#deductAmount').val());
 
         if (isNaN(adminCommission) || adminCommission <= 0) {
-            alert('Please enter a valid amount greater than 0.');
+            alert('<?= t('amount_validation') ?>');
             return;
         }
 
@@ -525,7 +525,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                 location.reload(); // Page reload will display flash message
             },
             error: function () {
-                alert("Something went wrong. Please try again.");
+                alert('<?= t('generic_error') ?>');
             },
         });
     }
@@ -537,7 +537,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
             var mobile = document.getElementById('mobile').value;
 
             if (mobile === '') {
-                alert('Please enter a mobile number');
+                alert('<?= t('mobile_required') ?>');
                 return;
             }
 
@@ -565,7 +565,7 @@ if ($_ENV['ENVIRONMENT'] == 'demo' || $_ENV['ENVIRONMENT'] == 'fame') {
                             .data.id;
 
                     } else {
-                        alert('User not found');
+                        alert('<?= t('user_not_found') ?>');
                     }
                 }
             };

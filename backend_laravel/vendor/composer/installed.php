@@ -3,7 +3,7 @@
         'name' => 'games/backend-laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '98fe0b550afce5b5f46636723f0d1b5635ed9b4f',
+        'reference' => '8f6055d56a7edccded2e2a36d352bb4928a3a53b',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -115,7 +115,7 @@
         'games/backend-laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '98fe0b550afce5b5f46636723f0d1b5635ed9b4f',
+            'reference' => '8f6055d56a7edccded2e2a36d352bb4928a3a53b',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
