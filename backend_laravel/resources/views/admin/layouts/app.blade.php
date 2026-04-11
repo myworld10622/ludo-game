@@ -326,6 +326,31 @@
         <a class="nav-link {{ request()->routeIs('admin.users.*') ? 'active' : '' }}" href="{{ route('admin.users.index') }}">Users</a>
         <a class="nav-link {{ request()->routeIs('admin.support.*') ? 'active' : '' }}" href="{{ route('admin.support.index') }}">Support Tickets</a>
         <a class="nav-link {{ request()->routeIs('admin.wallet-transactions.*') ? 'active' : '' }}" href="{{ route('admin.wallet-transactions.index') }}">Wallet Transactions</a>
+        <a class="nav-link {{ request()->routeIs('admin.deposits.*') ? 'active' : '' }}" href="{{ route('admin.deposits.index') }}">Deposits</a>
+        <a class="nav-link {{ request()->routeIs('admin.deposits.bonus.*') ? 'active' : '' }}" href="{{ route('admin.deposits.bonus.index') }}" style="padding-left:24px;font-size:13px;">↳ Deposit Bonus</a>
+        <a class="nav-link {{ request()->routeIs('admin.deposits.percentage.*') ? 'active' : '' }}" href="{{ route('admin.deposits.percentage.index') }}" style="padding-left:24px;font-size:13px;">↳ Deposit Percentage</a>
+        <a class="nav-link {{ request()->routeIs('admin.withdrawals.*') ? 'active' : '' }}" href="{{ route('admin.withdrawals.index') }}">Withdrawals</a>
+        <a class="nav-link {{ request()->routeIs('admin.withdrawals.redeem.*') ? 'active' : '' }}" href="{{ route('admin.withdrawals.redeem.index') }}" style="padding-left:24px;font-size:13px;">↳ Redeem Presets</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.*') ? 'active' : '' }}" href="{{ route('admin.gateways.manual.index') }}">Payment Gateways</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.manual.*') ? 'active' : '' }}" href="{{ route('admin.gateways.manual.index') }}" style="padding-left:24px;font-size:13px;">↳ Manual Gateways</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.agent.*') ? 'active' : '' }}" href="{{ route('admin.gateways.agent.index') }}" style="padding-left:24px;font-size:13px;">↳ Agent Gateways</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.agent-withdraw.*') ? 'active' : '' }}" href="{{ route('admin.gateways.agent-withdraw.index') }}" style="padding-left:24px;font-size:13px;">↳ Agent Withdraw</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.distributor.*') ? 'active' : '' }}" href="{{ route('admin.gateways.distributor.index') }}" style="padding-left:24px;font-size:13px;">↳ Distributor Gateways</a>
+        <a class="nav-link {{ request()->routeIs('admin.gateways.distributor-withdraw.*') ? 'active' : '' }}" href="{{ route('admin.gateways.distributor-withdraw.index') }}" style="padding-left:24px;font-size:13px;">↳ Distributor Withdraw</a>
+        <a class="nav-link {{ request()->routeIs('admin.settings.*') ? 'active' : '' }}" href="{{ route('admin.settings.app') }}">Settings</a>
+        <a class="nav-link {{ request()->routeIs('admin.settings.app') ? 'active' : '' }}" href="{{ route('admin.settings.app') }}" style="padding-left:24px;font-size:13px;">↳ App Configuration</a>
+        <a class="nav-link {{ request()->routeIs('admin.agents.*') ? 'active' : '' }}" href="{{ route('admin.agents.index') }}">Agents</a>
+        <a class="nav-link {{ request()->routeIs('admin.agents.create') ? 'active' : '' }}" href="{{ route('admin.agents.create') }}" style="padding-left:24px;font-size:13px;">↳ Add Agent</a>
+        <a class="nav-link {{ request()->routeIs('admin.distributors.*') ? 'active' : '' }}" href="{{ route('admin.distributors.index') }}">Distributors</a>
+        <a class="nav-link {{ request()->routeIs('admin.distributors.create') ? 'active' : '' }}" href="{{ route('admin.distributors.create') }}" style="padding-left:24px;font-size:13px;">↳ Add Distributor</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.*') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.index') }}">Legacy Reports</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.purchase-history') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.purchase-history') }}" style="padding-left:24px;font-size:13px;">↳ Purchase History</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.deposit-bonus') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.deposit-bonus') }}" style="padding-left:24px;font-size:13px;">↳ Deposit Bonus</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.bet-commission') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.bet-commission') }}" style="padding-left:24px;font-size:13px;">↳ Bet Commission</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.rebate-history') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.rebate-history') }}" style="padding-left:24px;font-size:13px;">↳ Rebate History</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.welcome-bonus') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.welcome-bonus') }}" style="padding-left:24px;font-size:13px;">↳ Welcome Bonus</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.withdrawal-logs') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.withdrawal-logs') }}" style="padding-left:24px;font-size:13px;">↳ Withdrawal Logs</a>
+        <a class="nav-link {{ request()->routeIs('admin.legacy-reports.redeem-list') ? 'active' : '' }}" href="{{ route('admin.legacy-reports.redeem-list') }}" style="padding-left:24px;font-size:13px;">↳ Redeem List</a>
         <a class="nav-link {{ request()->routeIs('admin.audit-logs.*') ? 'active' : '' }}" href="{{ route('admin.audit-logs.index') }}">Audit Logs</a>
         <a class="nav-link {{ request()->routeIs('admin.homepage-cards.*') ? 'active' : '' }}" href="{{ route('admin.homepage-cards.index') }}">🏠 Homepage Cards</a>
     </aside>

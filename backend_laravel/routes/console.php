@@ -19,3 +19,13 @@ Schedule::command('tournaments:advance-statuses')
     ->everyMinute()
     ->withoutOverlapping()   // agar pichla run abhi chal raha ho to skip karo
     ->runInBackground();     // PHP-FPM ya queue worker block na ho
+
+// ── Legacy Bonus + Commission Scheduler ─────────────────────────────────────
+// Processes pending legacy deposits and applies referral/deposit bonuses.
+// Requires env keys:
+//   PAYMENTAPI_KEY (nowpayments) and/or PAYFORMEE_USER_TOKEN (payformee)
+//   LEGACY_INCOME_DEPOSIT_BONUS=true to enable deposit bonus rules
+Schedule::command('legacy:process-bonus-commission')
+    ->everyMinute()
+    ->withoutOverlapping()
+    ->runInBackground();

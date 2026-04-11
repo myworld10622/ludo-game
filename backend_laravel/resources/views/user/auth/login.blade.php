@@ -51,6 +51,21 @@
   .nav-back{color:var(--text-muted);text-decoration:none;font-size:14px;transition:color 0.2s;}
   .nav-back:hover{color:var(--gold);}
 
+  .lang-toggle{
+    display:inline-flex;gap:6px;padding:4px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:10px;
+  }
+  .lang-btn{
+    background:transparent;border:none;color:var(--text-muted);
+    padding:6px 10px;font-size:12px;font-weight:700;
+    letter-spacing:0.5px;border-radius:8px;cursor:pointer;
+  }
+  .lang-btn.active{
+    background:rgba(255,215,0,0.15);color:var(--gold);
+  }
+
   /* CARD */
   .login-wrap{
     position:relative;z-index:1;
@@ -148,15 +163,21 @@
 
 <nav>
   <a class="nav-brand" href="/">🎲 RoxLudo</a>
-  <a class="nav-back" href="/">← Back to Home</a>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div class="lang-toggle" role="group" aria-label="Language">
+      <button class="lang-btn active" type="button" data-lang="en">EN</button>
+      <button class="lang-btn" type="button" data-lang="hi">HI</button>
+    </div>
+    <a class="nav-back" href="/" data-i18n="login.back">← Back to Home</a>
+  </div>
 </nav>
 
 <div class="login-wrap">
   <div class="login-card">
 
     <div class="card-icon">🎲</div>
-    <div class="card-title">Player Login</div>
-    <div class="card-sub">Enter the arena — your tournaments await</div>
+    <div class="card-title" data-i18n="login.title">Player Login</div>
+    <div class="card-sub" data-i18n="login.sub">Enter the arena — your tournaments await</div>
 
     @if ($errors->any())
       <div class="error-box">
@@ -176,27 +197,84 @@
       @csrf
 
       <div class="form-group">
-        <label class="form-label">Username / Email</label>
+        <label class="form-label" data-i18n="login.identity.label">Username / Email</label>
         <input class="form-input" type="text" name="identity"
           value="{{ old('identity') }}"
           placeholder="Enter your username or email"
+          data-i18n-placeholder="login.identity.placeholder"
           autocomplete="username" required>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Password</label>
+        <label class="form-label" data-i18n="login.password.label">Password</label>
         <input class="form-input" type="password" name="password"
           placeholder="••••••••"
+          data-i18n-placeholder="login.password.placeholder"
           autocomplete="current-password" required>
       </div>
 
-      <button type="submit" class="btn-submit">🎯 Enter the Arena</button>
+      <button type="submit" class="btn-submit" data-i18n="login.submit">🎯 Enter the Arena</button>
     </form>
 
-    <div class="divider"><span>New Player?</span></div>
-    <div class="register-link">Don't have an account? <a href="#">Register Free</a></div>
+    <div class="divider"><span data-i18n="login.new">New Player?</span></div>
+    <div class="register-link" data-i18n-html="login.register">Don't have an account? <a href="#">Register Free</a></div>
 
   </div>
 </div>
+<script>
+  const LOGIN_I18N = {
+    en: {
+      'login.back': '← Back to Home',
+      'login.title': 'Player Login',
+      'login.sub': 'Enter the arena — your tournaments await',
+      'login.identity.label': 'Username / Email',
+      'login.identity.placeholder': 'Enter your username or email',
+      'login.password.label': 'Password',
+      'login.password.placeholder': '••••••••',
+      'login.submit': '🎯 Enter the Arena',
+      'login.new': 'New Player?',
+      'login.register': 'Don\'t have an account? <a href="#">Register Free</a>'
+    },
+    hi: {
+      'login.back': '← होम पर वापस',
+      'login.title': 'प्लेयर लॉगिन',
+      'login.sub': 'अरेना में कदम रखें — आपके टूर्नामेंट तैयार हैं',
+      'login.identity.label': 'यूज़रनेम / ईमेल',
+      'login.identity.placeholder': 'अपना यूज़रनेम या ईमेल डालें',
+      'login.password.label': 'पासवर्ड',
+      'login.password.placeholder': '••••••••',
+      'login.submit': '🎯 एंट्री लें',
+      'login.new': 'नए खिलाड़ी?',
+      'login.register': 'अकाउंट नहीं है? <a href="#">फ्री रजिस्टर करें</a>'
+    }
+  };
+
+  function applyLoginI18n(lang) {
+    const pack = LOGIN_I18N[lang] || LOGIN_I18N.en;
+    document.documentElement.setAttribute('lang', lang);
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (pack[key]) el.textContent = pack[key];
+    });
+    document.querySelectorAll('[data-i18n-html]').forEach(el => {
+      const key = el.getAttribute('data-i18n-html');
+      if (pack[key]) el.innerHTML = pack[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (pack[key]) el.setAttribute('placeholder', pack[key]);
+    });
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+    localStorage.setItem('roxludo_lang', lang);
+  }
+
+  const initialLang = localStorage.getItem('roxludo_lang') || 'en';
+  applyLoginI18n(initialLang);
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.addEventListener('click', () => applyLoginI18n(btn.dataset.lang));
+  });
+</script>
 </body>
 </html>
