@@ -179,27 +179,27 @@
     <div class="card-title" data-i18n="login.title">Player Login</div>
     <div class="card-sub" data-i18n="login.sub">Enter the arena — your tournaments await</div>
 
-    @if ($errors->any())
+    <?php if($errors->any()): ?>
       <div class="error-box">
         <ul>
-          @foreach ($errors->all() as $error)
-            <li>{{ $error }}</li>
-          @endforeach
+          <?php $__currentLoopData = $errors->all(); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $error): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+            <li><?php echo e($error); ?></li>
+          <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
         </ul>
       </div>
-    @endif
+    <?php endif; ?>
 
-    @if (session('error'))
-      <div class="error-box">{{ session('error') }}</div>
-    @endif
+    <?php if(session('error')): ?>
+      <div class="error-box"><?php echo e(session('error')); ?></div>
+    <?php endif; ?>
 
-    <form method="POST" action="{{ route('user.login.submit') }}">
-      @csrf
+    <form method="POST" action="<?php echo e(route('user.login.submit')); ?>">
+      <?php echo csrf_field(); ?>
 
       <div class="form-group">
         <label class="form-label" data-i18n="login.identity.label">Username / Email</label>
         <input class="form-input" type="text" name="identity"
-          value="{{ old('identity') }}"
+          value="<?php echo e(old('identity')); ?>"
           placeholder="Enter your username or email"
           data-i18n-placeholder="login.identity.placeholder"
           autocomplete="username" required>
@@ -278,3 +278,4 @@
 </script>
 </body>
 </html>
+<?php /**PATH D:\Live-Code\Live-Rox-Ludo\games\backend_laravel\resources\views/user/auth/login.blade.php ENDPATH**/ ?>

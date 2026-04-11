@@ -53,12 +53,56 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/setting', [UserCompatibilityController::class, 'setting']);
         Route::post('/forgot_password', [UserCompatibilityController::class, 'forgotPassword']);
         Route::post('/update_password', [UserCompatibilityController::class, 'updatePassword']);
+        Route::post('/update_profile', [UserCompatibilityController::class, 'updateProfile']);
+        Route::post('/update_bank_details', [UserCompatibilityController::class, 'updateBankDetails']);
+        Route::post('/update_kyc', [UserCompatibilityController::class, 'updateKyc']);
+        Route::post('/change_password', [UserCompatibilityController::class, 'changePassword']);
+        Route::post('/getStatement', [UserCompatibilityController::class, 'getStatement']);
+        Route::post('/wallet_history_all', [UserCompatibilityController::class, 'walletHistoryAll']);
+        Route::post('/wallet_history_head_tail', [UserCompatibilityController::class, 'walletHistoryHeadTail']);
+        Route::post('/wallet_history_roulette', [UserCompatibilityController::class, 'walletHistoryRoulette']);
+        Route::post('/wallet_history_color_prediction', [UserCompatibilityController::class, 'walletHistoryColorPrediction']);
+        Route::post('/wallet_history_color_prediction_1_min', [UserCompatibilityController::class, 'walletHistoryColorPrediction1Min']);
+        Route::post('/wallet_history_color_prediction_3_min', [UserCompatibilityController::class, 'walletHistoryColorPrediction3Min']);
+        Route::post('/wallet_history_color_prediction_5_min', [UserCompatibilityController::class, 'walletHistoryColorPrediction5Min']);
+        Route::post('/wallet_history', [UserCompatibilityController::class, 'walletHistoryAndarBahar']);
+        Route::post('/wallet_history_andar_bahar_plus', [UserCompatibilityController::class, 'walletHistoryAndarBaharPlus']);
+        Route::post('/wallet_history_dragon', [UserCompatibilityController::class, 'walletHistoryDragonTiger']);
+        Route::post('/wallet_history_seven_up', [UserCompatibilityController::class, 'walletHistorySevenUp']);
+        Route::post('/wallet_history_car_roulette', [UserCompatibilityController::class, 'walletHistoryCarRoulette']);
+        Route::post('/wallet_history_animal_roulette', [UserCompatibilityController::class, 'walletHistoryAnimalRoulette']);
+        Route::post('/wallet_history_baccarat', [UserCompatibilityController::class, 'walletHistoryBaccarat']);
+        Route::post('/wallet_history_jackpot', [UserCompatibilityController::class, 'walletHistoryJackpot']);
+        Route::post('/wallet_history_red_black', [UserCompatibilityController::class, 'walletHistoryRedBlack']);
+        Route::post('/wallet_history_rummy_pool', [UserCompatibilityController::class, 'walletHistoryRummyPool']);
+        Route::post('/wallet_history_rummy_deal', [UserCompatibilityController::class, 'walletHistoryRummyDeal']);
+        Route::post('/rummy_gamelog_history', [UserCompatibilityController::class, 'walletHistoryRummyPoint']);
+        Route::post('/poker_gamelog_history', [UserCompatibilityController::class, 'walletHistoryPoker']);
+        Route::post('/jhandiMunda_gamelog_history', [UserCompatibilityController::class, 'walletHistoryJhandiMunda']);
+        Route::post('/purchase_history', [UserCompatibilityController::class, 'purchaseHistory']);
+        Route::post('/getDepositeBonus', [UserCompatibilityController::class, 'getDepositBonus']);
+        Route::post('/bet_commission_log', [UserCompatibilityController::class, 'betCommissionLog']);
+        Route::post('/rebateHistory', [UserCompatibilityController::class, 'rebateHistory']);
+        Route::post('/welcome_bonus', [UserCompatibilityController::class, 'welcomeBonus']);
+        Route::post('/collect_welcome_bonus', [UserCompatibilityController::class, 'collectWelcomeBonus']);
+        Route::post('/withdrawal_log', [UserCompatibilityController::class, 'withdrawalLog']);
     });
 }
+
+Route::prefix('Redeem')->group(function () {
+    Route::post('/list', [UserCompatibilityController::class, 'redeemList']);
+    Route::post('/Withdraw', [UserCompatibilityController::class, 'redeemWithdraw']);
+    Route::post('/Withdraw_custom', [UserCompatibilityController::class, 'redeemWithdrawCustom']);
+    Route::post('/Withdraw_custom_crypto', [UserCompatibilityController::class, 'redeemWithdrawCustomCrypto']);
+    Route::post('/withdrawRequestForAgent', [UserCompatibilityController::class, 'withdrawRequestForAgent']);
+    Route::post('/WithDrawal_log', [UserCompatibilityController::class, 'withdrawalLog']);
+});
 
 Route::prefix('ludo')->group(function () {
     Route::post('/get_table_master', [LudoCompatibilityController::class, 'getTableMaster']);
     Route::post('/get_table_master_bachpan', [LudoCompatibilityController::class, 'getTableMasterBachpan']);
+    Route::post('/status', [LudoCompatibilityController::class, 'status']);
+    Route::post('/user_game_history', [LudoCompatibilityController::class, 'userGameHistory']);
 });
 
 // ── API v1 Routes ─────────────────────────────────────────────────────────────
