@@ -36,7 +36,13 @@
         <div style="font-size:18px;font-weight:700;">Tournament Form</div>
         <div class="muted">Open popup, fill tournament information, and submit.</div>
     </div>
-    <button type="button" class="btn" data-modal-open="userTournamentModal">{{ $editing ? 'Edit Tournament' : 'Create Tournament' }}</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+        <a href="{{ route('tournament.guide') }}" target="_blank"
+           style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border-radius:12px;border:1px solid var(--line);background:linear-gradient(135deg,#fff5ea 0%,#f8e3cf 100%);color:var(--brand-dark);font-weight:700;font-size:14px;">
+            📖 Learn &amp; Guide
+        </a>
+        <button type="button" class="btn" data-modal-open="userTournamentModal">{{ $editing ? 'Edit Tournament' : 'Create Tournament' }}</button>
+    </div>
 </div>
 
 <div id="userTournamentModal" class="modal-shell {{ ($editing || $errors->any()) ? 'is-open' : '' }}">
@@ -46,6 +52,7 @@
             <div>
                 <div style="font-size:20px;font-weight:700;">{{ $editing ? 'Edit Tournament' : 'Create Tournament' }}</div>
                 <div class="muted">Fill tournament information and submit.</div>
+                <div class="muted" style="margin-top:4px;">Timezone: <span data-user-timezone>UTC</span></div>
             </div>
             <button type="button" class="modal-close" data-modal-close="userTournamentModal">×</button>
         </div>
@@ -54,6 +61,7 @@
             @if($editing)
                 @method('PUT')
             @endif
+            <input type="hidden" name="timezone" id="user_tournament_timezone" value="">
             <div class="form-grid">
                 <div><label>Name</label><input name="name" value="{{ old('name', $editing?->name) }}" required></div>
                 <div><label>Type</label><select name="type">@foreach(['public','private'] as $type)<option value="{{ $type }}" {{ old('type', $editing?->type ?? 'public') === $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>@endforeach</select></div>
@@ -62,9 +70,9 @@
                 <div><label>Max Players</label><select name="max_players">@foreach([4,8,16,32,64,112] as $max)<option value="{{ $max }}" {{ (int) old('max_players', $editing?->max_players ?? 4) === $max ? 'selected' : '' }}>{{ $max }}</option>@endforeach</select></div>
                 <div><label>Players Per Match</label><select name="players_per_match">@foreach([2,4] as $ppm)<option value="{{ $ppm }}" {{ (int) old('players_per_match', $editing?->players_per_match ?? 4) === $ppm ? 'selected' : '' }}>{{ $ppm }}</option>@endforeach</select></div>
                 <div><label>Platform Fee %</label><input type="number" step="0.01" name="platform_fee_pct" value="{{ old('platform_fee_pct', $editing?->platform_fee_pct ?? 20) }}"></div>
-                <div><label>Registration Start</label><input type="datetime-local" name="registration_start_at" value="{{ old('registration_start_at', optional($editing?->registration_start_at)->format('Y-m-d\\TH:i')) }}"></div>
-                <div><label>Registration End</label><input type="datetime-local" name="registration_end_at" value="{{ old('registration_end_at', optional($editing?->registration_end_at)->format('Y-m-d\\TH:i')) }}"></div>
-                <div><label>Tournament Start</label><input type="datetime-local" name="tournament_start_at" value="{{ old('tournament_start_at', optional($editing?->tournament_start_at)->format('Y-m-d\\TH:i')) }}" required></div>
+                <div><label>Registration Start</label><input type="datetime-local" name="registration_start_at" value="{{ old('registration_start_at') }}" data-utc="{{ $editing?->registration_start_at?->toIso8601String() }}"></div>
+                <div><label>Registration End</label><input type="datetime-local" name="registration_end_at" value="{{ old('registration_end_at') }}" data-utc="{{ $editing?->registration_end_at?->toIso8601String() }}"></div>
+                <div><label>Tournament Start</label><input type="datetime-local" name="tournament_start_at" value="{{ old('tournament_start_at') }}" data-utc="{{ $editing?->tournament_start_at?->toIso8601String() }}" required></div>
                 <div><label>Bracket Mode</label><select name="bracket_mode">@foreach(['auto','manual'] as $mode)<option value="{{ $mode }}" {{ old('bracket_mode', $editing?->bracket_mode ?? 'auto') === $mode ? 'selected' : '' }}>{{ ucfirst($mode) }}</option>@endforeach</select></div>
             </div>
             <div class="stack-compact" style="margin-top:14px;">
@@ -73,8 +81,8 @@
                     @for($slot = 1; $slot <= 5; $slot++)
                         <div class="panel" style="padding:12px;">
                             <div style="font-size:14px;font-weight:700;margin-bottom:10px;">Slot {{ $slot }}</div>
-                            <div><label>Start</label><input type="datetime-local" name="play_slot_start_{{ $slot }}" value="{{ old('play_slot_start_'.$slot, ($editing && data_get($editing->play_slots, ($slot - 1).'.start_at')) ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.start_at'))->format('Y-m-d\\TH:i') : '') }}"></div>
-                            <div style="margin-top:10px;"><label>End</label><input type="datetime-local" name="play_slot_end_{{ $slot }}" value="{{ old('play_slot_end_'.$slot, ($editing && data_get($editing->play_slots, ($slot - 1).'.end_at')) ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.end_at'))->format('Y-m-d\\TH:i') : '') }}"></div>
+                            <div><label>Start</label><input type="datetime-local" name="play_slot_start_{{ $slot }}" value="{{ old('play_slot_start_'.$slot) }}" data-utc="{{ $editing && data_get($editing->play_slots, ($slot - 1).'.start_at') ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.start_at'))->toIso8601String() : '' }}"></div>
+                            <div style="margin-top:10px;"><label>End</label><input type="datetime-local" name="play_slot_end_{{ $slot }}" value="{{ old('play_slot_end_'.$slot) }}" data-utc="{{ $editing && data_get($editing->play_slots, ($slot - 1).'.end_at') ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.end_at'))->toIso8601String() : '' }}"></div>
                         </div>
                     @endfor
                 </div>
@@ -109,7 +117,7 @@
                 <div>
                     <div class="card-title">{{ $tournament->name }}</div>
                     <div class="muted" style="font-size:13px;">
-                        Created {{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}
+                        Created <span data-utc-time="{{ $tournament->created_at?->toIso8601String() }}">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</span>
                     </div>
                 </div>
                 <div class="stack-compact">
@@ -125,6 +133,7 @@
                 <div><span>Winners Marked</span><strong>{{ $tournament->winner_registrations_count }}</strong></div>
                 <div><span>Running Matches</span><strong>{{ $tournament->running_matches_count }}</strong></div>
                 <div><span>Completed Matches</span><strong>{{ $tournament->completed_matches_count }}</strong></div>
+                <div><span>Start Time</span><strong><span data-utc-time="{{ $tournament->tournament_start_at?->toIso8601String() }}">{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</span></strong></div>
             </div>
 
             <div class="card-actions">
@@ -161,7 +170,7 @@
                         <strong>{{ $tournament->name }}</strong>
                         <div class="muted" style="font-size:12px;">{{ ucfirst($tournament->type) }} · {{ ucwords(str_replace('_', ' ', $tournament->format)) }}</div>
                     </td>
-                    <td data-label="Created">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                    <td data-label="Created"><span data-utc-time="{{ $tournament->created_at?->toIso8601String() }}">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                     <td data-label="Status">{{ ucwords(str_replace('_', ' ', $tournament->status)) }}</td>
                     <td data-label="Players">{{ $tournament->current_players }}/{{ $tournament->max_players }}</td>
                     <td data-label="Matches">{{ $tournament->completed_matches_count }} done · {{ $tournament->running_matches_count }} running</td>
@@ -179,6 +188,43 @@
 
 @push('scripts')
 <script>
+const userTournamentTimezone = (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+const userTimezoneLabel = document.querySelector('[data-user-timezone]');
+const userTimezoneInput = document.getElementById('user_tournament_timezone');
+if (userTimezoneLabel) userTimezoneLabel.textContent = userTournamentTimezone;
+if (userTimezoneInput) userTimezoneInput.value = userTournamentTimezone;
+
+const toLocalInputValue = (isoString) => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) return '';
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+document.querySelectorAll('input[type="datetime-local"][data-utc]').forEach((input) => {
+    if (!input.value && input.dataset.utc) {
+        input.value = toLocalInputValue(input.dataset.utc);
+    }
+});
+
+document.querySelectorAll('[data-utc-time]').forEach((node) => {
+    const iso = node.getAttribute('data-utc-time');
+    if (!iso) return;
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return;
+    node.textContent = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: userTournamentTimezone,
+        timeZoneName: 'short',
+    }).format(date);
+});
+
 document.querySelectorAll('[data-modal-open]').forEach(function (button) {
     button.addEventListener('click', function () {
         document.getElementById(button.getAttribute('data-modal-open'))?.classList.add('is-open');

@@ -26,6 +26,8 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/tournament-guide', fn() => response()->file(base_path('docs/user-tournament-guide.html')))->name('tournament.guide');
+
 Route::get('/terms', fn() => view('ludo.terms'))->name('terms');
 Route::get('/privacy', fn() => view('ludo.privacy'))->name('privacy');
 Route::get('/fair-play', fn() => view('ludo.fair-play'))->name('fair-play');

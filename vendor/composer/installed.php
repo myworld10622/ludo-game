@@ -3,7 +3,7 @@
         'name' => 'games/backend-laravel',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '8f6055d56a7edccded2e2a36d352bb4928a3a53b',
+        'reference' => '3d6afab61cfa368bc756dbb4899bbb31512f023e',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -115,7 +115,7 @@
         'games/backend-laravel' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '8f6055d56a7edccded2e2a36d352bb4928a3a53b',
+            'reference' => '3d6afab61cfa368bc756dbb4899bbb31512f023e',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
@@ -430,6 +430,15 @@
             'aliases' => array(),
             'dev_requirement' => false,
         ),
+        'laravel/tinker' => array(
+            'pretty_version' => 'v3.0.0',
+            'version' => '3.0.0.0',
+            'reference' => 'cc74081282ba2e3dae1f0068ccb330370d24634e',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../laravel/tinker',
+            'aliases' => array(),
+            'dev_requirement' => false,
+        ),
         'league/commonmark' => array(
             'pretty_version' => '2.8.1',
             'version' => '2.8.1.0',
@@ -560,7 +569,7 @@
             'type' => 'library',
             'install_path' => __DIR__ . '/../nikic/php-parser',
             'aliases' => array(),
-            'dev_requirement' => true,
+            'dev_requirement' => false,
         ),
         'nunomaduro/collision' => array(
             'pretty_version' => 'v8.9.1',
@@ -790,6 +799,15 @@
             'provided' => array(
                 0 => '1.0|2.0|3.0',
             ),
+        ),
+        'psy/psysh' => array(
+            'pretty_version' => 'v0.12.22',
+            'version' => '0.12.22.0',
+            'reference' => '3be75d5b9244936dd4ac62ade2bfb004d13acf0f',
+            'type' => 'library',
+            'install_path' => __DIR__ . '/../psy/psysh',
+            'aliases' => array(),
+            'dev_requirement' => false,
         ),
         'ralouphie/getallheaders' => array(
             'pretty_version' => '3.0.3',

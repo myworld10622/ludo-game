@@ -24,6 +24,7 @@ class TournamentBracketMatchService
         $now = now();
 
         foreach ($plans as $plan) {
+            $matchSize = (int) ($plan['match_size'] ?? $plan['assigned_count'] ?? $tableSize);
             $matchRows[] = [
                 'match_uuid' => (string) Str::uuid(),
                 'tournament_id' => $tournament->id,
@@ -34,7 +35,7 @@ class TournamentBracketMatchService
                 'stage' => 'main',
                 'status' => ((int) $plan['assigned_count'] === 1) ? 'completed' : 'pending',
                 'winner_entry_id' => ((int) $plan['assigned_count'] === 1) ? data_get($plan, 'entries.0.id') : null,
-                'max_players' => $tableSize,
+                'max_players' => $matchSize,
                 'table_fee' => $tournament->entry_fee,
                 'node_room_id' => null,
                 'external_match_ref' => null,
@@ -42,12 +43,12 @@ class TournamentBracketMatchService
                 'started_at' => null,
                 'completed_at' => ((int) $plan['assigned_count'] === 1) ? $now : null,
                 'settings' => json_encode([
-                    'match_size' => $tableSize,
+                    'match_size' => $matchSize,
                     'advance_count' => $advanceCount,
                 ], JSON_THROW_ON_ERROR),
                 'meta' => json_encode([
                     'assigned_entry_count' => (int) $plan['assigned_count'],
-                    'bye_slots' => (int) $plan['bye_slots'],
+                    'bye_slots' => (int) max(0, $matchSize - (int) $plan['assigned_count']),
                 ], JSON_THROW_ON_ERROR),
                 'created_at' => $now,
                 'updated_at' => $now,

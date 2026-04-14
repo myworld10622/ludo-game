@@ -1154,6 +1154,7 @@
     <li><a href="#how-to-play" data-i18n="nav.how">How to Play</a></li>
     <li><a href="#" onclick="openModal('guideModal')" data-i18n="nav.guide">Guide</a></li>
     <li><a href="#" onclick="openModal('faqModal')" data-i18n="nav.faq">FAQ</a></li>
+    <li><a href="/tournament-guide" target="_blank" style="color:var(--gold);font-weight:700;">🏆 Create Tournament</a></li>
   </ul>
   <div style="display:flex;align-items:center;gap:10px;">
     <div class="lang-toggle" role="group" aria-label="Language">
@@ -1183,6 +1184,7 @@
       <a href="/login" class="btn-primary" data-i18n="hero.cta.start">🎲 Start Playing Free</a>
       <a href="#" class="btn-apk" onclick="openModal('apkModal')" data-i18n="hero.cta.apk">📱 Download APK</a>
       <a href="#" class="btn-secondary" onclick="openModal('guideModal')" data-i18n="hero.cta.guide">📖 How to Play</a>
+      <a href="/tournament-guide" class="btn-secondary" target="_blank">🏆 Tournament Guide</a>
       <a href="#" class="btn-secondary" onclick="openModal('faqModal')" data-i18n="hero.cta.faq">❓ FAQ</a>
     </div>
 
@@ -1320,11 +1322,14 @@
     <div class="section-label" data-i18n="resources.label">📚 Resources</div>
     <h2 class="section-title" data-i18n-html="resources.title">Everything You Need<br><span style="color: var(--gold);">Right Here</span></h2>
     <div class="guide-faq reveal">
-      <div class="guide-card" onclick="openModal('guideModal')" style="cursor:pointer;">
+      <div class="guide-card" style="cursor:pointer;">
         <div class="gc-icon gold-bg">📖</div>
         <div class="gc-title" data-i18n="resources.guide.title">Complete Player Guide</div>
         <div class="gc-desc" data-i18n="resources.guide.desc">From basic rules to advanced tournament strategy — everything in one place.</div>
-        <a class="btn-primary" style="margin-top:8px; padding: 12px 24px; font-size:15px;" data-i18n="resources.guide.cta">Read Full Guide →</a>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+          <a class="btn-primary" style="padding:12px 22px;font-size:15px;" onclick="openModal('guideModal')" data-i18n="resources.guide.cta">📖 How to Play</a>
+          <a class="btn-secondary" href="/tournament-guide" target="_blank" style="padding:12px 22px;font-size:15px;">🏆 Tournament Guide →</a>
+        </div>
       </div>
       <div class="faq-card" onclick="openModal('faqModal')" style="cursor:pointer;">
         <div class="gc-icon blue-bg">❓</div>
@@ -1348,6 +1353,7 @@
         <h4 data-i18n="footer.game.title">Game</h4>
         <a href="#tournaments" data-i18n="footer.game.tournaments">Tournaments</a>
         <a href="#" onclick="openModal('guideModal')" data-i18n="footer.game.how">How to Play</a>
+        <a href="/tournament-guide" target="_blank">Tournament Guide</a>
         <a href="#" data-i18n="footer.game.leaderboard">Leaderboard</a>
         <a href="#" data-i18n="footer.game.practice">Practice Mode</a>
       </div>

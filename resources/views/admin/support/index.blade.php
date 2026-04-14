@@ -55,12 +55,12 @@
             <div class="stack" style="margin:16px 0;">
                 @foreach($activeTicket->messages->sortBy('created_at') as $message)
                     @php($isAdmin = $message->sender_type === 'admin')
-                    <div style="padding:14px;border-radius:16px;border:1px solid var(--line);background:{{ $isAdmin ? 'linear-gradient(180deg,#eef4ff,#fff)' : 'linear-gradient(180deg,#f8fbff,#fff)' }};">
-                        <div style="font-size:12px;font-weight:800;margin-bottom:6px;color:{{ $isAdmin ? 'var(--brand-dark)' : 'var(--accent)' }};">
+                    <div style="padding:14px;border-radius:14px;border:1px solid {{ $isAdmin ? 'rgba(255,215,0,0.18)' : 'rgba(6,214,160,0.18)' }};background:{{ $isAdmin ? 'rgba(255,215,0,0.05)' : 'rgba(6,214,160,0.05)' }};">
+                        <div style="font-size:12px;font-weight:800;margin-bottom:6px;color:{{ $isAdmin ? 'var(--gold)' : 'var(--green)' }};">
                             {{ $isAdmin ? ($message->senderAdmin?->name ?? 'Admin') : ($message->senderUser?->username ?? 'User') }}
                             · {{ $message->created_at?->format('d M Y, h:i A') }}
                         </div>
-                        <div style="white-space:pre-wrap;line-height:1.7;">{{ $message->message }}</div>
+                        <div style="white-space:pre-wrap;line-height:1.7;color:var(--text);">{{ $message->message }}</div>
                     </div>
                 @endforeach
             </div>

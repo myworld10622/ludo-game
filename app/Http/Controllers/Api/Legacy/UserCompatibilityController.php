@@ -379,6 +379,7 @@ class UserCompatibilityController extends Controller
         $bankDetails['acc_holder_name'] = (string) $request->input('acc_holder_name', $bankDetails['acc_holder_name'] ?? '');
         $bankDetails['acc_no'] = (string) $request->input('acc_no', $bankDetails['acc_no'] ?? '');
         $bankDetails['ifsc_code'] = (string) $request->input('ifsc_code', $bankDetails['ifsc_code'] ?? '');
+        $bankDetails['upi_id'] = (string) $request->input('upi_id', $bankDetails['upi_id'] ?? '');
 
         $passbookImg = (string) $request->input('passbook_img', '');
         if ($passbookImg !== '') {
@@ -1127,6 +1128,7 @@ class UserCompatibilityController extends Controller
             type: (int) $type,
             agentId: 0,
             price: 0.0,
+            laravelUserId: $user->id,
         );
 
         if (! $withdrawalId) {
@@ -1197,6 +1199,7 @@ class UserCompatibilityController extends Controller
             type: (int) $type,
             agentId: 0,
             price: 0.0,
+            laravelUserId: $user->id,
         );
 
         if (! $withdrawalId) {
@@ -1275,6 +1278,7 @@ class UserCompatibilityController extends Controller
             type: 1,
             agentId: 0,
             price: 0.0,
+            laravelUserId: $user->id,
         );
 
         if (! $withdrawalId) {
@@ -1363,6 +1367,7 @@ class UserCompatibilityController extends Controller
             type: (int) $type,
             agentId: (int) $agentId,
             price: $price,
+            laravelUserId: $user->id,
         );
 
         if (! $withdrawalId) {
@@ -2060,6 +2065,7 @@ class UserCompatibilityController extends Controller
             'acc_holder_name' => (string) ($bank['acc_holder_name'] ?? ''),
             'acc_no' => (string) ($bank['acc_no'] ?? ''),
             'passbook_img' => (string) ($bank['passbook_img'] ?? ''),
+            'upi_id' => (string) ($bank['upi_id'] ?? ''),
             'crypto_address' => (string) ($crypto['crypto_address'] ?? ''),
             'crypto_wallet_type' => (string) ($crypto['crypto_wallet_type'] ?? ''),
             'crypto_qr' => (string) ($crypto['crypto_qr'] ?? ''),
@@ -2182,6 +2188,7 @@ class UserCompatibilityController extends Controller
             'acc_holder_name' => (string) ($bank['acc_holder_name'] ?? ''),
             'acc_no' => (string) ($bank['acc_no'] ?? ''),
             'passbook_img' => (string) ($bank['passbook_img'] ?? ''),
+            'upi_id' => (string) ($bank['upi_id'] ?? ''),
             'crypto_wallet_type' => (string) ($crypto['crypto_wallet_type'] ?? ''),
             'crypto_qr' => (string) ($crypto['crypto_qr'] ?? ''),
             'crypto_address' => (string) ($crypto['crypto_address'] ?? ''),
@@ -2196,11 +2203,16 @@ class UserCompatibilityController extends Controller
         array $bankInfo,
         int $type,
         int $agentId,
-        float $price
+        float $price,
+        ?int $laravelUserId = null
     ): ?int {
         if (! $this->legacyTableExists('tbl_withdrawal_log')) {
             return null;
         }
+
+        $transactionId = $laravelUserId
+            ? 'ROX-'.$laravelUserId.'-'.Str::upper(Str::random(8))
+            : null;
 
         $payload = [
             'user_id' => $legacyUserId,
@@ -2219,6 +2231,7 @@ class UserCompatibilityController extends Controller
             'mobile' => $bankInfo['mobile'] ?? '',
             'type' => $type,
             'status' => 0,
+            'transaction_id' => $transactionId,
             'payout_response' => '',
             'created_date' => now()->format('Y-m-d H:i:s'),
             'updated_date' => now()->format('Y-m-d H:i:s'),
@@ -2371,14 +2384,51 @@ class UserCompatibilityController extends Controller
 
         if (! $hasCriteria) {
             if (is_numeric($user->user_code ?? null)) {
-                return DB::table('tbl_users')
+                $legacy = DB::table('tbl_users')
                     ->where('id', (int) $user->user_code)
                     ->first();
+                if ($legacy) {
+                    return $legacy;
+                }
             }
 
+            return $this->ensureLegacyUserRow($user);
+        }
+
+        $legacy = $query->orderByDesc('id')->first();
+        if ($legacy) {
+            return $legacy;
+        }
+
+        return $this->ensureLegacyUserRow($user);
+    }
+
+    protected function ensureLegacyUserRow(User $user): ?object
+    {
+        if (! $this->legacyTableExists('tbl_users')) {
             return null;
         }
 
-        return $query->orderByDesc('id')->first();
+        $wallet = $this->ensureWallets($user);
+        $name = $user->profile?->first_name ?: $user->username ?: 'Player';
+
+        $id = DB::table('tbl_users')->insertGetId([
+            'name' => $name,
+            'mobile' => $user->mobile,
+            'email' => $user->email,
+            'wallet' => $wallet?->balance ?? 0,
+            'bonus_wallet' => 0,
+            'winning_wallet' => 0,
+            'bank_detail' => '',
+            'adhar_card' => '',
+            'upi' => '',
+            'referred_by' => 0,
+            'game_played' => 0,
+            'isDeleted' => 0,
+            'created_date' => now()->format('Y-m-d H:i:s'),
+            'updated_date' => now()->format('Y-m-d H:i:s'),
+        ]);
+
+        return DB::table('tbl_users')->where('id', $id)->first();
     }
 }

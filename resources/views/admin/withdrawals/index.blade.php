@@ -45,6 +45,7 @@
                     <th>Coin</th>
                     <th>Status</th>
                     <th>Created</th>
+                    <th>Transfer</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -68,9 +69,14 @@
                             </select>
                         </td>
                         <td data-label="Created">{{ $row->created_date }}</td>
+                        <td data-label="Transfer">
+                            <button class="btn btn-secondary" type="button" data-transfer-betzono="{{ $row->id }}">
+                                Send to Betzono
+                            </button>
+                        </td>
                     </tr>
                 @empty
-                    <tr><td colspan="12" class="muted">No pending withdrawals.</td></tr>
+                    <tr><td colspan="13" class="muted">No pending withdrawals.</td></tr>
                 @endforelse
                 </tbody>
             </table>
@@ -201,6 +207,39 @@ document.querySelectorAll('[data-withdraw-status]').forEach(function (select) {
         })
         .catch(function () {
             alert('Status update failed');
+        });
+    });
+});
+
+document.querySelectorAll('[data-transfer-betzono]').forEach(function (button) {
+    button.addEventListener('click', function () {
+        const id = button.getAttribute('data-transfer-betzono');
+        if (! id) {
+            return;
+        }
+        if (! confirm('Send this withdrawal to Betzono?')) {
+            return;
+        }
+
+        fetch("{{ route('admin.withdrawals.transfer') }}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRF-TOKEN": "{{ csrf_token() }}"
+            },
+            body: JSON.stringify({ id })
+        })
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+            if (data.class === 'success') {
+                alert(data.msg);
+                window.location.reload();
+            } else {
+                alert(data.msg || 'Transfer failed');
+            }
+        })
+        .catch(function () {
+            alert('Transfer request failed');
         });
     });
 });

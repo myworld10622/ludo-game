@@ -62,22 +62,22 @@ class TournamentLudoMatchLinkService
                         continue;
                     }
 
-                    $linkRows[] = [
-                        'tournament_id' => $tournament->id,
-                        'tournament_entry_id' => $entry->id,
-                        'game_match_id' => null,
-                        'external_match_uuid' => null,
+                $linkRows[] = [
+                    'tournament_id' => $tournament->id,
+                    'tournament_entry_id' => $entry->id,
+                    'game_match_id' => null,
+                    'external_match_uuid' => null,
+                    'round_no' => $roundNo,
+                    'table_no' => $tableNo,
+                    'status' => 'assigned',
+                    'meta' => json_encode([
+                        'game' => 'ludo',
+                        'table_size' => $match->max_players ?? $resolvedTableSize,
                         'round_no' => $roundNo,
-                        'table_no' => $tableNo,
-                        'status' => 'assigned',
-                        'meta' => json_encode([
-                            'game' => 'ludo',
-                            'table_size' => $resolvedTableSize,
-                            'round_no' => $roundNo,
-                            'advance_count' => $configSummary['advance_count'],
-                            'tournament_match_id' => $match->id,
-                            'tournament_match_uuid' => $match->match_uuid,
-                        ], JSON_THROW_ON_ERROR),
+                        'advance_count' => $configSummary['advance_count'],
+                        'tournament_match_id' => $match->id,
+                        'tournament_match_uuid' => $match->match_uuid,
+                    ], JSON_THROW_ON_ERROR),
                         'created_at' => $now,
                         'updated_at' => $now,
                     ];

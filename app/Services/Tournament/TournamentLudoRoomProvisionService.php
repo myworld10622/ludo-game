@@ -50,7 +50,10 @@ class TournamentLudoRoomProvisionService
                 $matchEntries = $match->entries
                     ->filter(fn ($matchEntry) => $matchEntry->status !== 'completed')
                     ->values();
-                $effectiveTableSize = max(2, min($tableSize, $matchEntries->count()));
+                $effectiveTableSize = max(2, (int) min(
+                    ($match->max_players ?? $matchEntries->count()),
+                    $matchEntries->count()
+                ));
 
                 if ($matchEntries->count() <= 1) {
                     continue;
