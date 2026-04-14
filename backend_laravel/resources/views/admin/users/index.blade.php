@@ -7,28 +7,31 @@
 @section('content')
 <style>
     .user-code { font-family: monospace; font-size: 13px; letter-spacing: 1px;
-                 background: #f1f5f9; padding: 2px 6px; border-radius: 4px; }
-    .wallet-bal { font-weight: 700; color: #065f46; }
-    .match-count-btn { background: none; border: none; cursor: pointer; color: #2563eb;
+                 background: rgba(255,215,0,0.1); color: var(--gold); padding: 2px 8px; border-radius: 6px; border: 1px solid rgba(255,215,0,0.2); }
+    .wallet-bal { font-weight: 700; color: var(--green); }
+    .match-count-btn { background: none; border: none; cursor: pointer; color: var(--gold);
                        font-weight: 700; font-size: 14px; text-decoration: underline; padding: 0; }
-    .match-count-btn:hover { color: #1d4ed8; }
+    .match-count-btn:hover { opacity: .75; }
     /* Modal */
-    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45);
-                     z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8);
+                     backdrop-filter: blur(6px); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.open { display: flex; }
-    .modal-box { background: #fff; border-radius: 16px; width: 92%; max-width: 720px;
-                 max-height: 85vh; display: flex; flex-direction: column; overflow: hidden; }
-    .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb;
-                    display: flex; justify-content: space-between; align-items: center; }
-    .modal-title { font-size: 16px; font-weight: 700; }
-    .modal-close { background: none; border: none; cursor: pointer; font-size: 20px;
-                   color: #6b7280; line-height: 1; }
+    .modal-box { background: var(--card); border: 1px solid var(--line); border-radius: 16px; width: 92%; max-width: 720px;
+                 max-height: 85vh; display: flex; flex-direction: column; overflow: hidden;
+                 box-shadow: 0 0 40px rgba(255,215,0,0.07), 0 24px 60px rgba(0,0,0,0.7); }
+    .modal-header { padding: 16px 20px; border-bottom: 1px solid var(--line-dim);
+                    display: flex; justify-content: space-between; align-items: center; background: var(--card2); }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .modal-close { background: var(--card); border: 1px solid var(--line-dim); cursor: pointer; font-size: 18px;
+                   color: var(--muted); line-height: 1; border-radius: 8px; width: 32px; height: 32px;
+                   display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .modal-close:hover { color: var(--gold); border-color: rgba(255,215,0,0.3); }
     .modal-body { overflow-y: auto; padding: 16px 20px; }
     .modal-body table { width: 100%; border-collapse: collapse; }
     .modal-body th, .modal-body td { text-align: left; padding: 10px 8px;
-                                     border-bottom: 1px solid #f1f5f9; font-size: 13px; }
-    .modal-body th { color: #6b7280; font-size: 12px; font-weight: 600; }
-    .modal-loading { text-align: center; padding: 40px; color: #9ca3af; }
+                                     border-bottom: 1px solid var(--line-dim); font-size: 13px; color: var(--text); }
+    .modal-body th { color: var(--muted); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; }
+    .modal-loading { text-align: center; padding: 40px; color: var(--muted); }
     .search-bar { display: flex; gap: 10px; margin-bottom: 16px; }
     .search-bar input { flex: 1; border: 1px solid #d1d5db; border-radius: 10px;
                         padding: 9px 14px; font-size: 14px; }

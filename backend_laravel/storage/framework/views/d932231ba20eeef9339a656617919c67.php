@@ -55,14 +55,14 @@
             <div class="stack" style="margin:16px 0;">
                 <?php $__currentLoopData = $activeTicket->messages->sortBy('created_at'); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $message): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                     <?php ($isAdmin = $message->sender_type === 'admin'); ?>
-                    <div style="padding:14px;border-radius:16px;border:1px solid var(--line);background:<?php echo e($isAdmin ? 'linear-gradient(180deg,#eef4ff,#fff)' : 'linear-gradient(180deg,#f8fbff,#fff)'); ?>;">
-                        <div style="font-size:12px;font-weight:800;margin-bottom:6px;color:<?php echo e($isAdmin ? 'var(--brand-dark)' : 'var(--accent)'); ?>;">
+                    <div style="padding:14px;border-radius:14px;border:1px solid <?php echo e($isAdmin ? 'rgba(255,215,0,0.18)' : 'rgba(6,214,160,0.18)'); ?>;background:<?php echo e($isAdmin ? 'rgba(255,215,0,0.05)' : 'rgba(6,214,160,0.05)'); ?>;">
+                        <div style="font-size:12px;font-weight:800;margin-bottom:6px;color:<?php echo e($isAdmin ? 'var(--gold)' : 'var(--green)'); ?>;">
                             <?php echo e($isAdmin ? ($message->senderAdmin?->name ?? 'Admin') : ($message->senderUser?->username ?? 'User')); ?>
 
                             · <?php echo e($message->created_at?->format('d M Y, h:i A')); ?>
 
                         </div>
-                        <div style="white-space:pre-wrap;line-height:1.7;"><?php echo e($message->message); ?></div>
+                        <div style="white-space:pre-wrap;line-height:1.7;color:var(--text);"><?php echo e($message->message); ?></div>
                     </div>
                 <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
             </div>

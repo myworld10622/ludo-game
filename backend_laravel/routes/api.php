@@ -2,11 +2,13 @@
 
 use App\Http\Controllers\Api\Legacy\UserCompatibilityController;
 use App\Http\Controllers\Api\Legacy\LudoCompatibilityController;
+use App\Http\Controllers\Api\Legacy\PlanCompatibilityController;
 use App\Http\Controllers\Api\Internal\V1\LudoMatchController as InternalLudoMatchController;
 use App\Http\Controllers\Api\Internal\V1\LudoRoomMessageController as InternalLudoRoomMessageController;
 use App\Http\Controllers\Api\Internal\V1\TournamentMatchResultController as InternalTournamentMatchResult;
 use App\Http\Controllers\Api\V1\AppConfigController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
+use App\Http\Controllers\Api\V1\BetzonoCallbackController;
 use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\FriendController;
@@ -98,6 +100,16 @@ Route::prefix('Redeem')->group(function () {
     Route::post('/WithDrawal_log', [UserCompatibilityController::class, 'withdrawalLog']);
 });
 
+foreach (['plan', 'Plan'] as $planPrefix) {
+    Route::prefix($planPrefix)->group(function () {
+        Route::post('/', [PlanCompatibilityController::class, 'index']);
+        Route::post('/Place_Order_Upi_Gateway', [PlanCompatibilityController::class, 'placeOrderUpiGateway']);
+        Route::post('/get_qr', [PlanCompatibilityController::class, 'getQr']);
+        Route::post('/get_usdt_qr', [PlanCompatibilityController::class, 'getUsdtQr']);
+        Route::post('/addcash', [PlanCompatibilityController::class, 'addCash']);
+    });
+}
+
 Route::prefix('ludo')->group(function () {
     Route::post('/get_table_master', [LudoCompatibilityController::class, 'getTableMaster']);
     Route::post('/get_table_master_bachpan', [LudoCompatibilityController::class, 'getTableMasterBachpan']);
@@ -115,6 +127,10 @@ Route::prefix($version)
         Route::get('/app-config', AppConfigController::class);
         Route::get('/games', [GameController::class, 'index']);
         Route::get('/home', [GameController::class, 'home']);
+
+        // Betzono Gateway Callbacks (no auth)
+        Route::post('/payment/betzono/deposit', [BetzonoCallbackController::class, 'deposit']);
+        Route::post('/payment/betzono/withdraw', [BetzonoCallbackController::class, 'withdraw']);
 
         // Auth
         Route::prefix('auth')->group(function () {

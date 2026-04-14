@@ -672,8 +672,8 @@ namespace LudoClassicOffline
             string uuid = ReadString(item, "uuid", "tournament_uuid", "id");
             string title = ReadString(item, "name", "title", "tournament_name");
             string status = ReadString(item, "status", "state");
-            string startTime = ReadString(item, "tournament_start_at", "start_at", "start_time", "starts_at", "startAt");
-            string entryCloseAt = ReadString(item, "registration_end_at", "entry_close_at", "entryCloseAt");
+            string startTimeRaw = ReadString(item, "tournament_start_at", "start_at", "start_time", "starts_at", "startAt");
+            string entryCloseRaw = ReadString(item, "registration_end_at", "entry_close_at", "entryCloseAt");
             int entryFee = ReadInt(item, "entry_fee", "entryFee");
             int maxPlayers = ReadInt(item, "max_total_entries", "max_players", "maxPlayers");
             int joinedPlayers = ReadInt(item, "current_active_entries", "current_total_entries", "joined_players", "current_players", "currentPlayers");
@@ -712,8 +712,8 @@ namespace LudoClassicOffline
                 TournamentUuid = uuid,
                 Title = string.IsNullOrWhiteSpace(title) ? "Tournament" : title,
                 Status = string.IsNullOrWhiteSpace(status) ? "upcoming" : status,
-                StartTime = startTime,
-                RegistrationEndAt = entryCloseAt,
+                StartTime = FormatLocalTimeWithZone(startTimeRaw),
+                RegistrationEndAt = FormatLocalTimeWithZone(entryCloseRaw),
                 EntryFee = entryFee,
                 PrizePool = prizePool,
                 MaxPlayers = Mathf.Max(2, maxPlayers == 0 ? 2 : maxPlayers),
@@ -2037,9 +2037,11 @@ namespace LudoClassicOffline
                 string endAt = ReadString(slot, "end_at");
                 string display = label;
 
-                if (DateTime.TryParse(startAt, out DateTime parsedStart) && DateTime.TryParse(endAt, out DateTime parsedEnd))
+                string localStart = FormatLocalTimeWithZone(startAt, includeDate: false);
+                string localEnd = FormatLocalTimeWithZone(endAt, includeDate: false);
+                if (!string.IsNullOrWhiteSpace(localStart) && !string.IsNullOrWhiteSpace(localEnd))
                 {
-                    display += $": {parsedStart:dd MMM, hh:mm tt} - {parsedEnd:hh:mm tt}";
+                    display += $": {localStart} - {localEnd}";
                 }
                 else if (!string.IsNullOrWhiteSpace(startAt) || !string.IsNullOrWhiteSpace(endAt))
                 {
@@ -2050,6 +2052,42 @@ namespace LudoClassicOffline
             }
 
             return result;
+        }
+
+        private static string FormatLocalTimeWithZone(string iso, bool includeDate = true)
+        {
+            if (string.IsNullOrWhiteSpace(iso)) return string.Empty;
+
+            if (DateTimeOffset.TryParse(
+                    iso,
+                    CultureInfo.InvariantCulture,
+                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                    out DateTimeOffset dto))
+            {
+                DateTimeOffset local = dto.ToLocalTime();
+                TimeSpan offset = TimeZoneInfo.Local.GetUtcOffset(local.DateTime);
+                string tz = FormatOffset(offset);
+                string fmt = includeDate ? "dd MMM yyyy, hh:mm tt" : "hh:mm tt";
+                return $"{local:fmt} ({tz})";
+            }
+
+            if (DateTime.TryParse(iso, out DateTime dt))
+            {
+                DateTime local = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
+                TimeSpan offset = TimeZoneInfo.Local.GetUtcOffset(local);
+                string tz = FormatOffset(offset);
+                string fmt = includeDate ? "dd MMM yyyy, hh:mm tt" : "hh:mm tt";
+                return $"{local.ToString(fmt)} ({tz})";
+            }
+
+            return iso;
+        }
+
+        private static string FormatOffset(TimeSpan offset)
+        {
+            string sign = offset < TimeSpan.Zero ? "-" : "+";
+            offset = offset.Duration();
+            return $"GMT{sign}{offset.Hours:00}:{offset.Minutes:00}";
         }
 
         private sealed class LudoTournamentListItem

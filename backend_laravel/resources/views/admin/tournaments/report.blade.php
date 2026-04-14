@@ -16,7 +16,7 @@
         <div style="color:rgba(255,255,255,0.86);line-height:1.7;">
             Owner:
             {{ $tournament->creator_type === 'user' ? ($tournament->creator?->username . ' (' . ($tournament->creator?->user_code ?? '—') . ')') : 'Admin' }}
-            · Created {{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}
+            · Created <span data-utc-time="{{ $tournament->created_at?->toIso8601String() }}">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</span>
             · Status {{ ucwords(str_replace('_', ' ', $tournament->status)) }}
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;">
@@ -71,9 +71,9 @@
             <div class="panel"><div class="stat-label">Bot Start Policy</div><div>{{ ucwords(str_replace('_', ' ', $tournament->resolveBotStartPolicy())) }}</div></div>
             <div class="panel"><div class="stat-label">Min Real Players</div><div>{{ $tournament->resolveMinRealPlayersToStart() }}</div></div>
             <div class="panel"><div class="stat-label">Bot Fill Delay</div><div>{{ $tournament->resolveBotFillAfterSeconds() }} sec</div></div>
-            <div class="panel"><div class="stat-label">Registration Start</div><div>{{ $tournament->registration_start_at?->format('d M Y, h:i A') ?? '—' }}</div></div>
-            <div class="panel"><div class="stat-label">Registration End</div><div>{{ $tournament->registration_end_at?->format('d M Y, h:i A') ?? '—' }}</div></div>
-            <div class="panel"><div class="stat-label">Tournament Start</div><div>{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</div></div>
+            <div class="panel"><div class="stat-label">Registration Start</div><div><span data-utc-time="{{ $tournament->registration_start_at?->toIso8601String() }}">{{ $tournament->registration_start_at?->format('d M Y, h:i A') ?? '—' }}</span></div></div>
+            <div class="panel"><div class="stat-label">Registration End</div><div><span data-utc-time="{{ $tournament->registration_end_at?->toIso8601String() }}">{{ $tournament->registration_end_at?->format('d M Y, h:i A') ?? '—' }}</span></div></div>
+            <div class="panel"><div class="stat-label">Tournament Start</div><div><span data-utc-time="{{ $tournament->tournament_start_at?->toIso8601String() }}">{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</span></div></div>
             <div class="panel"><div class="stat-label">Invite Password</div><div>{{ $tournament->invite_password ?: '—' }}</div></div>
             <div class="panel"><div class="stat-label">Invite Code</div><div>{{ $tournament->invite_code ?: '—' }}</div></div>
             <div class="panel"><div class="stat-label">Approval State</div><div>{{ $tournament->is_approved ? 'Approved' : 'Pending Review' }}</div></div>
@@ -85,8 +85,8 @@
                     @foreach($tournament->play_slots as $slot)
                         <div class="panel">
                             <div class="stat-label">{{ $slot['label'] ?? 'Slot' }}</div>
-                            <div>{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }}</div>
-                            <div class="muted" style="margin-top:4px;">to {{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</div>
+                            <div><span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }}</span></div>
+                            <div class="muted" style="margin-top:4px;">to <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</span></div>
                         </div>
                     @endforeach
                 </div>
@@ -182,7 +182,7 @@
                             <td>{{ ucwords(str_replace('_', ' ', $registration->status)) }}</td>
                             <td>{{ $registration->final_position ? '#' . $registration->final_position : '—' }}</td>
                             <td>{{ (float) $registration->prize_won > 0 ? '₹' . number_format((float) $registration->prize_won, 2) : '—' }}</td>
-                            <td>{{ $registration->registered_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                            <td><span data-utc-time="{{ $registration->registered_at?->toIso8601String() }}">{{ $registration->registered_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                         </tr>
                     @empty
                         <tr><td colspan="6" class="muted">No registrations found.</td></tr>
@@ -233,7 +233,7 @@
                     <tbody>
                     @forelse($financialRows as $row)
                         <tr>
-                            <td>{{ $row->created_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                            <td><span data-utc-time="{{ $row->created_at?->toIso8601String() }}">{{ $row->created_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                             <td>{{ $row->user?->username ?? 'System' }}</td>
                             <td>{{ ucwords(str_replace('_', ' ', $row->type ?? 'transaction')) }}</td>
                             <td>₹{{ number_format((float) ($row->amount ?? 0), 2) }}</td>
@@ -249,3 +249,25 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const adminReportTimezone = (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+document.querySelectorAll('[data-utc-time]').forEach((node) => {
+    const iso = node.getAttribute('data-utc-time');
+    if (!iso) return;
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return;
+    node.textContent = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: adminReportTimezone,
+        timeZoneName: 'short',
+    }).format(date);
+});
+</script>
+@endpush

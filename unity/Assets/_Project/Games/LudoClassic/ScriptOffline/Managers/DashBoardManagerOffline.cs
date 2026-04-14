@@ -193,9 +193,15 @@ public class DashBoardManagerOffline : MonoBehaviour
                         PlayerPrefs.GetString("AvatarDetails")
                     );
 
-                if (PlayerPrefs.HasKey("userName"))
+                string savedUsername = PlayerPrefs.GetString("username");
+                if (!string.IsNullOrWhiteSpace(savedUsername))
                 {
-                    //playerUserNameStore = Configuration.GetName();
+                    playerUserNameStore = savedUsername;
+                    PlayerPrefs.SetString("userName", savedUsername);
+                    PlayerPrefs.SetString("name", savedUsername);
+                }
+                else if (PlayerPrefs.HasKey("userName"))
+                {
                     playerUserNameStore = PlayerPrefs.GetString("userName");
                 }
                 else

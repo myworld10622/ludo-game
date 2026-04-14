@@ -18,6 +18,9 @@ namespace LudoClassicOffline
         private const string HomeFriendIconAssetPath = "Assets/_Project/Core/UI/HomePage/Icons/friends-icon.png";
         private const string HomePopupBackgroundAssetPath = "Assets/_Project/Core/UI/Common/Popups/home-notification-banner-bg.png";
         private const string BoxSpriteAssetPath = "Assets/_Project/Core/UI/HomePage/Icons/Box.png";
+        private const float PanelWidthScale = 1.3f;
+        private const float PanelHeightScale = 1.1f;
+        private const float TextScale = 1.2f;
         private enum FriendUiMode
         {
             Hidden,
@@ -178,7 +181,7 @@ namespace LudoClassicOffline
             rootPanel.anchorMin = new Vector2(0.5f, 0.5f);
             rootPanel.anchorMax = new Vector2(0.5f, 0.5f);
             rootPanel.pivot = new Vector2(0.5f, 0.5f);
-            rootPanel.sizeDelta = new Vector2(1200f, 820f);
+            rootPanel.sizeDelta = new Vector2(1200f * PanelWidthScale, 820f * PanelHeightScale);
             rootPanel.anchoredPosition = new Vector2(0f, 10f);
             Image panelImage = panelObject.AddComponent<Image>();
             panelImage.color = new Color32(33, 23, 25, 245);
@@ -1524,7 +1527,7 @@ namespace LudoClassicOffline
             GameObject labelObject = CreateUiObject("TMPLabel", parent);
             TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
             label.text = value;
-            label.fontSize = size;
+            label.fontSize = size * TextScale;
             label.fontStyle = style;
             label.color = Color.white;
             return label;

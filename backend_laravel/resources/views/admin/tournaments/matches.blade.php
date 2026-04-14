@@ -7,34 +7,34 @@
 @section('content')
 <style>
     .monitor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
-    .match-card { background: #fff; border: 1px solid #d9e1e7; border-radius: 12px; padding: 14px 16px; }
-    .match-card.running { border-left: 4px solid #2563eb; }
-    .match-card.completed { border-left: 4px solid #059669; }
-    .match-card.override { border-left: 4px solid #d97706; }
+    .match-card { background: var(--card2); border: 1px solid var(--line-dim); border-radius: 12px; padding: 14px 16px; transition: border-color .15s; }
+    .match-card:hover { border-color: rgba(255,215,0,0.2); }
+    .match-card.running { border-left: 3px solid var(--blue); }
+    .match-card.completed { border-left: 3px solid var(--green); }
+    .match-card.override { border-left: 3px solid #FF9500; }
     .mc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .mc-title { font-weight: 700; font-size: 14px; }
-    .mc-sub { font-size: 12px; color: #5b6670; margin-bottom: 8px; }
+    .mc-title { font-weight: 700; font-size: 14px; color: var(--text); }
+    .mc-sub { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
     .mc-players { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
-    .player-chip { padding: 3px 8px; border-radius: 6px; font-size: 12px; font-weight: 600;
-                   background: #e0f2fe; color: #0369a1; }
-    .player-chip.bot { background: #f3f4f6; color: #6b7280; }
-    .player-chip.winner { background: #d1fae5; color: #065f46; }
+    .player-chip { padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+                   background: rgba(26,107,255,0.12); color: #66AAFF; border: 1px solid rgba(26,107,255,0.2); }
+    .player-chip.bot { background: rgba(255,255,255,0.05); color: var(--muted); border-color: var(--line-dim); }
+    .player-chip.winner { background: rgba(6,214,160,0.12); color: var(--green); border: 1px solid rgba(6,214,160,0.25); }
     .force-form { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 8px;
-                  padding-top: 8px; border-top: 1px solid #e5e7eb; }
-    .force-form select { flex: 1; min-width: 140px; border: 1px solid #d1d5db; border-radius: 8px;
-                         padding: 6px 8px; font-size: 13px; }
-    .force-form input[type=text] { flex: 1; min-width: 120px; border: 1px solid #d1d5db; border-radius: 8px;
-                                    padding: 6px 8px; font-size: 13px; }
-    .force-form button { padding: 6px 14px; font-size: 13px; border-radius: 8px; border: 0; cursor: pointer;
-                         background: #d97706; color: #fff; white-space: nowrap; }
+                  padding-top: 8px; border-top: 1px solid var(--line-dim); }
+    .force-form select { flex: 1; min-width: 140px; }
+    .force-form input[type=text] { flex: 1; min-width: 120px; }
+    .force-form button { padding: 7px 16px; font-size: 13px; border-radius: 8px; border: 0; cursor: pointer;
+                         background: linear-gradient(135deg, #FF9500, #d97706); color: #000; font-weight: 700; white-space: nowrap;
+                         box-shadow: 0 4px 12px rgba(255,149,0,0.25); }
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; }
-    .dot-run  { background: #2563eb; }
+    .dot-run  { background: var(--blue); }
     .dot-wait { background: #f59e0b; }
-    .dot-sched{ background: #9ca3af; }
-    .dot-done { background: #059669; }
-    .section-head { font-size: 16px; font-weight: 700; margin: 20px 0 10px; }
-    .override-badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px;
-                      font-weight: 700; background: #fef3c7; color: #92400e; margin-left: 6px; }
+    .dot-sched{ background: var(--muted); }
+    .dot-done { background: var(--green); }
+    .section-head { font-size: 16px; font-weight: 800; margin: 20px 0 10px; color: var(--text); }
+    .override-badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px;
+                      font-weight: 700; background: rgba(255,149,0,0.12); color: #FF9500; border: 1px solid rgba(255,149,0,0.25); margin-left: 6px; }
     @media(max-width:900px){ .monitor-grid { grid-template-columns: 1fr; } }
 </style>
 

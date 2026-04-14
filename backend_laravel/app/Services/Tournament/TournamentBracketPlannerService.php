@@ -21,6 +21,7 @@ class TournamentBracketPlannerService
             $plans->push([
                 'match_no' => $index + 1,
                 'bracket_position' => $index + 1,
+                'match_size' => $assignedCount,
                 'assigned_count' => $chunk->count(),
                 'bye_slots' => max(0, $tableSize - $chunk->count()),
                 'entries' => $chunk->values(),
@@ -36,22 +37,31 @@ class TournamentBracketPlannerService
             return [];
         }
 
-        $matchCount = (int) ceil($entryCount / $tableSize);
-        $sizes = array_fill(0, $matchCount, $tableSize);
-        $overflow = ($matchCount * $tableSize) - $entryCount;
-
-        for ($i = $matchCount - 1; $i >= 0 && $overflow > 0; $i--) {
-            $reducibleSeats = $sizes[$i] - 1;
-            if ($reducibleSeats <= 0) {
-                continue;
-            }
-
-            $reduction = min($overflow, $reducibleSeats);
-            $sizes[$i] -= $reduction;
-            $overflow -= $reduction;
+        if ($entryCount === 1) {
+            return [1];
         }
 
-        return array_values(array_filter($sizes, static fn (int $size) => $size > 0));
+        $matchCount = (int) ceil($entryCount / $tableSize);
+
+        // Ensure no match drops below 2 players. Reduce match count if needed.
+        while ($matchCount > 1 && $entryCount < ($matchCount * 2)) {
+            $matchCount--;
+        }
+
+        // Start with minimum 2 per match, then distribute the remaining players.
+        $sizes = array_fill(0, $matchCount, 2);
+        $remaining = $entryCount - ($matchCount * 2);
+
+        $index = 0;
+        while ($remaining > 0) {
+            if ($sizes[$index] < $tableSize) {
+                $sizes[$index]++;
+                $remaining--;
+            }
+            $index = ($index + 1) % $matchCount;
+        }
+
+        return $sizes;
     }
 
     private function seedEntries(Tournament $tournament, Collection $entries, int $roundNo): Collection

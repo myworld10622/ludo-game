@@ -10,7 +10,7 @@
         <div class="eyebrow">Report Overview</div>
         <h2 style="margin:8px 0 10px;font-size:30px;">{{ $tournament->name }}</h2>
         <p class="muted" style="line-height:1.7;margin:0;max-width:860px;">
-            Created {{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }} ·
+            Created <span data-utc-time="{{ $tournament->created_at?->toIso8601String() }}">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</span> ·
             Status {{ ucwords(str_replace('_', ' ', $tournament->status)) }} ·
             {{ ucfirst($tournament->type) }} ·
             {{ ucwords(str_replace('_', ' ', $tournament->format)) }}
@@ -45,9 +45,9 @@
 <section id="overview" class="panel report-section">
     <div class="section-title">Overview</div>
     <div class="details-grid">
-        <div><span>Created On</span><strong>{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</strong></div>
-        <div><span>Tournament Start</span><strong>{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</strong></div>
-        <div><span>Completed On</span><strong>{{ $tournament->completed_at?->format('d M Y, h:i A') ?? '—' }}</strong></div>
+        <div><span>Created On</span><strong><span data-utc-time="{{ $tournament->created_at?->toIso8601String() }}">{{ $tournament->created_at?->format('d M Y, h:i A') ?? '—' }}</span></strong></div>
+        <div><span>Tournament Start</span><strong><span data-utc-time="{{ $tournament->tournament_start_at?->toIso8601String() }}">{{ $tournament->tournament_start_at?->format('d M Y, h:i A') ?? '—' }}</span></strong></div>
+        <div><span>Completed On</span><strong><span data-utc-time="{{ $tournament->completed_at?->toIso8601String() }}">{{ $tournament->completed_at?->format('d M Y, h:i A') ?? '—' }}</span></strong></div>
         <div><span>Entry Fee</span><strong>₹{{ number_format((float) $tournament->entry_fee, 2) }}</strong></div>
         <div><span>Players Per Match</span><strong>{{ $tournament->players_per_match }}</strong></div>
         <div><span>Approved</span><strong>{{ $tournament->is_approved ? 'Yes' : 'No' }}</strong></div>
@@ -60,7 +60,7 @@
             <div class="note-title">Playing Slots</div>
             <div class="stack-compact">
                 @foreach($tournament->play_slots as $slot)
-                    <div>{{ $slot['label'] ?? 'Slot' }}: {{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }} to {{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</div>
+                    <div>{{ $slot['label'] ?? 'Slot' }}: <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }}</span> to <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</span></div>
                 @endforeach
             </div>
         </div>
@@ -126,8 +126,8 @@
                     <td>{{ ucwords(str_replace('_', ' ', $registration->status)) }}</td>
                     <td>{{ $registration->final_position ? '#' . $registration->final_position : '—' }}</td>
                     <td>{{ (float) $registration->prize_won > 0 ? '₹' . number_format((float) $registration->prize_won, 2) : '—' }}</td>
-                    <td>{{ $registration->registered_at?->format('d M Y, h:i A') ?? '—' }}</td>
-                    <td>{{ $registration->eliminated_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                    <td><span data-utc-time="{{ $registration->registered_at?->toIso8601String() }}">{{ $registration->registered_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
+                    <td><span data-utc-time="{{ $registration->eliminated_at?->toIso8601String() }}">{{ $registration->eliminated_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                 </tr>
             @empty
                 <tr><td colspan="7" class="muted">No registrations found.</td></tr>
@@ -181,8 +181,8 @@
                                     @endif
                                 </td>
                                 <td>{{ $match->winner?->displayName() ?? $match->forcedWinner?->displayName() ?? 'Pending' }}</td>
-                                <td>{{ $match->scheduled_at?->format('d M Y, h:i A') ?? '—' }}</td>
-                                <td>{{ $match->ended_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                                <td><span data-utc-time="{{ $match->scheduled_at?->toIso8601String() }}">{{ $match->scheduled_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
+                                <td><span data-utc-time="{{ $match->ended_at?->toIso8601String() }}">{{ $match->ended_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                             </tr>
                         @endforeach
                         </tbody>
@@ -217,7 +217,7 @@
             <tbody>
             @forelse($financialRows as $row)
                 <tr>
-                    <td>{{ $row->created_at?->format('d M Y, h:i A') ?? '—' }}</td>
+                    <td><span data-utc-time="{{ $row->created_at?->toIso8601String() }}">{{ $row->created_at?->format('d M Y, h:i A') ?? '—' }}</span></td>
                     <td>{{ $row->user?->username ?? 'System' }}</td>
                     <td>{{ ucwords(str_replace('_', ' ', $row->type ?? 'transaction')) }}</td>
                     <td>₹{{ number_format((float) ($row->amount ?? 0), 2) }}</td>
@@ -231,3 +231,25 @@
     </div>
 </section>
 @endsection
+
+@push('scripts')
+<script>
+const userReportTimezone = (Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC');
+document.querySelectorAll('[data-utc-time]').forEach((node) => {
+    const iso = node.getAttribute('data-utc-time');
+    if (!iso) return;
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) return;
+    node.textContent = new Intl.DateTimeFormat(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: userReportTimezone,
+        timeZoneName: 'short',
+    }).format(date);
+});
+</script>
+@endpush

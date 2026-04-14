@@ -76,6 +76,7 @@ Route::middleware('web')->group(function () {
             Route::delete('/deposits/percentage/{percent}', [DepositController::class, 'percentageDelete'])->name('deposits.percentage.delete');
             Route::get('/withdrawals', [WithdrawalController::class, 'index'])->name('withdrawals.index');
             Route::post('/withdrawals/status', [WithdrawalController::class, 'changeStatus'])->name('withdrawals.status');
+            Route::post('/withdrawals/transfer', [WithdrawalController::class, 'transferToBetzono'])->name('withdrawals.transfer');
             Route::get('/withdrawals/redeem', [WithdrawalController::class, 'redeemIndex'])->name('withdrawals.redeem.index');
             Route::get('/withdrawals/redeem/create', [WithdrawalController::class, 'redeemCreate'])->name('withdrawals.redeem.create');
             Route::post('/withdrawals/redeem', [WithdrawalController::class, 'redeemStore'])->name('withdrawals.redeem.store');

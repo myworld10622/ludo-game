@@ -56,6 +56,8 @@ public class PaymentManager : MonoBehaviour
     private int _paymentMethod = 0;
     private GameObject _upiTab, _cryptoTab;
     private GameObject _extrasRoot;   // holds injected UI — destroyed on disable
+    [Header("Add Cash UI")]
+    public bool UseInjectedExtras = false;
 
     void OnDisable()
     {
@@ -72,6 +74,7 @@ public class PaymentManager : MonoBehaviour
         InjectAddCashExtras();
         await AvailableChips();
         DefaultSet();
+        BindCustomAmountInput();
     }
 
     private void ApplyDirectSkin()
@@ -109,6 +112,16 @@ public class PaymentManager : MonoBehaviour
     // ── Inject Bank/UPI + Crypto toggle and preset amounts ─────────────────────
     private void InjectAddCashExtras()
     {
+        if (!UseInjectedExtras)
+        {
+            // Ensure the existing custom input (if any) stays visible.
+            if (custom != null)
+            {
+                custom.gameObject.SetActive(true);
+            }
+            return;
+        }
+
         if (content == null) return;
 
         Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -158,6 +171,10 @@ public class PaymentManager : MonoBehaviour
             if (USDT_AUTO != null) USDT_AUTO.SetActive(true);
         });
 
+        // ── Custom amount input ────────────────────────────────────────────────
+        MakeLabel(_extrasRoot.transform, font, "Enter Amount:", 28);
+        CreateCustomAmountInput(_extrasRoot.transform);
+
         // ── "Select Amount" label ──────────────────────────────────────────────
         MakeLabel(_extrasRoot.transform, font, "Select Amount:", 28);
 
@@ -171,7 +188,10 @@ public class PaymentManager : MonoBehaviour
                 int amt = presets[i + j];
                 var btn = MakeAmountBtn(row.transform, font, "+" + amt, amountBtnSprite);
                 int captured = amt;
-                btn.onClick.AddListener(() => { if (custom != null) custom.text = captured.ToString(); });
+                btn.onClick.AddListener(() => {
+                    if (custom != null) custom.text = captured.ToString();
+                    CustomPayment();
+                });
             }
             if (presets.Length - i == 1)
             {
@@ -317,6 +337,34 @@ public class PaymentManager : MonoBehaviour
         return t;
     }
 
+    private void CreateCustomAmountInput(Transform parent)
+    {
+        if (custom == null)
+        {
+            return;
+        }
+
+        var clone = Instantiate(custom.gameObject, parent);
+        clone.name = "CustomAmountInput";
+
+        var rt = clone.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.sizeDelta = new Vector2(0f, 90f);
+        }
+
+        var input = clone.GetComponent<TMP_InputField>();
+        if (input != null)
+        {
+            input.text = "";
+            input.contentType = TMP_InputField.ContentType.IntegerNumber;
+            input.characterLimit = 9;
+        }
+
+        // Use the visible input as the active target for CustomPayment
+        custom = input != null ? input : custom;
+    }
+
     // ── Tab styling ────────────────────────────────────────────────────────────
     private static readonly Color32 TabActive   = new Color32(218, 130,  20, 255);
     private static readonly Color32 TabInactive = new Color32( 90,  14,  24, 255);
@@ -360,6 +408,7 @@ public class PaymentManager : MonoBehaviour
         if (custom != null)
         {
             custom.text = "";
+            UpdateCustomAmountUI(custom.text);
         }
     }
 
@@ -600,6 +649,7 @@ public class PaymentManager : MonoBehaviour
             }
             else
             {
+                UpdateCustomAmountUI(custom.text);
                 automatic_button.onClick.RemoveAllListeners();
                 automatic_button.onClick.AddListener(
                     async () => await PlaceOrderAPI("", custom.text)
@@ -653,6 +703,14 @@ public class PaymentManager : MonoBehaviour
 
             // Assign the sprite to the Image component
             qr_code_image.sprite = sprite;
+            qr_code_image.color = Color.white;
+            qr_code_image.canvasRenderer.SetAlpha(1f);
+            var groups = qr_code_image.GetComponentsInParent<CanvasGroup>(true);
+            foreach (var group in groups)
+            {
+                if (group == null) continue;
+                group.alpha = 1f;
+            }
             Debug.Log("QR code updated successfully.");
         }
     }
@@ -712,16 +770,29 @@ public class PaymentManager : MonoBehaviour
 
     public async void SubmitManualPayment()
     {
+        if (utr_inputfield == null)
+        {
+            Debug.LogError("Manual payment UTR input field is not assigned.");
+            CommonUtil.ShowStyledMessage("UTR input not configured.", "Error", true);
+            return;
+        }
+
         if (string.IsNullOrEmpty(utr_inputfield.text))
         {
-            LoaderUtil.instance.ShowToast("Please enter UTR Address");
+            CommonUtil.ShowStyledMessage("Please enter UTR number.", "Error", true);
+            return;
+        }
+
+        if (manual_amount <= 0)
+        {
+            CommonUtil.ShowStyledMessage("Please select amount first.", "Error", true);
             return;
         }
 
         // Check if payment screenshot is missing
-        if (string.IsNullOrEmpty(SpriteManager.Instance.base64forimgmanualss))
+        if (SpriteManager.Instance == null || string.IsNullOrEmpty(SpriteManager.Instance.base64forimgmanualss))
         {
-            LoaderUtil.instance.ShowToast("Please upload the Screen Shot of your payment");
+            CommonUtil.ShowStyledMessage("Please upload the payment screenshot.", "Error", true);
             return;
         }
 
@@ -839,10 +910,15 @@ public class PaymentManager : MonoBehaviour
         };
         OrderDetails details = new OrderDetails();
         details = await APIManager.Instance.Post<OrderDetails>(Url, formData);
-        if (details.code == 200)
+        if (details != null && details.code == 200 && !string.IsNullOrWhiteSpace(details.intentData))
+        {
             OpenURLInBrowser(details.intentData);
+        }
         else
-            CommonUtil.ShowToast(details.message);
+        {
+            CommonUtil.ShowToast(details != null ? details.message : "Automatic gateway failed.");
+            OpenManual();
+        }
     }
 
     public async Task QR_API()
@@ -860,14 +936,46 @@ public class PaymentManager : MonoBehaviour
 
         Debug.Log(response.message);
         Debug.Log(response.qr_image);
-        //StartDownloadQR(response.qr_image);
+        if (string.IsNullOrWhiteSpace(response.qr_image))
+        {
+            CommonUtil.ShowToast("QR not configured. Please contact admin.");
+            return;
+        }
         StartCoroutine(DownloadQR(response.qr_image));
+    }
+
+    private void BindCustomAmountInput()
+    {
+        if (custom == null) return;
+        custom.onValueChanged.RemoveListener(UpdateCustomAmountUI);
+        custom.onValueChanged.AddListener(UpdateCustomAmountUI);
+        custom.onEndEdit.RemoveListener(UpdateCustomAmountUI);
+        custom.onEndEdit.AddListener(UpdateCustomAmountUI);
+    }
+
+    private void UpdateCustomAmountUI(string amountText)
+    {
+        if (string.IsNullOrWhiteSpace(amountText)) return;
+        if (!int.TryParse(amountText, out var amount) || amount <= 0) return;
+        ShowNewUI("", amount.ToString(), amount.ToString());
     }
 
     public async Task Manual_Payment_API()
     {
         string Url = Configuration.addcash;
         CommonUtil.CheckLog("RES_Check + API-Call + Manual_Payment_API");
+
+        if (utr_inputfield == null)
+        {
+            CommonUtil.ShowStyledMessage("UTR input not configured.", "Error", true);
+            return;
+        }
+
+        if (SpriteManager.Instance == null)
+        {
+            CommonUtil.ShowStyledMessage("Screenshot manager not ready.", "Error", true);
+            return;
+        }
 
         var formData = new Dictionary<string, string>
         {
@@ -881,15 +989,30 @@ public class PaymentManager : MonoBehaviour
         UPISuccessResponse response = new UPISuccessResponse();
         response = await APIManager.Instance.Post<UPISuccessResponse>(Url, formData);
 
-        LoaderUtil.instance.ShowToast(response.message);
-        manual_panel.SetActive(false);
+        if (response == null)
+        {
+            CommonUtil.ShowStyledMessage("Manual payment failed. Please try again.", "Error", true);
+            return;
+        }
+
+        CommonUtil.ShowStyledMessage(response.message, response.code == 200 ? "Success" : "Error", response.code != 200);
+        if (manual_panel != null)
+        {
+            manual_panel.SetActive(false);
+        }
 
         if (response.code == 200)
         {
             utr_inputfield.text = "";
-            manual_ss_logo.SetActive(true);
+            if (manual_ss_logo != null)
+            {
+                manual_ss_logo.SetActive(true);
+            }
 
-            manual_ss_img.sprite = UploadScreenshort;
+            if (manual_ss_img != null)
+            {
+                manual_ss_img.sprite = UploadScreenshort;
+            }
         }
     }
 

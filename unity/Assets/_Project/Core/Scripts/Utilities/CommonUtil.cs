@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using EasyUI.Toast;
 using UnityEngine;
@@ -8,6 +9,7 @@ public static class CommonUtil
     private static GameObject statusPopup;
     private static Text statusPopupTitleText;
     private static Text statusPopupMessageText;
+    private static Action statusPopupCloseAction;
 
     public static void CheckLog(string text)
     {
@@ -47,6 +49,17 @@ public static class CommonUtil
         Toast.Show(finalMessage, 3f);
     }
 
+    public static void ShowStyledMessageWithAction(
+        string message,
+        string caption,
+        bool isError,
+        Action onClose
+    )
+    {
+        statusPopupCloseAction = onClose;
+        ShowStyledMessage(message, caption, isError);
+    }
+
     public static void ShowToastDebug(string message)
     {
         Toast.Show(message, 3f);
@@ -59,7 +72,7 @@ public static class CommonUtil
             return true;
         }
 
-        Canvas parentCanvas = Object.FindObjectOfType<Canvas>();
+        Canvas parentCanvas = UnityEngine.Object.FindObjectOfType<Canvas>();
         if (parentCanvas == null)
         {
             return false;
@@ -245,6 +258,15 @@ public static class CommonUtil
         {
             statusPopup.SetActive(false);
         }
+
+        var action = statusPopupCloseAction;
+        statusPopupCloseAction = null;
+        action?.Invoke();
+    }
+
+    public static void SetNextStyledMessageAction(Action onClose)
+    {
+        statusPopupCloseAction = onClose;
     }
 
     public static string GetFormattedWallet(string wallet = "")

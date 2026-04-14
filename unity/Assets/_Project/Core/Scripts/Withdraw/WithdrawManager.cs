@@ -33,6 +33,7 @@ public class WithdrawManager : MonoBehaviour
     public GameObject Crypto, Bank;
 
     public Profile Profile;
+    public GameObject accountDetailsPopup;
 
     public GameObject withdraw;
     public GameObject Withdrawlogs;
@@ -368,10 +369,34 @@ public class WithdrawManager : MonoBehaviour
             { "redeem_id", id },
             { "type", setOption },
         };
-        messageprint output = new messageprint();
-        output = await APIManager.Instance.Post<messageprint>(Url, formData);
+        messageprint output = await APIManager.Instance.Post<messageprint>(Url, formData);
 
-        LoaderUtil.instance.ShowToast(output.message);
+        if (output == null)
+        {
+            EasyUI.Toast.Toast.Show("Withdrawal request failed. Please try again.", 3f);
+            return;
+        }
+
+        if (ShouldPromptAccountDetails(output))
+        {
+            CommonUtil.SetNextStyledMessageAction(() =>
+            {
+                PopUpUtil.ButtonCancel(this.gameObject);
+                OpenAccountDetailsPopup();
+            });
+            CommonUtil.ShowStyledMessage(
+                "Account details missing. Please update your bank or crypto details to request withdrawal.",
+                "Account Details Required",
+                true
+            );
+            return;
+        }
+
+        CommonUtil.ShowStyledMessage(
+            string.IsNullOrWhiteSpace(output.message) ? "Withdrawal request submitted." : output.message,
+            output.code == 200 ? "Success" : "Withdrawal",
+            output.code != 200
+        );
         PopUpUtil.ButtonCancel(this.gameObject);
 
         if (output.code == 200)
@@ -411,16 +436,35 @@ public class WithdrawManager : MonoBehaviour
             return;
         }
 
+        if (ShouldPromptAccountDetails(output))
+        {
+            CommonUtil.SetNextStyledMessageAction(() =>
+            {
+                PopUpUtil.ButtonCancel(this.gameObject);
+                OpenAccountDetailsPopup();
+            });
+            CommonUtil.ShowStyledMessage(
+                "Account details missing. Please update your bank or crypto details to request withdrawal.",
+                "Account Details Required",
+                true
+            );
+            return;
+        }
+
         string msg = string.IsNullOrWhiteSpace(output.message) ? "Request submitted." : output.message;
-        if (LoaderUtil.instance != null)
-            LoaderUtil.instance.ShowToast(msg);
-        else
-            EasyUI.Toast.Toast.Show(msg, 3f);
+        CommonUtil.ShowStyledMessage(msg, output.code == 200 ? "Success" : "Withdrawal", output.code != 200);
 
         PopUpUtil.ButtonCancel(this.gameObject);
         if (output.code == 200)
         {
             StartCoroutine(Profile.UpdateWallet());
+            DOVirtual.DelayedCall(0.25f, () =>
+            {
+                total.text = Configuration.GetWallet();
+                bonus.text = Configuration.GetBonus();
+                winning_wallet.text = Configuration.GetWinning();
+                unutilized_wallet.text = Configuration.GetUnutilized();
+            });
         }
     }
     #endregion
@@ -448,6 +492,101 @@ public class WithdrawManager : MonoBehaviour
 
         return formattedDate + "\n" + formattedTime;
         // return formattedDate + "\n" + formattedTime;
+    }
+
+    private bool ShouldPromptAccountDetails(messageprint output)
+    {
+        if (output == null || string.IsNullOrWhiteSpace(output.message))
+        {
+            return false;
+        }
+
+        string msg = output.message.Trim();
+        if (msg.IndexOf("Account Details", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return true;
+        }
+
+        if (msg.IndexOf("bank details", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return true;
+        }
+
+        if (msg.IndexOf("crypto details", StringComparison.OrdinalIgnoreCase) >= 0)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private void OpenAccountDetailsPopup()
+    {
+        if (Profile == null)
+        {
+            Profile = FindObjectOfType<Profile>();
+        }
+
+        GameObject popup = accountDetailsPopup;
+        if (popup == null)
+        {
+            popup = GameObject.Find("Bank Details") ?? GameObject.Find("Account Details");
+        }
+
+        if (popup == null)
+        {
+            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
+            {
+                if (!go) continue;
+                if (go.name != "Bank Details" && go.name != "Account Details")
+                {
+                    continue;
+                }
+                // Prefer the actual popup panel (no Button component).
+                if (go.GetComponent<Button>() != null)
+                {
+                    continue;
+                }
+                popup = go;
+                break;
+            }
+        }
+
+        if (popup == null)
+        {
+            Debug.LogWarning("Account Details popup not found. Assign it in WithdrawManager.");
+            return;
+        }
+
+        var popupTransform = popup.transform;
+        var rootCanvas = popup.GetComponentInParent<Canvas>(true);
+        if (rootCanvas != null)
+        {
+            popupTransform.SetParent(rootCanvas.transform, true);
+        }
+
+        popup.SetActive(true);
+        var popupRect = popup.GetComponent<RectTransform>();
+        if (popupRect != null)
+        {
+            popupRect.SetAsLastSibling();
+        }
+        var popupCanvas = popup.GetComponentInParent<Canvas>(true);
+        if (popupCanvas != null)
+        {
+            popupCanvas.overrideSorting = true;
+            popupCanvas.sortingOrder = 5000;
+        }
+
+        if (Profile != null)
+        {
+            Profile.PopUpPanelOpen(popup);
+            Profile.SwitchBankAndCrypto(0);
+        }
+        else
+        {
+            PopUpUtil.ButtonClick(popup);
+        }
     }
 
     private string GetMonthAbbreviation(int month)

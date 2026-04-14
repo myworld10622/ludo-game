@@ -12,6 +12,7 @@ use Illuminate\Http\Response;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
@@ -156,10 +157,11 @@ class UserPanelTournamentController extends Controller
         $user = $this->user();
         $this->ensurePermission('manage_tournaments');
         $validated = $request->validate($this->rules());
+        $timezone = (string) $request->input('timezone', 'UTC');
 
-        DB::transaction(function () use ($validated, $user) {
+        DB::transaction(function () use ($validated, $user, $timezone) {
             $isPrivate = ($validated['type'] === 'private');
-            $playSlots = $this->buildPlaySlots($validated);
+            $playSlots = $this->buildPlaySlots($validated, $timezone);
 
             $tournament = Tournament::create([
                 'name'                  => $validated['name'],
@@ -178,9 +180,9 @@ class UserPanelTournamentController extends Controller
                 'max_bot_pct'           => 0,
                 'invite_password'       => $isPrivate ? ($validated['invite_password'] ?? null) : null,
                 'invite_code'           => $isPrivate ? Tournament::generateInviteCode() : null,
-                'registration_start_at' => $validated['registration_start_at'] ?? null,
-                'registration_end_at'   => $validated['registration_end_at'] ?? null,
-                'tournament_start_at'   => $validated['tournament_start_at'],
+                'registration_start_at' => $this->toUtc($validated['registration_start_at'] ?? null, $timezone),
+                'registration_end_at'   => $this->toUtc($validated['registration_end_at'] ?? null, $timezone),
+                'tournament_start_at'   => $this->toUtc($validated['tournament_start_at'], $timezone),
                 'terms_conditions'      => $validated['terms_conditions'] ?? null,
                 'play_slots'            => $playSlots,
                 'is_approved'           => false,
@@ -199,10 +201,11 @@ class UserPanelTournamentController extends Controller
         $this->ensurePermission('manage_tournaments');
         $this->ensureOwnership($tournament, $user);
         $validated = $request->validate($this->rules($tournament->id));
+        $timezone = (string) $request->input('timezone', 'UTC');
 
-        DB::transaction(function () use ($validated, $tournament) {
+        DB::transaction(function () use ($validated, $tournament, $timezone) {
             $isPrivate = ($validated['type'] === 'private');
-            $playSlots = $this->buildPlaySlots($validated);
+            $playSlots = $this->buildPlaySlots($validated, $timezone);
 
             $tournament->update([
                 'name'                  => $validated['name'],
@@ -219,9 +222,9 @@ class UserPanelTournamentController extends Controller
                 'max_bot_pct'           => 0,
                 'invite_password'       => $isPrivate ? ($validated['invite_password'] ?? $tournament->invite_password) : null,
                 'invite_code'           => $isPrivate ? ($tournament->invite_code ?? Tournament::generateInviteCode()) : null,
-                'registration_start_at' => $validated['registration_start_at'] ?? null,
-                'registration_end_at'   => $validated['registration_end_at'] ?? null,
-                'tournament_start_at'   => $validated['tournament_start_at'],
+                'registration_start_at' => $this->toUtc($validated['registration_start_at'] ?? null, $timezone),
+                'registration_end_at'   => $this->toUtc($validated['registration_end_at'] ?? null, $timezone),
+                'tournament_start_at'   => $this->toUtc($validated['tournament_start_at'], $timezone),
                 'terms_conditions'      => $validated['terms_conditions'] ?? null,
                 'play_slots'            => $playSlots,
             ]);
@@ -310,6 +313,7 @@ class UserPanelTournamentController extends Controller
             'registration_end_at'   => ['nullable', 'date', 'after_or_equal:registration_start_at'],
             'tournament_start_at'   => ['required', 'date'],
             'terms_conditions'      => ['nullable', 'string'],
+            'timezone'              => ['nullable', 'string', 'max:64'],
             'play_slot_start_1'     => ['nullable', 'date'],
             'play_slot_end_1'       => ['nullable', 'date', 'after:play_slot_start_1'],
             'play_slot_start_2'     => ['nullable', 'date'],
@@ -328,7 +332,7 @@ class UserPanelTournamentController extends Controller
         ];
     }
 
-    private function buildPlaySlots(array $data): array
+    private function buildPlaySlots(array $data, string $timezone = 'UTC'): array
     {
         $slots = [];
 
@@ -342,12 +346,21 @@ class UserPanelTournamentController extends Controller
 
             $slots[] = [
                 'label' => "Slot {$i}",
-                'start_at' => \Illuminate\Support\Carbon::parse($startAt)->toIso8601String(),
-                'end_at' => \Illuminate\Support\Carbon::parse($endAt)->toIso8601String(),
+                'start_at' => Carbon::parse($startAt, $timezone)->utc()->toIso8601String(),
+                'end_at' => Carbon::parse($endAt, $timezone)->utc()->toIso8601String(),
             ];
         }
 
         return $slots;
+    }
+
+    private function toUtc(?string $value, string $timezone = 'UTC'): ?Carbon
+    {
+        if (! $value) {
+            return null;
+        }
+
+        return Carbon::parse($value, $timezone)->utc();
     }
 
     private function ensureOwnership(Tournament $tournament, User $user): void

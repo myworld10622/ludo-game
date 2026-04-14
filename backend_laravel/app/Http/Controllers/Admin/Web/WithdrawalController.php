@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Admin\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -56,6 +58,95 @@ class WithdrawalController extends Controller
             'msg' => $updated ? 'Status Change Successfully' : 'Something went to wrong',
             'class' => $updated ? 'success' : 'error',
         ]);
+    }
+
+    public function transferToBetzono(Request $request)
+    {
+        $id = (int) $request->input('id', 0);
+
+        if ($id <= 0 || ! $this->legacyTableExists('tbl_withdrawal_log')) {
+            return response()->json(['msg' => 'Invalid request', 'class' => 'error']);
+        }
+
+        $row = DB::table('tbl_withdrawal_log')->where('id', $id)->first();
+        if (! $row) {
+            return response()->json(['msg' => 'Withdrawal not found', 'class' => 'error']);
+        }
+
+        $betzonoUrl = (string) env('BETZONO_WITHDRAW_URL', '');
+        $betzonoMerchantId = (string) env('BETZONO_MERCHANT_ID', '');
+        $betzonoProxyUserId = (string) env('BETZONO_PROXY_USER_ID', '');
+        $callbackBase = rtrim((string) env('BETZONO_CALLBACK_URL_BASE', ''), '/');
+
+        if ($betzonoUrl === '' || $betzonoMerchantId === '' || $betzonoProxyUserId === '' || $callbackBase === '') {
+            return response()->json(['msg' => 'Betzono gateway env missing', 'class' => 'error']);
+        }
+
+        $transactionId = $row->transaction_id;
+        if (! $transactionId) {
+            $transactionId = $this->generateTransactionId((int) $row->user_id);
+
+            DB::table('tbl_withdrawal_log')
+                ->where('id', $row->id)
+                ->update([
+                    'transaction_id' => $transactionId,
+                    'updated_date' => now()->format('Y-m-d H:i:s'),
+                ]);
+        }
+
+        $accountDetails = $this->buildAccountDetails($row);
+
+        $payload = [
+            'userId' => (int) $betzonoProxyUserId,
+            'merchantId' => $betzonoMerchantId,
+            'isWaitForVerification' => true,
+            'metaData' => [
+                'TransactionId' => $transactionId,
+                'source' => 'rox_ludo',
+                'withdrawalId' => $row->id,
+            ],
+            'amount' => (float) $row->coin,
+            'accountDetails' => $accountDetails,
+            'callbackUrls' => [
+                'successUrl' => $callbackBase.'/api/deposit/withdraw/update',
+                'declineUrl' => $callbackBase.'/api/deposit/withdraw/update',
+            ],
+        ];
+
+        try {
+            $response = Http::timeout(15)
+                ->acceptJson()
+                ->post($betzonoUrl, $payload);
+
+            DB::table('tbl_withdrawal_log')
+                ->where('id', $row->id)
+                ->update([
+                    'payout_response' => json_encode([
+                        'status' => $response->status(),
+                        'body' => $response->json() ?? $response->body(),
+                    ]),
+                    'updated_date' => now()->format('Y-m-d H:i:s'),
+                ]);
+
+            return response()->json([
+                'msg' => $response->successful() ? 'Transfer sent to Betzono' : 'Betzono transfer failed',
+                'class' => $response->successful() ? 'success' : 'error',
+            ]);
+        } catch (\Throwable $exception) {
+            DB::table('tbl_withdrawal_log')
+                ->where('id', $row->id)
+                ->update([
+                    'payout_response' => json_encode([
+                        'error' => $exception->getMessage(),
+                    ]),
+                    'updated_date' => now()->format('Y-m-d H:i:s'),
+                ]);
+
+            return response()->json([
+                'msg' => 'Betzono transfer error: '.$exception->getMessage(),
+                'class' => 'error',
+            ]);
+        }
     }
 
     public function redeemIndex()
@@ -205,5 +296,59 @@ class WithdrawalController extends Controller
         $file->move($dir, $name);
 
         return $name;
+    }
+
+    protected function generateTransactionId(int $legacyUserId): string
+    {
+        $laravelUserId = null;
+
+        if ($this->legacyTableExists('tbl_users')) {
+            $legacy = DB::table('tbl_users')->where('id', $legacyUserId)->first();
+            if ($legacy) {
+                $query = User::query();
+                $hasCriteria = false;
+
+                if (! empty($legacy->mobile)) {
+                    $query->orWhere('mobile', $legacy->mobile);
+                    $hasCriteria = true;
+                }
+
+                if (! empty($legacy->email)) {
+                    $query->orWhere('email', $legacy->email);
+                    $hasCriteria = true;
+                }
+
+                if ($hasCriteria) {
+                    $laravelUserId = $query->first()?->id;
+                }
+            }
+        }
+
+        $resolved = $laravelUserId ?: $legacyUserId;
+        return 'ROX-'.$resolved.'-'.Str::upper(Str::random(8));
+    }
+
+    protected function buildAccountDetails(object $row): array
+    {
+        $reqType = (int) $row->type === 0 ? 'bank' : 'crypto';
+        $userName = property_exists($row, 'user_name') ? $row->user_name : null;
+        $details = [
+            'reqType' => $reqType,
+            'name' => $row->acc_holder_name ?: ($userName ?: 'User'),
+        ];
+
+        if ($reqType === 'bank') {
+            $details['accHolderName'] = $row->acc_holder_name ?: ($userName ?: 'User');
+            $details['accountNumber'] = (string) ($row->acc_no ?? '');
+            $details['ifsc'] = (string) ($row->ifsc_code ?? '');
+            $details['bankName'] = (string) ($row->bank_name ?? '');
+            $details['mobileNumber'] = (string) ($row->mobile ?? '');
+        } else {
+            $details['cryptoAddress'] = (string) ($row->crypto_address ?? '');
+            $details['cryptoWalletType'] = (string) ($row->crypto_wallet_type ?? '');
+            $details['mobileNumber'] = (string) ($row->mobile ?? '');
+        }
+
+        return $details;
     }
 }

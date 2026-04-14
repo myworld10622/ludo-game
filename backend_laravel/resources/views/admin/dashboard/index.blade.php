@@ -8,7 +8,7 @@
 @php($liveOrRunningTournaments = $recent_tournaments->filter(fn ($tournament) => in_array($tournament->status, ['registration_open', 'in_progress']))->values())
 @php($runningTournamentCount = $recent_tournaments->where('status', 'in_progress')->count())
 <div class="stack">
-    <div class="panel" style="background:linear-gradient(135deg,#4a2210,#a6461f 48%, #17806d 100%);color:#fff;border:none;">
+    <div class="panel" style="background:linear-gradient(135deg,rgba(255,215,0,0.14),rgba(255,149,0,0.12) 48%,rgba(6,214,160,0.12) 100%);border-color:rgba(255,215,0,0.2);">
         <div style="display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;">
             <div>
                 <div class="badge" style="background:rgba(255,255,255,0.14);color:#fff;">Admin Command Center</div>
@@ -62,10 +62,10 @@
         </div>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px;">
             @forelse($liveOrRunningTournaments as $tournament)
-                <div class="panel" style="background:linear-gradient(180deg,#fff8ef 0%, #fff 100%);">
+                <div class="panel" style="background:var(--card2);border-color:rgba(255,215,0,0.15);">
                     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
                         <div>
-                            <div style="font-size:18px;font-weight:800;">{{ $tournament->name }}</div>
+                            <div style="font-size:18px;font-weight:800;color:var(--text);">{{ $tournament->name }}</div>
                             <div class="muted" style="font-size:12px;">
                                 {{ ucfirst($tournament->creator_type) }}
                                 @if($tournament->creator_type === 'user' && $tournament->creator)
@@ -78,9 +78,9 @@
                         </span>
                     </div>
                     <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:14px;">
-                        <div><div class="stat-label">Players</div><div style="font-weight:800;">{{ $tournament->registrations_count }}/{{ $tournament->max_players }}</div></div>
-                        <div><div class="stat-label">Running</div><div style="font-weight:800;">{{ $tournament->pending_matches_count }}</div></div>
-                        <div><div class="stat-label">Completed</div><div style="font-weight:800;">{{ $tournament->completed_matches_count }}</div></div>
+                        <div><div class="stat-label">Players</div><div style="font-weight:800;color:var(--text);">{{ $tournament->registrations_count }}/{{ $tournament->max_players }}</div></div>
+                        <div><div class="stat-label">Running</div><div style="font-weight:800;color:var(--text);">{{ $tournament->pending_matches_count }}</div></div>
+                        <div><div class="stat-label">Completed</div><div style="font-weight:800;color:var(--text);">{{ $tournament->completed_matches_count }}</div></div>
                     </div>
                     <div class="mobile-actions" style="margin-top:14px;">
                         <a class="btn" href="{{ route('admin.tournaments.report', $tournament) }}">Open Report</a>
@@ -145,29 +145,29 @@
                 <a class="muted" href="{{ route('admin.tournaments.index') }}">Open tournaments</a>
             </div>
             <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;">
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Live</div>
-                    <div style="font-size:24px;font-weight:800;color:#1f4ed8;">{{ $tournamentStats['live'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--gold);">{{ $tournamentStats['live'] }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Completed</div>
-                    <div style="font-size:24px;font-weight:800;color:#1f4ed8;">{{ $tournamentStats['completed'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--gold);">{{ $tournamentStats['completed'] }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Drafts</div>
-                    <div style="font-size:24px;font-weight:800;color:#1f4ed8;">{{ $tournamentStats['drafts'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--gold);">{{ $tournamentStats['drafts'] }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">User Created</div>
-                    <div style="font-size:24px;font-weight:800;color:#12a594;">{{ $tournamentStats['user_created'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--green);">{{ $tournamentStats['user_created'] }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Admin Created</div>
-                    <div style="font-size:24px;font-weight:800;color:#12a594;">{{ $tournamentStats['admin_created'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--green);">{{ $tournamentStats['admin_created'] }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid rgba(230,57,70,0.2);border-radius:14px;background:rgba(230,57,70,0.06);">
                     <div class="stat-label">Pending Approval</div>
-                    <div style="font-size:24px;font-weight:800;color:#b54708;">{{ $tournamentStats['pending_approval'] }}</div>
+                    <div style="font-size:24px;font-weight:800;color:var(--red);">{{ $tournamentStats['pending_approval'] }}</div>
                 </div>
             </div>
         </div>
@@ -178,17 +178,17 @@
                 <span class="muted">Platform financial view</span>
             </div>
             <div style="display:grid;gap:12px;">
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Wallet Volume</div>
-                    <div style="font-size:26px;font-weight:800;color:#1f4ed8;">₹{{ number_format($revenue['wallet_volume'], 2) }}</div>
+                    <div style="font-size:26px;font-weight:800;color:var(--gold);">₹{{ number_format($revenue['wallet_volume'], 2) }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                     <div class="stat-label">Active Wallet Balance</div>
-                    <div style="font-size:26px;font-weight:800;color:#12a594;">₹{{ number_format($revenue['active_wallet_balance'], 2) }}</div>
+                    <div style="font-size:26px;font-weight:800;color:var(--green);">₹{{ number_format($revenue['active_wallet_balance'], 2) }}</div>
                 </div>
-                <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                <div style="padding:14px;border:1px solid rgba(255,149,0,0.2);border-radius:14px;background:rgba(255,149,0,0.06);">
                     <div class="stat-label">Tournament Platform Fee</div>
-                    <div style="font-size:26px;font-weight:800;color:#b54708;">₹{{ number_format($revenue['tournament_platform_fee'], 2) }}</div>
+                    <div style="font-size:26px;font-weight:800;color:#FF9500;">₹{{ number_format($revenue['tournament_platform_fee'], 2) }}</div>
                 </div>
             </div>
         </div>
@@ -245,18 +245,18 @@
             </div>
             <div style="display:grid;gap:10px;">
                 @forelse($top_users as $user)
-                    <div style="padding:14px;border:1px solid #d8e2f0;border-radius:16px;background:linear-gradient(180deg,#ffffff,#f7fbff);">
+                    <div style="padding:14px;border:1px solid var(--line-dim);border-radius:14px;background:var(--card2);">
                         <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;">
                             <div>
-                                <div style="font-weight:800;">{{ $user->username }}</div>
+                                <div style="font-weight:800;color:var(--text);">{{ $user->username }}</div>
                                 <div class="muted" style="font-size:12px;">{{ $user->user_code }} · {{ $user->email ?: ($user->mobile ?: 'No contact') }}</div>
                             </div>
                             <a href="{{ route('admin.users.show', $user) }}" class="badge">Open</a>
                         </div>
                         <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;">
-                            <div><div class="stat-label">Registrations</div><div style="font-weight:800;">{{ $user->tournament_registrations_count }}</div></div>
-                            <div><div class="stat-label">Created</div><div style="font-weight:800;">{{ $user->created_tournaments_count }}</div></div>
-                            <div><div class="stat-label">Wallet</div><div style="font-weight:800;">₹{{ number_format((float) ($user->primaryWallet?->balance ?? 0), 0) }}</div></div>
+                            <div><div class="stat-label">Registrations</div><div style="font-weight:800;color:var(--text);">{{ $user->tournament_registrations_count }}</div></div>
+                            <div><div class="stat-label">Created</div><div style="font-weight:800;color:var(--text);">{{ $user->created_tournaments_count }}</div></div>
+                            <div><div class="stat-label">Wallet</div><div style="font-weight:800;color:var(--green);">₹{{ number_format((float) ($user->primaryWallet?->balance ?? 0), 0) }}</div></div>
                         </div>
                     </div>
                 @empty

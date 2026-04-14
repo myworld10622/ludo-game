@@ -345,7 +345,7 @@ namespace AndroApps
             cardRect.anchorMin = new Vector2(0.5f, 0.5f);
             cardRect.anchorMax = new Vector2(0.5f, 0.5f);
             cardRect.pivot = new Vector2(0.5f, 0.5f);
-            cardRect.sizeDelta = new Vector2(560f, 320f);
+            cardRect.sizeDelta = new Vector2(1120f, 640f);
             Image cardImage = card.GetComponent<Image>();
             cardImage.color = new Color32(44, 10, 18, 245);
             Outline cardOutline = card.GetComponent<Outline>();
@@ -363,7 +363,7 @@ namespace AndroApps
             titleBarRect.anchorMin = new Vector2(0f, 1f);
             titleBarRect.anchorMax = new Vector2(1f, 1f);
             titleBarRect.pivot = new Vector2(0.5f, 1f);
-            titleBarRect.sizeDelta = new Vector2(0f, 72f);
+            titleBarRect.sizeDelta = new Vector2(0f, 90f);
             titleBarRect.anchoredPosition = Vector2.zero;
             titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
 
@@ -376,7 +376,7 @@ namespace AndroApps
             titleObj.transform.SetParent(titleBar.transform, false);
             authErrorTitleText = titleObj.GetComponent<Text>();
             authErrorTitleText.font = popupFont;
-            authErrorTitleText.fontSize = 28;
+            authErrorTitleText.fontSize = 32;
             authErrorTitleText.fontStyle = FontStyle.Bold;
             authErrorTitleText.alignment = TextAnchor.MiddleLeft;
             authErrorTitleText.color = Color.white;
@@ -398,7 +398,7 @@ namespace AndroApps
             closeRect.anchorMin = new Vector2(1f, 0.5f);
             closeRect.anchorMax = new Vector2(1f, 0.5f);
             closeRect.pivot = new Vector2(1f, 0.5f);
-            closeRect.sizeDelta = new Vector2(46f, 46f);
+            closeRect.sizeDelta = new Vector2(60f, 60f);
             closeRect.anchoredPosition = new Vector2(-18f, 0f);
             Image closeImage = closeObj.GetComponent<Image>();
             closeImage.color = new Color32(165, 36, 47, 255);
@@ -414,7 +414,7 @@ namespace AndroApps
             closeLabelObj.transform.SetParent(closeObj.transform, false);
             Text closeLabel = closeLabelObj.GetComponent<Text>();
             closeLabel.font = popupFont;
-            closeLabel.fontSize = 22;
+            closeLabel.fontSize = 26;
             closeLabel.fontStyle = FontStyle.Bold;
             closeLabel.alignment = TextAnchor.MiddleCenter;
             closeLabel.color = Color.white;
@@ -434,7 +434,7 @@ namespace AndroApps
             messageObj.transform.SetParent(card.transform, false);
             authErrorMessageText = messageObj.GetComponent<Text>();
             authErrorMessageText.font = popupFont;
-            authErrorMessageText.fontSize = 28;
+            authErrorMessageText.fontSize = 30;
             authErrorMessageText.fontStyle = FontStyle.Normal;
             authErrorMessageText.alignment = TextAnchor.MiddleCenter;
             authErrorMessageText.color = new Color32(255, 244, 232, 255);
@@ -444,8 +444,8 @@ namespace AndroApps
             RectTransform messageRect = authErrorMessageText.GetComponent<RectTransform>();
             messageRect.anchorMin = new Vector2(0f, 0f);
             messageRect.anchorMax = new Vector2(1f, 1f);
-            messageRect.offsetMin = new Vector2(34f, 30f);
-            messageRect.offsetMax = new Vector2(-34f, -94f);
+            messageRect.offsetMin = new Vector2(40f, 40f);
+            messageRect.offsetMax = new Vector2(-40f, -150f);
 
             GameObject okObj = new GameObject(
                 "OkButton",
@@ -459,8 +459,8 @@ namespace AndroApps
             okRect.anchorMin = new Vector2(0.5f, 0f);
             okRect.anchorMax = new Vector2(0.5f, 0f);
             okRect.pivot = new Vector2(0.5f, 0f);
-            okRect.sizeDelta = new Vector2(164f, 52f);
-            okRect.anchoredPosition = new Vector2(0f, 26f);
+            okRect.sizeDelta = new Vector2(220f, 70f);
+            okRect.anchoredPosition = new Vector2(0f, 32f);
             Image okImage = okObj.GetComponent<Image>();
             okImage.color = new Color32(214, 136, 42, 255);
             Button okButton = okObj.GetComponent<Button>();
@@ -475,7 +475,7 @@ namespace AndroApps
             okLabelObj.transform.SetParent(okObj.transform, false);
             Text okLabel = okLabelObj.GetComponent<Text>();
             okLabel.font = popupFont;
-            okLabel.fontSize = 24;
+            okLabel.fontSize = 26;
             okLabel.fontStyle = FontStyle.Bold;
             okLabel.alignment = TextAnchor.MiddleCenter;
             okLabel.color = Color.white;

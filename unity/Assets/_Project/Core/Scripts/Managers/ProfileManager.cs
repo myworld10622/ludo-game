@@ -74,13 +74,7 @@ public class ProfileManager : MonoBehaviour
 
             if (LogInOutput.user_bank_details.Count > 0)
             {
-                CommonUtil.CheckLog(
-                    "RES_Check + Passbook " + LogInOutput.user_bank_details[0].passbook_img
-                );
-                PlayerPrefs.SetString(
-                    "passbook_pic",
-                    LogInOutput.user_bank_details[0].passbook_img
-                );
+                PlayerPrefs.SetString("upi_id", LogInOutput.user_bank_details[0].upi_id);
             }
             if (LogInOutput.user_kyc.Count > 0)
             {

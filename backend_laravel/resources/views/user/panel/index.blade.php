@@ -178,9 +178,9 @@
             <div class="stat-label">Enabled Modules</div>
             <div style="display:grid;gap:10px;">
                 @foreach ($permissions as $key => $enabled)
-                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fffdfa;">
-                        <span style="font-weight:600;">{{ ucwords(str_replace('_', ' ', $key)) }}</span>
-                        <span class="badge" style="{{ $enabled ? '' : 'background:#fee4e2;color:#b42318;border-color:#fecdca;' }}">{{ $enabled ? 'Enabled' : 'Hidden' }}</span>
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border:1px solid var(--line-dim);border-radius:12px;background:var(--card2);">
+                        <span style="font-weight:600;color:var(--text);">{{ ucwords(str_replace('_', ' ', $key)) }}</span>
+                        <span class="badge {{ $enabled ? '' : 'badge-warn' }}">{{ $enabled ? 'Enabled' : 'Hidden' }}</span>
                     </div>
                 @endforeach
             </div>

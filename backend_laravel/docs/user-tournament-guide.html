@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tournament Guide — RoxLudo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Exo+2:wght@300;400;600;800;900&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold: #FFD700;
+      --gold-light: #FFE566;
+      --gold-dark: #CC9900;
+      --red: #E63946;
+      --blue: #1A6BFF;
+      --green: #06D6A0;
+      --purple: #7B2FBE;
+      --bg: #0A0A14;
+      --card: #12121F;
+      --card2: #1A1A2E;
+      --text: #F0F0FF;
+      --muted: #8888AA;
+      --border: rgba(255,215,0,0.15);
+      --border-dim: rgba(255,255,255,0.07);
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Exo 2', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,215,0,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,215,0,0.025) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    a { color: var(--gold); text-decoration: none; }
+    a:hover { text-decoration: underline; opacity: .85; }
+
+    /* ─── NAVBAR ─── */
+    nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 5%;
+      height: 64px;
+      background: rgba(10,10,20,0.92);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav-logo-box {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--gold), var(--red));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      filter: drop-shadow(0 0 10px rgba(255,215,0,0.4));
+    }
+    .nav-title {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--gold), #FF6B6B);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 1px;
+    }
+    .nav-separator {
+      color: rgba(255,255,255,0.2);
+      font-size: 18px;
+      margin: 0 4px;
+    }
+    .nav-subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .lang-toggle {
+      display: inline-flex;
+      gap: 4px;
+      padding: 3px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+    }
+    .lang-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all .18s;
+      font-family: 'Exo 2', sans-serif;
+    }
+    .lang-btn.active { background: rgba(255,215,0,0.15); color: var(--gold); }
+    .nav-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 16px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255,215,0,0.06);
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 700;
+      font-family: 'Rajdhani', sans-serif;
+      letter-spacing: 0.5px;
+      transition: all .18s;
+    }
+    .nav-back:hover { background: rgba(255,215,0,0.12); text-decoration: none; box-shadow: 0 0 16px rgba(255,215,0,0.2); }
+
+    /* ─── HERO ─── */
+    .hero {
+      position: relative;
+      padding: 70px 5% 60px;
+      text-align: center;
+      overflow: hidden;
+      z-index: 1;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, rgba(255,215,0,0.07) 0%, transparent 70%);
+      top: 0; left: 50%; transform: translateX(-50%);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,215,0,0.1);
+      border: 1px solid rgba(255,215,0,0.3);
+      color: var(--gold);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 5px 16px;
+      border-radius: 50px;
+      margin-bottom: 22px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-family: 'Orbitron', sans-serif;
+      font-size: clamp(26px, 5vw, 52px);
+      font-weight: 900;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      background: linear-gradient(135deg, #fff 0%, var(--gold) 60%, #FF6B6B 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 16px;
+      color: var(--muted);
+      max-width: 560px;
+      margin: 0 auto 32px;
+      line-height: 1.7;
+      font-weight: 300;
+    }
+    .hero-chips {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+    }
+    .hero-chip {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-dim);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* ─── LAYOUT ─── */
+    .wrap {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 28px;
+      align-items: start;
+    }
+
+    /* ─── TOC ─── */
+    .toc {
+      position: sticky;
+      top: 76px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 0 30px rgba(255,215,0,0.05);
+    }
+    .toc-title {
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 14px;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .toc a {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      padding: 7px 10px;
+      border-radius: 8px;
+      margin-bottom: 2px;
+      transition: all .15s;
+      border: 1px solid transparent;
+    }
+    .toc a:hover {
+      color: var(--gold);
+      background: rgba(255,215,0,0.07);
+      border-color: rgba(255,215,0,0.15);
+      text-decoration: none;
+    }
+    .toc-sep { height: 1px; background: var(--border-dim); margin: 12px 0; }
+    .toc-cta {
+      display: block;
+      text-align: center;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--gold), #FF9500);
+      color: #000 !important;
+      font-weight: 800;
+      font-size: 13px;
+      font-family: 'Rajdhani', sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 6px 20px rgba(255,215,0,0.25);
+      transition: all .18s;
+    }
+    .toc-cta:hover { box-shadow: 0 8px 28px rgba(255,215,0,0.4); text-decoration: none; transform: translateY(-1px); }
+
+    /* ─── SECTION GROUPS ─── */
+    .sections { display: grid; gap: 16px; }
+    .lang-section { display: none; }
+    .lang-section.active { display: grid; gap: 16px; }
+
+    /* ─── CARD ─── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border-dim);
+      border-radius: 18px;
+      padding: 26px 28px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color .2s;
+    }
+    .card:hover { border-color: rgba(255,215,0,0.22); }
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), #FF9500);
+      opacity: 0;
+      transition: opacity .2s;
+    }
+    .card:hover::before { opacity: 1; }
+
+    .card-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .step-num {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold), #FF9500);
+      color: #000;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 16px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 8px 24px rgba(255,215,0,0.3);
+    }
+    .card-header-text h2 {
+      font-family: 'Exo 2', sans-serif;
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text);
+      margin-bottom: 3px;
+    }
+    .card-header-text p {
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    ul { padding-left: 0; list-style: none; }
+    ul li {
+      padding: 7px 0 7px 22px;
+      position: relative;
+      color: var(--text);
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+    ul li:last-child { border-bottom: 0; }
+    ul li::before { content: "›"; position: absolute; left: 0; color: var(--gold); font-weight: 700; font-size: 18px; line-height: 1.2; }
+    ul li strong { color: var(--gold); }
+
+    /* ─── COMPARE GRID ─── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 4px;
+    }
+    .compare-box {
+      border: 1px solid var(--border-dim);
+      border-radius: 14px;
+      padding: 18px;
+      background: var(--card2);
+    }
+    .compare-box.pub { border-top: 2px solid var(--gold); }
+    .compare-box.prv { border-top: 2px solid var(--green); }
+    .compare-box h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+    }
+    .ci { font-size: 18px; }
+
+    /* ─── FLOW STEPS ─── */
+    .flow-steps { display: grid; gap: 0; margin-top: 4px; }
+    .flow-step {
+      display: flex;
+      gap: 16px;
+      padding: 12px 0;
+      position: relative;
+    }
+    .flow-step:not(:last-child)::after {
+      content: "";
+      position: absolute;
+      left: 17px; top: 48px; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, rgba(255,215,0,0.2), transparent);
+    }
+    .flow-dot {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: var(--card2);
+      border: 1px solid rgba(255,215,0,0.3);
+      color: var(--gold);
+      font-size: 13px;
+      font-weight: 900;
+      font-family: 'Orbitron', sans-serif;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .flow-dot.done {
+      background: rgba(6,214,160,0.12);
+      border-color: rgba(6,214,160,0.4);
+      color: var(--green);
+    }
+    .flow-dot.win {
+      background: rgba(255,215,0,0.1);
+      border-color: rgba(255,215,0,0.4);
+      font-size: 16px;
+    }
+    .flow-content { padding-top: 6px; }
+    .flow-content strong { display: block; font-weight: 700; color: var(--text); margin-bottom: 3px; font-size: 15px; }
+    .flow-content span { color: var(--muted); font-size: 13px; }
+
+    /* ─── FIELD TABLE ─── */
+    .field-list { display: grid; gap: 0; }
+    .field-row {
+      display: grid;
+      grid-template-columns: 170px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      align-items: start;
+      font-size: 14px;
+    }
+    .field-row:last-child { border-bottom: 0; }
+    .field-name {
+      font-weight: 700;
+      color: var(--gold);
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .ftag {
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(6,214,160,0.12);
+      color: var(--green);
+      border: 1px solid rgba(6,214,160,0.25);
+      white-space: nowrap;
+      letter-spacing: 0.3px;
+    }
+    .field-desc { color: var(--muted); line-height: 1.6; }
+    .field-desc strong { color: var(--text); }
+
+    /* ─── NOTE ─── */
+    .note {
+      background: rgba(255,215,0,0.04);
+      border: 1px solid rgba(255,215,0,0.18);
+      border-left: 3px solid var(--gold);
+      border-radius: 10px;
+      padding: 12px 16px;
+      color: var(--muted);
+      font-size: 13px;
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      margin-top: 16px;
+    }
+    .note-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+    .note strong { color: var(--gold); }
+    .note a { color: var(--gold); }
+
+    /* ─── FOOTER CTA ─── */
+    .guide-footer {
+      position: relative;
+      z-index: 1;
+      max-width: 1100px;
+      margin: 0 auto 50px;
+      padding: 0 24px;
+    }
+    .footer-cta {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      box-shadow: 0 0 40px rgba(255,215,0,0.08);
+      position: relative;
+      overflow: hidden;
+    }
+    .footer-cta::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold), #FF9500);
+    }
+    .footer-cta-text strong {
+      display: block;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--gold);
+      margin-bottom: 5px;
+    }
+    .footer-cta-text span { font-size: 14px; color: var(--muted); }
+    .btn-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--gold), #FF9500);
+      color: #000;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      padding: 13px 28px;
+      border-radius: 12px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      box-shadow: 0 8px 28px rgba(255,215,0,0.3);
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .btn-cta:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(255,215,0,0.45); text-decoration: none; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 860px) {
+      .wrap { grid-template-columns: 1fr; }
+      .toc { position: static; display: none; }
+    }
+    @media (max-width: 600px) {
+      nav { padding: 0 16px; }
+      .hero { padding: 50px 16px 40px; }
+      .wrap { padding: 0 16px 60px; }
+      .guide-footer { padding: 0 16px; }
+      .card { padding: 18px 18px; }
+      .compare-grid { grid-template-columns: 1fr; }
+      .field-row { grid-template-columns: 1fr; gap: 3px; }
+      .nav-subtitle { display: none; }
+      .nav-separator { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav>
+  <div class="nav-brand-wrap">
+    <div class="nav-logo-box">🎲</div>
+    <span class="nav-title">RoxLudo</span>
+    <span class="nav-separator">|</span>
+    <span class="nav-subtitle">Tournament Guide</span>
+  </div>
+  <div class="nav-right">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="switchLang('en', this)">EN</button>
+      <button class="lang-btn" onclick="switchLang('hi', this)">HI</button>
+    </div>
+    <a class="nav-back" href="/panel/tournaments">← Back to Panel</a>
+    <a class="nav-back" href="/" style="border-color:rgba(255,255,255,0.1);color:var(--muted);">Home</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🏆 Complete Tournament Guide</div>
+  <h1 id="hero-title">Create &amp; Win Tournaments</h1>
+  <p id="hero-sub">Step-by-step guide to creating, managing and winning tournaments on RoxLudo. Everything in one place.</p>
+  <div class="hero-chips">
+    <div class="hero-chip">🎮 Ludo Tournaments</div>
+    <div class="hero-chip">📋 7 Easy Steps</div>
+    <div class="hero-chip">🌐 Public &amp; 🔒 Private</div>
+    <div class="hero-chip">🏆 Win Real Prizes</div>
+  </div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="wrap">
+
+  <!-- TOC -->
+  <aside class="toc">
+    <div class="toc-title" id="toc-title">Contents</div>
+    <div id="toc-en">
+      <a href="#step-1">1. Create Account</a>
+      <a href="#step-2">2. How Tournaments Work</a>
+      <a href="#step-3">3. Public vs Private</a>
+      <a href="#step-4">4. Panel Login</a>
+      <a href="#step-5">5. Creation Form Guide</a>
+      <a href="#step-6">6. After Creation</a>
+      <a href="#step-7">7. After Publish</a>
+    </div>
+    <div id="toc-hi" style="display:none;">
+      <a href="#step-1">1. अकाउंट बनाएं</a>
+      <a href="#step-2">2. कैसे काम करता है</a>
+      <a href="#step-3">3. Public vs Private</a>
+      <a href="#step-4">4. पैनल लॉगिन</a>
+      <a href="#step-5">5. फॉर्म गाइड</a>
+      <a href="#step-6">6. बनाने के बाद</a>
+      <a href="#step-7">7. पब्लिश के बाद</a>
+    </div>
+    <div class="toc-sep"></div>
+    <a class="toc-cta" href="/panel/tournaments">+ Create Tournament</a>
+  </aside>
+
+  <!-- CONTENT -->
+  <div class="sections">
+
+    <!-- ═══ ENGLISH ═══ -->
+    <div class="lang-section active" id="lang-en">
+
+      <div class="card" id="step-1">
+        <div class="card-header">
+          <div class="step-num">1</div>
+          <div class="card-header-text">
+            <h2>Create a User Account</h2>
+            <p>Sign up and access the tournament panel</p>
+          </div>
+        </div>
+        <ul>
+          <li>Open the app or website and click <strong>Sign Up</strong>.</li>
+          <li>Enter your <strong>mobile number or email</strong>, set a <strong>password</strong>, and submit.</li>
+          <li>After login, your <strong>dashboard &amp; tournament options</strong> are available.</li>
+        </ul>
+        <div class="note">
+          <span class="note-icon">💡</span>
+          <span>You can log in using <strong>mobile, email, username,</strong> or <strong>User ID</strong> — whichever works for you.</span>
+        </div>
+      </div>
+
+      <div class="card" id="step-2">
+        <div class="card-header">
+          <div class="step-num">2</div>
+          <div class="card-header-text">
+            <h2>How Tournaments Work</h2>
+            <p>The full flow from creation to prize payout</p>
+          </div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-dot">1</div>
+            <div class="flow-content">
+              <strong>Organizer creates a tournament</strong>
+              <span>Sets rules, entry fee, schedule, prize pool, and bracket format.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">2</div>
+            <div class="flow-content">
+              <strong>Players register and pay entry fee</strong>
+              <span>Any eligible user can sign up before the registration deadline.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">3</div>
+            <div class="flow-content">
+              <strong>Matches run per bracket or round-robin</strong>
+              <span>System automatically schedules and tracks all matches.</span>
+            </div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot win">🏆</div>
+            <div class="flow-content">
+              <strong>Winners receive prizes</strong>
+              <span>Payouts distributed from the prize pool based on final standings.</span>
+            </div>
+          </div>
+        </div>
+        <div class="note">
+          <span class="note-icon">ℹ️</span>
+          <span>Think of a tournament as a <strong>structured competition</strong> — same rules, same schedule for everyone. Fair and transparent.</span>
+        </div>
+      </div>
+
+      <div class="card" id="step-3">
+        <div class="card-header">
+          <div class="step-num">3</div>
+          <div class="card-header-text">
+            <h2>Public vs Private Tournament</h2>
+            <p>Pick the right visibility for your event</p>
+          </div>
+        </div>
+        <div class="compare-grid">
+          <div class="compare-box pub">
+            <h3><span class="ci">🌐</span> Public Tournament</h3>
+            <ul>
+              <li>Visible to <strong>all users</strong> in the app.</li>
+              <li><strong>Anyone</strong> can register.</li>
+              <li>Best for <strong>large participation</strong>.</li>
+              <li>Appears on the main tournament listing.</li>
+            </ul>
+          </div>
+          <div class="compare-box prv">
+            <h3><span class="ci">🔒</span> Private Tournament</h3>
+            <ul>
+              <li>Visible <strong>only to invited users</strong>.</li>
+              <li>Requires an <strong>Invite Code</strong>.</li>
+              <li>Best for <strong>small groups</strong> or clubs.</li>
+              <li>Shown on the Private Tournament page.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="step-4">
+        <div class="card-header">
+          <div class="step-num">4</div>
+          <div class="card-header-text">
+            <h2>User Panel Login</h2>
+            <p>How to access the panel and get started</p>
+          </div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-dot">1</div>
+            <div class="flow-content"><strong>Go to Roxludo.com</strong><span>Open the website in your browser.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">2</div>
+            <div class="flow-content"><strong>Click the Login button</strong><span>Find it in the top navigation bar.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">3</div>
+            <div class="flow-content"><strong>Enter your email &amp; password</strong><span>Use the credentials you registered with.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot done">✓</div>
+            <div class="flow-content"><strong>Open the Tournaments section</strong><span>From the sidebar, click Tournaments to create or manage events.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="step-5">
+        <div class="card-header">
+          <div class="step-num">5</div>
+          <div class="card-header-text">
+            <h2>Tournament Creation Form</h2>
+            <p>Every field explained — what to fill and why</p>
+          </div>
+        </div>
+        <div class="field-list">
+          <div class="field-row"><div class="field-name">Tournament Name</div><div class="field-desc">The title shown to players. Helps users identify the event.</div></div>
+          <div class="field-row"><div class="field-name">Game</div><div class="field-desc">Select the game (Ludo). Ensures correct rules and bracket format.</div></div>
+          <div class="field-row"><div class="field-name">Entry Fee</div><div class="field-desc">Amount a player pays to join. This builds the prize pool. Set <strong>0</strong> for a free tournament.</div></div>
+          <div class="field-row"><div class="field-name">Prize Pool / Rewards</div><div class="field-desc">What winners receive. Motivates players to participate.</div></div>
+          <div class="field-row"><div class="field-name">Max Players</div><div class="field-desc">Total players allowed. Keeps the bracket balanced.</div></div>
+          <div class="field-row"><div class="field-name">Players Per Match</div><div class="field-desc">How many players compete per match (2 or 4).</div></div>
+          <div class="field-row"><div class="field-name">Format</div><div class="field-desc">Knockout, Round Robin, Double Elimination, or Group + Knockout.</div></div>
+          <div class="field-row"><div class="field-name">Start Time</div><div class="field-desc">When the tournament officially begins. All players must be ready by this time.</div></div>
+          <div class="field-row"><div class="field-name">Registration Deadline</div><div class="field-desc">Last date/time to register. Locks participants before the start.</div></div>
+          <div class="field-row"><div class="field-name">Tournament Type</div><div class="field-desc">Public or Private. Controls who can see and join.</div></div>
+          <div class="field-row"><div class="field-name">Invite Code <span class="ftag">Private only</span></div><div class="field-desc">Required for private tournaments. Share this code with invited players.</div></div>
+          <div class="field-row"><div class="field-name">Status</div><div class="field-desc">Draft / Published / Closed — controls visibility and registration.</div></div>
+          <div class="field-row"><div class="field-name">Description / Rules</div><div class="field-desc">Clear rules help avoid confusion and disputes.</div></div>
+          <div class="field-row"><div class="field-name">Platform Fee %</div><div class="field-desc">Percentage deducted as platform service charge from the prize pool.</div></div>
+          <div class="field-row"><div class="field-name">Prize % (1–5)</div><div class="field-desc">How the prize pool splits among the top 5 finishers. Values must total 100%.</div></div>
+        </div>
+        <div class="note">
+          <span class="note-icon">💡</span>
+          <span>If Entry Fee is set to <strong>0</strong>, the tournament is completely free for all players.</span>
+        </div>
+      </div>
+
+      <div class="card" id="step-6">
+        <div class="card-header">
+          <div class="step-num">6</div>
+          <div class="card-header-text">
+            <h2>After Creation — What Happens Next</h2>
+            <p>The approval flow after you submit</p>
+          </div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-dot">1</div>
+            <div class="flow-content"><strong>Request sent to Rox Ludo Support Team</strong><span>Your tournament enters the review queue after submission.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot done">✓</div>
+            <div class="flow-content"><strong>Team reviews and approves</strong><span>Once approved, the tournament is published and becomes visible to players.</span></div>
+          </div>
+        </div>
+        <div class="note">
+          <span class="note-icon">⏱️</span>
+          <span>Review usually completes quickly. Track the status in your <a href="/panel/tournaments">Tournament Panel</a>.</span>
+        </div>
+      </div>
+
+      <div class="card" id="step-7">
+        <div class="card-header">
+          <div class="step-num">7</div>
+          <div class="card-header-text">
+            <h2>After Publish — Tournament Goes Live</h2>
+            <p>What happens once your tournament is approved</p>
+          </div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step">
+            <div class="flow-dot">1</div>
+            <div class="flow-content"><strong>Tournament appears in the app</strong><span>Public: main Tournament page. Private: Private Tournament section.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">2</div>
+            <div class="flow-content"><strong>Players register and pay entry fee</strong><span>Users find your event and sign up before the deadline.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot">3</div>
+            <div class="flow-content"><strong>Matches are scheduled and played</strong><span>System arranges matches; players compete at their assigned times.</span></div>
+          </div>
+          <div class="flow-step">
+            <div class="flow-dot win">🏆</div>
+            <div class="flow-content"><strong>System calculates results and pays winners</strong><span>Match outcomes are recorded, standings are ranked, prizes are distributed.</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /lang-en -->
+
+    <!-- ═══ HINDI ═══ -->
+    <div class="lang-section" id="lang-hi">
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">1</div>
+          <div class="card-header-text"><h2>यूज़र अकाउंट कैसे बनाएं</h2><p>Sign up करके टूर्नामेंट पैनल एक्सेस करें</p></div>
+        </div>
+        <ul>
+          <li>ऐप या वेबसाइट खोलें और <strong>Sign Up</strong> पर क्लिक करें।</li>
+          <li><strong>मोबाइल या ईमेल</strong> डालें, <strong>पासवर्ड</strong> सेट करें और सबमिट करें।</li>
+          <li>लॉगिन के बाद <strong>डैशबोर्ड और टूर्नामेंट विकल्प</strong> मिल जाते हैं।</li>
+        </ul>
+        <div class="note">
+          <span class="note-icon">💡</span>
+          <span><strong>मोबाइल, ईमेल, यूज़रनेम</strong> या <strong>यूज़र आईडी</strong> — किसी से भी लॉगिन करें।</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">2</div>
+          <div class="card-header-text"><h2>टूर्नामेंट कैसे काम करता है</h2><p>Creation से prize तक का पूरा flow</p></div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><strong>Organizer टूर्नामेंट बनाता है</strong><span>Rules, entry fee, time, prize pool सेट करता है।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><strong>Players register और fee देते हैं</strong><span>Deadline से पहले sign up कर सकते हैं।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><strong>Bracket के हिसाब से matches होते हैं</strong><span>System सभी matches auto schedule और track करता है।</span></div></div>
+          <div class="flow-step"><div class="flow-dot win">🏆</div><div class="flow-content"><strong>Winners को prizes मिलते हैं</strong><span>Final ranking के हिसाब से prize pool से पेमेंट।</span></div></div>
+        </div>
+        <div class="note"><span class="note-icon">ℹ️</span><span>टूर्नामेंट = एक <strong>structured competition</strong>। सबके लिए एक ही नियम, एक ही schedule।</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">3</div>
+          <div class="card-header-text"><h2>Public vs Private टूर्नामेंट</h2><p>सही visibility चुनें</p></div>
+        </div>
+        <div class="compare-grid">
+          <div class="compare-box pub">
+            <h3><span class="ci">🌐</span> Public</h3>
+            <ul>
+              <li><strong>सभी users</strong> को दिखता है।</li>
+              <li><strong>कोई भी</strong> register कर सकता है।</li>
+              <li>ज्यादा players के लिए <strong>बेस्ट</strong>।</li>
+              <li>Main tournament listing में।</li>
+            </ul>
+          </div>
+          <div class="compare-box prv">
+            <h3><span class="ci">🔒</span> Private</h3>
+            <ul>
+              <li>सिर्फ <strong>invited users</strong> को दिखता है।</li>
+              <li><strong>Invite Code</strong> जरूरी है।</li>
+              <li>Small <strong>group या club</strong> के लिए।</li>
+              <li>Private tournament page पर।</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">4</div>
+          <div class="card-header-text"><h2>User Panel Login</h2><p>Panel access करने का तरीका</p></div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><strong>Roxludo.com पर जाएं</strong><span>Browser में website खोलें।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><strong>Login button क्लिक करें</strong><span>Top navigation में मिलेगा।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><strong>Email और password डालें</strong><span>Registration वाले credentials use करें।</span></div></div>
+          <div class="flow-step"><div class="flow-dot done">✓</div><div class="flow-content"><strong>Tournaments section खोलें</strong><span>Sidebar से Tournaments पर क्लिक करें।</span></div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">5</div>
+          <div class="card-header-text"><h2>Tournament Create Form</h2><p>हर field का मतलब और जरूरत</p></div>
+        </div>
+        <div class="field-list">
+          <div class="field-row"><div class="field-name">Tournament Name</div><div class="field-desc">Players को दिखने वाला नाम।</div></div>
+          <div class="field-row"><div class="field-name">Game</div><div class="field-desc">Game चुनें (Ludo) — सही rules और bracket के लिए।</div></div>
+          <div class="field-row"><div class="field-name">Entry Fee</div><div class="field-desc">Join करने की fee। <strong>0</strong> = Free tournament।</div></div>
+          <div class="field-row"><div class="field-name">Prize Pool</div><div class="field-desc">Winners को मिलने वाला इनाम।</div></div>
+          <div class="field-row"><div class="field-name">Max Players</div><div class="field-desc">कितने players join कर सकते हैं।</div></div>
+          <div class="field-row"><div class="field-name">Players Per Match</div><div class="field-desc">एक match में कितने players (2 या 4)।</div></div>
+          <div class="field-row"><div class="field-name">Format</div><div class="field-desc">Knockout, Round Robin, Double Elim, या Group+Knockout।</div></div>
+          <div class="field-row"><div class="field-name">Start Time</div><div class="field-desc">Tournament कब शुरू होगा।</div></div>
+          <div class="field-row"><div class="field-name">Registration Deadline</div><div class="field-desc">कब तक register हो सकते हैं।</div></div>
+          <div class="field-row"><div class="field-name">Tournament Type</div><div class="field-desc">Public या Private।</div></div>
+          <div class="field-row"><div class="field-name">Invite Code <span class="ftag">Private only</span></div><div class="field-desc">Private tournament के लिए जरूरी।</div></div>
+          <div class="field-row"><div class="field-name">Status</div><div class="field-desc">Draft / Published / Closed।</div></div>
+          <div class="field-row"><div class="field-name">Description / Rules</div><div class="field-desc">Clear rules लिखें — confusion से बचें।</div></div>
+          <div class="field-row"><div class="field-name">Platform Fee %</div><div class="field-desc">Platform service charge का percentage।</div></div>
+          <div class="field-row"><div class="field-name">Prize % (1–5)</div><div class="field-desc">Top 5 winners में prize कैसे बंटेगा। Total 100% होना चाहिए।</div></div>
+        </div>
+        <div class="note"><span class="note-icon">💡</span><span>Entry Fee <strong>0</strong> रखें → tournament सबके लिए बिल्कुल <strong>free</strong>।</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">6</div>
+          <div class="card-header-text"><h2>बनाने के बाद — आगे क्या?</h2><p>Submit के बाद approval का process</p></div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><strong>Rox Ludo Support Team को request जाती है</strong><span>Tournament review queue में enter करता है।</span></div></div>
+          <div class="flow-step"><div class="flow-dot done">✓</div><div class="flow-content"><strong>Team review करके approve करती है</strong><span>Approve होने पर tournament publish और visible हो जाता है।</span></div></div>
+        </div>
+        <div class="note"><span class="note-icon">⏱️</span><span>Review जल्दी हो जाती है। Status <a href="/panel/tournaments">Tournament Panel</a> में देखें।</span></div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div class="step-num">7</div>
+          <div class="card-header-text"><h2>Publish के बाद — Tournament Live!</h2><p>Approve होने के बाद क्या होता है</p></div>
+        </div>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="flow-dot">1</div><div class="flow-content"><strong>Tournament app में दिखता है</strong><span>Public → Main page। Private → Private section।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">2</div><div class="flow-content"><strong>Players register और fee देते हैं</strong><span>Deadline से पहले sign up करते हैं।</span></div></div>
+          <div class="flow-step"><div class="flow-dot">3</div><div class="flow-content"><strong>Matches schedule और play होते हैं</strong><span>System matches arrange करता है।</span></div></div>
+          <div class="flow-step"><div class="flow-dot win">🏆</div><div class="flow-content"><strong>System results calculate करके prizes देता है</strong><span>Standings rank होती हैं, prizes distribute होते हैं।</span></div></div>
+        </div>
+      </div>
+
+    </div><!-- /lang-hi -->
+  </div><!-- /sections -->
+</div><!-- /wrap -->
+
+<!-- FOOTER CTA -->
+<div class="guide-footer">
+  <div class="footer-cta">
+    <div class="footer-cta-text">
+      <strong>Ready to create your tournament?</strong>
+      <span>Head to the panel and launch your first tournament now.</span>
+    </div>
+    <a href="/panel/tournaments" class="btn-cta">Open Tournament Panel →</a>
+  </div>
+</div>
+
+<script>
+  function switchLang(lang, btn) {
+    document.getElementById('lang-en').classList.toggle('active', lang === 'en');
+    document.getElementById('lang-hi').classList.toggle('active', lang === 'hi');
+    document.getElementById('toc-en').style.display = lang === 'en' ? '' : 'none';
+    document.getElementById('toc-hi').style.display = lang === 'hi' ? '' : 'none';
+    if (lang === 'hi') {
+      document.getElementById('hero-title').textContent = 'टूर्नामेंट बनाएं और जीतें';
+      document.getElementById('hero-sub').textContent = 'RoxLudo पर tournament create करने, manage करने और जीतने की पूरी step-by-step guide।';
+      document.getElementById('toc-title').textContent = 'विषय सूची';
+    } else {
+      document.getElementById('hero-title').textContent = 'Create & Win Tournaments';
+      document.getElementById('hero-sub').textContent = 'Step-by-step guide to creating, managing and winning tournaments on RoxLudo. Everything in one place.';
+      document.getElementById('toc-title').textContent = 'Contents';
+    }
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+</script>
+</body>
+</html>

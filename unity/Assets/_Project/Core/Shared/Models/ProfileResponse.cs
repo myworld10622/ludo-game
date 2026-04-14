@@ -263,6 +263,7 @@ public class UserBankDetails
     public string acc_holder_name;
     public string acc_no;
     public string passbook_img;
+    public string upi_id;
     public string added_date;
     public string updated_date;
     public string isDeleted;
@@ -294,6 +295,7 @@ public class UserBankDetail
     public string acc_holder_name;
     public string acc_no;
     public string passbook_img;
+    public string upi_id;
     public string crypto_address;
     public string crypto_wallet_type;
     public string crypto_qr;
