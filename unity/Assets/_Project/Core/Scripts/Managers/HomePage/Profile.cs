@@ -45,7 +45,8 @@ public class Profile : MonoBehaviour
     public InputField account_number;
     public InputField account_holder_name;
     public InputField bank_name;
-    public InputField upi_id;
+    public GameObject passbook_logo_img;
+    public Image passbook_img;
     public GameObject bank_selected;
     public GameObject bank_panel;
 
@@ -113,7 +114,6 @@ public class Profile : MonoBehaviour
         }
         else if (obj.name == "Bank Details")
         {
-            AlignUpiGroup();
             // IFSCCode.text = string.Empty;
             // account_holder_name.text = string.Empty;
             // account_number.text = string.Empty;
@@ -121,7 +121,6 @@ public class Profile : MonoBehaviour
         }
         else if (obj.name == "Bank Details")
         {
-            AlignUpiGroup();
             // IFSCCode.text = string.Empty;
             // account_holder_name.text = string.Empty;
             // account_number.text = string.Empty;
@@ -575,102 +574,18 @@ public class Profile : MonoBehaviour
 
     #region Update Bank Details
 
-    private void AlignUpiGroup()
+
+    public void OnUpdatePassbookImageButtonClick(string target)
     {
-        if (bank_panel == null || account_holder_name == null)
-        {
-            return;
-        }
-
-        var fillDetails = bank_panel.transform.Find("FillDetails");
-        if (fillDetails != null)
-        {
-            var grid = fillDetails.GetComponent<GridLayoutGroup>();
-            if (grid != null)
-            {
-                grid.enabled = false;
-            }
-        }
-
-        RectTransform referenceRect = account_holder_name.transform.parent as RectTransform;
-        if (referenceRect == null)
-        {
-            return;
-        }
-
-        RectTransform upiGroup = null;
-        var passbookGroup = bank_panel.transform.Find("FillDetails/PASSBOOK IMAGE :");
-        if (passbookGroup != null)
-        {
-            upiGroup = passbookGroup.GetComponent<RectTransform>();
-        }
-
-        if (upiGroup == null)
-        {
-            var rects = bank_panel.GetComponentsInChildren<RectTransform>(true);
-            foreach (var rect in rects)
-            {
-                if (rect != null && rect.name == "PASSBOOK IMAGE :")
-                {
-                    upiGroup = rect;
-                    break;
-                }
-            }
-        }
-
-        if (upiGroup == null)
-        {
-            return;
-        }
-
-        const float verticalGap = 18f;
-        upiGroup.sizeDelta = referenceRect.sizeDelta;
-        upiGroup.anchoredPosition = referenceRect.anchoredPosition + new Vector2(0f, -(referenceRect.sizeDelta.y + verticalGap));
-
-        RectTransform ifscInput = IFSCCode != null ? IFSCCode.transform.parent as RectTransform : null;
-        RectTransform upiInput = null;
-        var inputCandidate = upiGroup.GetComponentsInChildren<RectTransform>(true);
-        foreach (var rect in inputCandidate)
-        {
-            if (rect != null && rect.name.Contains("UPI ID InputField"))
-            {
-                upiInput = rect;
-                break;
-            }
-        }
-
-        if (upi_id == null && upiInput != null)
-        {
-            upi_id = upiInput.GetComponent<InputField>();
-        }
-
-        if (ifscInput != null && upiInput != null)
-        {
-            upiInput.anchorMin = new Vector2(0.5f, 0f);
-            upiInput.anchorMax = new Vector2(0.5f, 0f);
-            upiInput.pivot = new Vector2(0.5f, 0.5f);
-            upiInput.sizeDelta = new Vector2(1100f, 120f);
-            upiInput.anchoredPosition = new Vector2(280f, 10f);
-
-            var layout = upiInput.GetComponent<LayoutElement>();
-            if (layout == null)
-            {
-                layout = upiInput.gameObject.AddComponent<LayoutElement>();
-            }
-            layout.ignoreLayout = true;
-
-            var inputField = upiInput.GetComponent<InputField>();
-            if (inputField != null)
-            {
-                inputField.contentType = InputField.ContentType.Standard;
-                inputField.characterValidation = InputField.CharacterValidation.None;
-                inputField.lineType = InputField.LineType.SingleLine;
-                inputField.keyboardType = TouchScreenKeyboardType.Default;
-                inputField.characterLimit = 64;
-            }
-        }
+        ImageUtil.Instance.OpenGallery("passbook", passbook_img, passbook_logo_img);
+        passbook_img.transform.parent.gameObject.SetActive(true);
     }
 
+    // Method to open the gallery and get the image path
+    public async Task UpdatePassbookImage(string target)
+    {
+        UnityMainThreadDispatcher.Instance.Enqueue(() => { });
+    }
 
     public async void OnUpdateBankDetails()
     {
@@ -690,9 +605,9 @@ public class Profile : MonoBehaviour
         {
             LoaderUtil.instance.ShowToast("Please fill IFSC Code");
         }
-        else if (upi_id != null && upi_id.text.Length == 0)
+        else if (SpriteManager.Instance.base64forimgpassbook.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please enter UPI ID");
+            LoaderUtil.instance.ShowToast("Please upload passbook image");
         }
         else
         {
@@ -701,7 +616,7 @@ public class Profile : MonoBehaviour
                 account_holder_name.text,
                 bank_name.text,
                 account_number.text,
-                upi_id != null ? upi_id.text : string.Empty
+                SpriteManager.Instance.base64forimgpassbook
             );
         }
     }
@@ -741,7 +656,7 @@ public class Profile : MonoBehaviour
             await PostUpdateCryptoDetails(
                 crypto_address.text,
                 crypto_wallet_type.text,
-                SpriteManager.Instance.base64forimgcrypto
+                SpriteManager.Instance.base64forimgpassbook
             );
         }
     }
@@ -973,10 +888,22 @@ public class Profile : MonoBehaviour
             account_holder_name.text = LogInOutput.user_bank_details[0].acc_holder_name;
             account_number.text = LogInOutput.user_bank_details[0].acc_no;
             bank_name.text = LogInOutput.user_bank_details[0].bank_name;
-            if (upi_id != null)
-            {
-                upi_id.text = LogInOutput.user_bank_details[0].upi_id;
-            }
+            DownloadPassbookImage();
+        }
+    }
+
+    public async void DownloadPassbookImage()
+    {
+        if (LogInOutput.user_bank_details[0].passbook_img != "")
+        {
+            string passbook_image_url =
+                Configuration.ProfileImage + LogInOutput.user_bank_details[0].passbook_img;
+            SpriteManager.Instance.passbook_image = await ImageUtil.Instance.GetSpriteFromURLAsync(
+                passbook_image_url
+            );
+            passbook_img.transform.parent.gameObject.SetActive(true);
+            passbook_img.sprite = SpriteManager.Instance.passbook_image;
+            passbook_logo_img.SetActive(false);
         }
     }
 
@@ -1424,7 +1351,11 @@ public class Profile : MonoBehaviour
 
             if (LogInOutput.user_bank_details.Count > 0)
             {
-                PlayerPrefs.SetString("upi_id", LogInOutput.user_bank_details[0].upi_id);
+                Debug.Log("RES_Check + Passbook " + LogInOutput.user_bank_details[0].passbook_img);
+                PlayerPrefs.SetString(
+                    "passbook_pic",
+                    LogInOutput.user_bank_details[0].passbook_img
+                );
             }
             if (LogInOutput.user_kyc.Count > 0)
             {
@@ -1517,7 +1448,7 @@ public class Profile : MonoBehaviour
         string acc_holder_name,
         string bank_name,
         string acc_no,
-        string upiId
+        string base64forimgpassbook
     )
     {
         if (acc_no.Length < 9)
@@ -1534,34 +1465,14 @@ public class Profile : MonoBehaviour
             { "acc_no", acc_no },
             { "user_id", Configuration.GetId() },
             { "token", Configuration.GetToken() },
-            { "upi_id", upiId },
+            { "passbook_img", base64forimgpassbook },
         };
-        if (APIManager.Instance == null)
+        BankOutputs BankOutput = new BankOutputs();
+        BankOutput = await APIManager.Instance.Post<BankOutputs>(Url, formData);
+        if (BankOutput.code == 200)
         {
-            CommonUtil.ShowToast("Network service not ready. Please try again.");
-            return;
-        }
-
-        BankOutputs BankOutput = await APIManager.Instance.Post<BankOutputs>(Url, formData);
-        if (BankOutput != null && BankOutput.code == 200)
-        {
-            if (account_holder_name != null)
-            {
-                PopUpPanelClose(account_holder_name.transform.parent.parent.parent.parent.gameObject);
-            }
-            CommonUtil.ShowStyledMessage(
-                string.IsNullOrWhiteSpace(BankOutput.message) ? "Bank details updated successfully." : BankOutput.message,
-                "Success",
-                false
-            );
-        }
-        else if (BankOutput != null)
-        {
-            CommonUtil.ShowStyledMessage(
-                string.IsNullOrWhiteSpace(BankOutput.message) ? "Bank details update failed." : BankOutput.message,
-                "Update Failed",
-                true
-            );
+            PopUpPanelClose(account_holder_name.transform.parent.parent.parent.parent.gameObject);
+            LoaderUtil.instance.ShowToast(BankOutput.message);
         }
     }
 

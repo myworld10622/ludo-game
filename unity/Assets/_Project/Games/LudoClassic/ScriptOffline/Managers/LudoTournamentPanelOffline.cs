@@ -32,6 +32,8 @@ namespace LudoClassicOffline
         private bool isLoading;
         private bool hasBuiltUi;
         private Font runtimeFont;
+        private int lastResponsiveWidth = -1;
+        private int lastResponsiveHeight = -1;
 
         // Auto-refresh every 30s while panel is open
         private const float AutoRefreshInterval = 30f;
@@ -41,6 +43,7 @@ namespace LudoClassicOffline
         private void Update()
         {
             if (!isPanelOpen || isLoading) return;
+            ApplyResponsiveTournamentLayout(false);
             UpdateTournamentGridSizing();
             autoRefreshTimer += Time.deltaTime;
             if (autoRefreshTimer >= AutoRefreshInterval)
@@ -66,12 +69,63 @@ namespace LudoClassicOffline
         private Text detailPrimaryButtonText;
         private Button detailCloseButton;
         private LudoTournamentListItem selectedTournament;
+        private const string TournamentPanelName = "TournamentPanel";
+        private const string TournamentDetailPopupName = "TournamentDetailPopup";
+        private const string PrivateJoinPopupName = "PrivateJoinPopup";
 
         public void Initialize(DashBoardManagerOffline owner)
         {
             dashboard = owner;
             EnsureRuntimeUi();
         }
+
+#if UNITY_EDITOR
+        public void RebuildPersistentUiInEditor(DashBoardManagerOffline owner = null)
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            dashboard = owner != null ? owner : (dashboard != null ? dashboard : GetComponent<DashBoardManagerOffline>());
+
+            DestroyUiRoot(panelRoot);
+            DestroyUiRoot(privatePopup);
+            DestroyUiRoot(detailPopup);
+
+            panelRoot = null;
+            listContent = null;
+            titleText = null;
+            statusText = null;
+            openButton = null;
+            refreshButton = null;
+            closeButton = null;
+            joinPrivateBtn = null;
+            tournamentScroll = null;
+            tournamentGrid = null;
+            tournamentViewport = null;
+            _popupLayer = null;
+            _privatePopupLayer = null;
+            privatePopup = null;
+            inviteCodeField = null;
+            invitePasswordField = null;
+            privateStatusText = null;
+            detailPopup = null;
+            detailTitleText = null;
+            detailMetaText = null;
+            detailStatsText = null;
+            detailPrizeText = null;
+            detailWalletText = null;
+            detailHintText = null;
+            detailPrimaryButton = null;
+            detailPrimaryButtonText = null;
+            detailCloseButton = null;
+            selectedTournament = null;
+            hasBuiltUi = false;
+
+            EnsureRuntimeUi();
+        }
+#endif
 
         public void OpenPanel()
         {
@@ -88,6 +142,7 @@ namespace LudoClassicOffline
             panelRoot.SetActive(true);
             isPanelOpen = true;
             autoRefreshTimer = 0f;
+            ApplyResponsiveTournamentLayout(true);
             Debug.Log("Tournament panel opened");
             RefreshTournaments();
         }
@@ -199,11 +254,17 @@ namespace LudoClassicOffline
         {
             if (privatePopup != null) return;
 
+            if (TryBindExistingPrivatePopup())
+            {
+                ApplyResponsivePrivatePopupLayout();
+                return;
+            }
+
             // ── Fully independent Screen Space Overlay Canvas ─────────────────
             // Parented to null (scene root) so it is NOT inside any other Canvas.
             // renderMode=ScreenSpaceOverlay + sortingOrder=33500 guarantees it renders
             // on top of everything in the game, regardless of other canvases.
-            privatePopup = new GameObject("PrivateJoinPopup",
+            privatePopup = new GameObject(PrivateJoinPopupName,
                 typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster),
                 typeof(CanvasRenderer), typeof(Image));
             privatePopup.transform.SetParent(null);  // scene root — NOT inside HomeScreen
@@ -408,6 +469,7 @@ namespace LudoClassicOffline
             cancelBtn.onClick.AddListener(() => privatePopup.SetActive(false));
 
             privatePopup.SetActive(false);
+            ApplyResponsivePrivatePopupLayout();
         }
 
         private async void ConfirmPrivateJoin()
@@ -1069,6 +1131,12 @@ namespace LudoClassicOffline
         {
             if (hasBuiltUi) return;
 
+            if (TryBindExistingRuntimeUi())
+            {
+                hasBuiltUi = true;
+                return;
+            }
+
             if (panelRoot    != null) { Destroy(panelRoot);             panelRoot    = null; }
             if (openButton   != null) { Destroy(openButton.gameObject); openButton   = null; }
             if (privatePopup != null) { Destroy(privatePopup);          privatePopup = null; }
@@ -1101,7 +1169,7 @@ namespace LudoClassicOffline
             openButton.transform.SetAsLastSibling();
 
             // ── Full-screen panel ─────────────────────────────────────────────
-            panelRoot = new GameObject("TournamentPanel",
+            panelRoot = new GameObject(TournamentPanelName,
                 typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
             Canvas panelCanvas = panelRoot.GetComponent<Canvas>();
@@ -1327,14 +1395,21 @@ namespace LudoClassicOffline
             openButton.gameObject.SetActive(false);
             EnsureDetailPopup();
             hasBuiltUi = true;
+            ApplyResponsiveTournamentLayout(true);
         }
 
         private void EnsureDetailPopup()
         {
             if (detailPopup != null) return;
 
+            if (TryBindExistingDetailPopup())
+            {
+                ApplyResponsiveDetailPopupLayout();
+                return;
+            }
+
             // ── Standalone root SSO Canvas — same pattern as privatePopup ─────
-            detailPopup = new GameObject("TournamentDetailPopup",
+            detailPopup = new GameObject(TournamentDetailPopupName,
                 typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster),
                 typeof(CanvasRenderer), typeof(Image));
             detailPopup.transform.SetParent(null);
@@ -1506,6 +1581,7 @@ namespace LudoClassicOffline
             secondaryLE.preferredHeight = 118f; secondaryLE.flexibleWidth = 0f;
             secondaryCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
 
+            ApplyResponsiveDetailPopupLayout();
             detailPopup.SetActive(false);
         }
 
@@ -1518,6 +1594,7 @@ namespace LudoClassicOffline
                 if (detailPopup == null) { Debug.LogError("[Tournament] detail popup null"); return; }
                 selectedTournament = tournament;
                 detailPopup.SetActive(true);
+                ApplyResponsiveDetailPopupLayout();
                 RefreshDetailPopupState();
             }
             catch (Exception ex)
@@ -1592,6 +1669,8 @@ namespace LudoClassicOffline
                 detailPrimaryButton.interactable = false;
                 detailPrimaryButtonText.text = "Not Available";
             }
+
+            ApplyResponsiveDetailPopupLayout();
         }
 
         private void OnDetailPrimaryButtonPressed()
@@ -1650,6 +1729,272 @@ namespace LudoClassicOffline
             runtimeRows.Clear();
         }
 
+        private bool TryBindExistingRuntimeUi()
+        {
+            if (dashboard == null)
+            {
+                dashboard = GetComponent<DashBoardManagerOffline>();
+            }
+
+            Transform parent = dashboard != null && dashboard.dashBordPanal != null
+                ? dashboard.dashBordPanal.transform
+                : transform;
+
+            panelRoot = FindDirectChild(parent, TournamentPanelName)?.gameObject;
+            openButton = FindButton(parent, "TournamentsButton");
+            if (panelRoot == null || openButton == null)
+            {
+                return false;
+            }
+
+            titleText = FindText(panelRoot.transform, "HeaderLayer/HeaderBg/Label");
+            statusText = FindText(panelRoot.transform, "HeaderLayer/Label");
+            refreshButton = FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/↺  REFRESHButton");
+            closeButton = FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/✕  CLOSEButton");
+            joinPrivateBtn = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/🔒  PRIVATEButton");
+            tournamentScroll = FindComponent<ScrollRect>(panelRoot.transform, "ScrollView");
+            tournamentViewport = FindRectTransform(panelRoot.transform, "ScrollView/Viewport");
+            listContent = FindRectTransform(panelRoot.transform, "ScrollView/Viewport/Content");
+            tournamentGrid = FindComponent<GridLayoutGroup>(panelRoot.transform, "ScrollView/Viewport/Content");
+            _popupLayer = FindDeepChild(panelRoot.transform, "DetailPopupLayer")?.gameObject;
+            _privatePopupLayer = FindDeepChild(panelRoot.transform, "PrivatePopupLayer")?.gameObject;
+
+            if (titleText == null
+                || statusText == null
+                || refreshButton == null
+                || closeButton == null
+                || joinPrivateBtn == null
+                || tournamentScroll == null
+                || tournamentViewport == null
+                || listContent == null
+                || tournamentGrid == null)
+            {
+                return false;
+            }
+
+            WirePersistentUiListeners();
+            EnsurePrivatePopup();
+            EnsureDetailPopup();
+            ApplyResponsiveTournamentLayout(true);
+            return true;
+        }
+
+        private bool TryBindExistingPrivatePopup()
+        {
+            privatePopup = FindSceneObjectByName(PrivateJoinPopupName);
+            if (privatePopup == null)
+            {
+                return false;
+            }
+
+            Transform card = FindByPath(privatePopup.transform, "Card");
+            InputField[] inputs = card != null ? card.GetComponentsInChildren<InputField>(true) : new InputField[0];
+            Text[] labels = card != null ? card.GetComponentsInChildren<Text>(true) : new Text[0];
+            inviteCodeField = inputs.Length > 0 ? inputs[0] : null;
+            invitePasswordField = inputs.Length > 1 ? inputs[1] : null;
+            privateStatusText = labels.Length > 5 ? labels[5] : null;
+            Button confirmButton = FindButton(privatePopup.transform, "Card/BtnRow/🔍  FIND TOURNAMENTButton");
+            Button cancelButton = FindButton(privatePopup.transform, "Card/BtnRow/CANCELButton");
+            Button closePopupButton = FindButton(privatePopup.transform, "Card/TitleRow/✕Button");
+
+            if (inviteCodeField == null
+                || invitePasswordField == null
+                || privateStatusText == null
+                || confirmButton == null
+                || cancelButton == null
+                || closePopupButton == null)
+            {
+                Debug.LogWarning("[Tournament] Existing PrivateJoinPopup found but some references could not be rebound. Reusing it anyway to avoid duplicate runtime UI.");
+                return true;
+            }
+
+            confirmButton.onClick.RemoveAllListeners();
+            confirmButton.onClick.AddListener(ConfirmPrivateJoin);
+            cancelButton.onClick.RemoveAllListeners();
+            cancelButton.onClick.AddListener(() => privatePopup.SetActive(false));
+            closePopupButton.onClick.RemoveAllListeners();
+            closePopupButton.onClick.AddListener(() => privatePopup.SetActive(false));
+            ApplyResponsivePrivatePopupLayout();
+            return true;
+        }
+
+        private bool TryBindExistingDetailPopup()
+        {
+            detailPopup = FindSceneObjectByName(TournamentDetailPopupName);
+            if (detailPopup == null)
+            {
+                return false;
+            }
+
+            Transform titleWrap = FindByPath(detailPopup.transform, "DetailCard/HeadRow/TitleWrap");
+            Text[] titleLabels = titleWrap != null ? titleWrap.GetComponentsInChildren<Text>(true) : new Text[0];
+            detailTitleText = titleLabels.Length > 0 ? titleLabels[0] : null;
+            detailMetaText = titleLabels.Length > 1 ? titleLabels[1] : null;
+            detailCloseButton = FindButton(detailPopup.transform, "DetailCard/HeadRow/✕Button");
+            Transform statsPanel = FindByPath(detailPopup.transform, "DetailCard/StatsPanel");
+            Text[] statsLabels = statsPanel != null ? statsPanel.GetComponentsInChildren<Text>(true) : new Text[0];
+            detailStatsText = statsLabels.Length > 0 ? statsLabels[0] : null;
+            detailWalletText = statsLabels.Length > 1 ? statsLabels[1] : null;
+            detailPrizeText = FindText(detailPopup.transform, "DetailCard/InfoPanel/Label");
+            detailHintText = FindText(detailPopup.transform, "DetailCard/HintPanel/Label");
+            detailPrimaryButton = FindButton(detailPopup.transform, "DetailCard/ButtonRow/RegisterButton");
+            detailPrimaryButtonText = detailPrimaryButton != null ? detailPrimaryButton.GetComponentInChildren<Text>(true) : null;
+            Button secondaryCloseButton = FindButton(detailPopup.transform, "DetailCard/ButtonRow/CloseButton");
+
+            if (detailTitleText == null
+                || detailMetaText == null
+                || detailCloseButton == null
+                || detailStatsText == null
+                || detailWalletText == null
+                || detailPrizeText == null
+                || detailHintText == null
+                || detailPrimaryButton == null
+                || detailPrimaryButtonText == null
+                || secondaryCloseButton == null)
+            {
+                Debug.LogWarning("[Tournament] Existing TournamentDetailPopup found but some references could not be rebound. Reusing it anyway to avoid duplicate runtime UI.");
+                ApplyResponsiveDetailPopupLayout();
+                return true;
+            }
+
+            detailCloseButton.onClick.RemoveAllListeners();
+            detailCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
+            secondaryCloseButton.onClick.RemoveAllListeners();
+            secondaryCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
+            detailPrimaryButton.onClick.RemoveAllListeners();
+            detailPrimaryButton.onClick.AddListener(OnDetailPrimaryButtonPressed);
+            ApplyResponsiveDetailPopupLayout();
+            return true;
+        }
+
+        private void WirePersistentUiListeners()
+        {
+            openButton.onClick.RemoveAllListeners();
+            openButton.onClick.AddListener(OpenPanel);
+            refreshButton.onClick.RemoveAllListeners();
+            refreshButton.onClick.AddListener(RefreshTournaments);
+            closeButton.onClick.RemoveAllListeners();
+            closeButton.onClick.AddListener(ClosePanel);
+            joinPrivateBtn.onClick.RemoveAllListeners();
+            joinPrivateBtn.onClick.AddListener(OpenPrivatePopup);
+
+            Button createButton = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/＋  CREATEButton");
+            if (createButton != null)
+            {
+                createButton.onClick.RemoveAllListeners();
+                createButton.onClick.AddListener(() => dashboard?.OpenCreateTournamentPanel());
+            }
+
+            Button historyButton = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/📋  HISTORYButton");
+            if (historyButton != null)
+            {
+                historyButton.onClick.RemoveAllListeners();
+                historyButton.onClick.AddListener(() => dashboard?.OpenMyTournamentsPanel());
+            }
+        }
+
+        private static Transform FindDirectChild(Transform parent, string childName)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (child != null && string.Equals(child.name, childName, StringComparison.Ordinal))
+                {
+                    return child;
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform FindDeepChild(Transform parent, string childName)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                if (string.Equals(child.name, childName, StringComparison.Ordinal))
+                {
+                    return child;
+                }
+
+                Transform nested = FindDeepChild(child, childName);
+                if (nested != null)
+                {
+                    return nested;
+                }
+            }
+
+            return null;
+        }
+
+        private static Transform FindByPath(Transform root, string path)
+        {
+            return root == null || string.IsNullOrWhiteSpace(path) ? null : root.Find(path);
+        }
+
+        private static Button FindButton(Transform root, string path)
+        {
+            return FindByPath(root, path)?.GetComponent<Button>();
+        }
+
+        private static Text FindText(Transform root, string path)
+        {
+            return FindByPath(root, path)?.GetComponent<Text>();
+        }
+
+        private static RectTransform FindRectTransform(Transform root, string path)
+        {
+            return FindByPath(root, path) as RectTransform;
+        }
+
+        private static T FindComponent<T>(Transform root, string path) where T : Component
+        {
+            return FindByPath(root, path)?.GetComponent<T>();
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                return null;
+            }
+
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null
+                    && candidate.name == objectName
+                    && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
         private void SetStatus(string message)
         {
             if (statusText != null)
@@ -1679,6 +2024,375 @@ namespace LudoClassicOffline
             }
         }
 
+        private void ApplyResponsiveTournamentLayout(bool force)
+        {
+            if (panelRoot == null)
+            {
+                return;
+            }
+
+            int width = Screen.width;
+            int height = Screen.height;
+            if (!force && width == lastResponsiveWidth && height == lastResponsiveHeight)
+            {
+                return;
+            }
+
+            lastResponsiveWidth = width;
+            lastResponsiveHeight = height;
+
+            bool portrait = IsPortraitScreen();
+            float headerHeight = portrait ? 118f : 180f;
+            float actionHeight = portrait ? 82f : 128f;
+            float statusHeight = portrait ? 40f : 52f;
+            float topTotal = headerHeight + actionHeight + statusHeight + (portrait ? 14f : 28f);
+
+            RectTransform headerLayer = FindRectTransform(panelRoot.transform, "HeaderLayer");
+            if (headerLayer != null)
+            {
+                headerLayer.anchorMin = new Vector2(0f, 1f);
+                headerLayer.anchorMax = new Vector2(1f, 1f);
+                headerLayer.pivot = new Vector2(0.5f, 1f);
+                headerLayer.offsetMin = new Vector2(0f, -topTotal);
+                headerLayer.offsetMax = Vector2.zero;
+            }
+
+            RectTransform headerBg = FindRectTransform(panelRoot.transform, "HeaderLayer/HeaderBg");
+            if (headerBg != null)
+            {
+                headerBg.anchorMin = new Vector2(0f, 1f);
+                headerBg.anchorMax = new Vector2(1f, 1f);
+                headerBg.pivot = new Vector2(0.5f, 1f);
+                headerBg.offsetMin = new Vector2(0f, -headerHeight);
+                headerBg.offsetMax = Vector2.zero;
+            }
+
+            if (titleText != null)
+            {
+                titleText.fontSize = portrait ? 40 : 62;
+                titleText.resizeTextForBestFit = true;
+                titleText.resizeTextMinSize = portrait ? 24 : 36;
+                titleText.resizeTextMaxSize = titleText.fontSize;
+                titleText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                RectTransform titleRect = titleText.GetComponent<RectTransform>();
+                titleRect.offsetMin = new Vector2(portrait ? 14f : 36f, 0f);
+                titleRect.offsetMax = new Vector2(portrait ? -330f : -580f, 0f);
+            }
+
+            ApplyHeaderButtonLayout(refreshButton, portrait ? -168f : -306f, portrait ? 150f : 270f, portrait ? 70f : 112f, portrait ? 24 : 34);
+            ApplyHeaderButtonLayout(closeButton, portrait ? -12f : -22f, portrait ? 142f : 260f, portrait ? 70f : 112f, portrait ? 24 : 34);
+
+            RectTransform actionBar = FindRectTransform(panelRoot.transform, "HeaderLayer/ActionBar");
+            if (actionBar != null)
+            {
+                actionBar.anchorMin = new Vector2(0f, 1f);
+                actionBar.anchorMax = new Vector2(1f, 1f);
+                actionBar.pivot = new Vector2(0.5f, 1f);
+                actionBar.offsetMin = new Vector2(portrait ? 10f : 28f, -(headerHeight + actionHeight));
+                actionBar.offsetMax = new Vector2(portrait ? -10f : -28f, -headerHeight);
+                HorizontalLayoutGroup actionLayout = actionBar.GetComponent<HorizontalLayoutGroup>();
+                if (actionLayout != null)
+                {
+                    actionLayout.spacing = portrait ? 8f : 16f;
+                    actionLayout.padding = new RectOffset(portrait ? 8 : 16, portrait ? 8 : 16, portrait ? 8 : 14, portrait ? 8 : 14);
+                }
+
+                Text[] labels = actionBar.GetComponentsInChildren<Text>(true);
+                for (int i = 0; i < labels.Length; i++)
+                {
+                    FitText(labels[i], portrait ? 24 : 34, portrait ? 16 : 24);
+                }
+            }
+
+            if (statusText != null)
+            {
+                statusText.fontSize = portrait ? 24 : 32;
+                RectTransform statusRect = statusText.GetComponent<RectTransform>();
+                statusRect.anchorMin = new Vector2(0f, 1f);
+                statusRect.anchorMax = new Vector2(1f, 1f);
+                statusRect.offsetMin = new Vector2(18f, -topTotal);
+                statusRect.offsetMax = new Vector2(-18f, -(topTotal - statusHeight));
+            }
+
+            RectTransform scrollRect = tournamentScroll != null ? tournamentScroll.GetComponent<RectTransform>() : FindRectTransform(panelRoot.transform, "ScrollView");
+            if (scrollRect != null)
+            {
+                scrollRect.anchorMin = new Vector2(0.01f, 0f);
+                scrollRect.anchorMax = new Vector2(0.99f, 1f);
+                scrollRect.offsetMin = new Vector2(0f, portrait ? 8f : 18f);
+                scrollRect.offsetMax = new Vector2(0f, -(topTotal + (portrait ? 6f : 12f)));
+            }
+
+            UpdateTournamentGridSizing();
+        }
+
+        private void ApplyResponsivePrivatePopupLayout()
+        {
+            if (privatePopup == null)
+            {
+                return;
+            }
+
+            bool portrait = IsPortraitScreen();
+            RectTransform cardRect = FindRectTransform(privatePopup.transform, "Card");
+            if (cardRect != null)
+            {
+                cardRect.anchorMin = portrait ? new Vector2(0.04f, 0.08f) : new Vector2(0.08f, 0.12f);
+                cardRect.anchorMax = portrait ? new Vector2(0.96f, 0.92f) : new Vector2(0.92f, 0.88f);
+                cardRect.pivot = new Vector2(0.5f, 0.5f);
+                cardRect.offsetMin = Vector2.zero;
+                cardRect.offsetMax = Vector2.zero;
+
+                ContentSizeFitter fitter = cardRect.GetComponent<ContentSizeFitter>();
+                if (fitter != null)
+                {
+                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+                }
+
+                VerticalLayoutGroup layout = cardRect.GetComponent<VerticalLayoutGroup>();
+                if (layout != null)
+                {
+                    layout.padding = portrait ? new RectOffset(22, 22, 18, 18) : new RectOffset(48, 48, 36, 36);
+                    layout.spacing = portrait ? 12f : 20f;
+                }
+            }
+
+            Text[] texts = privatePopup.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < texts.Length; i++)
+            {
+                FitText(texts[i], portrait ? 30 : 42, portrait ? 16 : 24);
+            }
+
+            InputField[] inputs = privatePopup.GetComponentsInChildren<InputField>(true);
+            for (int i = 0; i < inputs.Length; i++)
+            {
+                FitText(inputs[i].textComponent, portrait ? 26 : 38, portrait ? 16 : 22);
+                FitText(inputs[i].placeholder as Text, portrait ? 24 : 34, portrait ? 14 : 20);
+                LayoutElement inputLayout = inputs[i].GetComponent<LayoutElement>();
+                if (inputLayout != null)
+                {
+                    inputLayout.preferredHeight = portrait ? 54f : 72f;
+                    inputLayout.minHeight = portrait ? 48f : 62f;
+                }
+            }
+
+            Transform btnRow = FindByPath(privatePopup.transform, "Card/BtnRow");
+            if (btnRow != null)
+            {
+                HorizontalLayoutGroup rowLayout = btnRow.GetComponent<HorizontalLayoutGroup>();
+                if (rowLayout != null)
+                {
+                    rowLayout.spacing = portrait ? 10f : 18f;
+                }
+
+                LayoutElement rowElement = btnRow.GetComponent<LayoutElement>();
+                if (rowElement != null)
+                {
+                    rowElement.preferredHeight = portrait ? 64f : 84f;
+                    rowElement.minHeight = portrait ? 58f : 72f;
+                }
+            }
+
+            Button[] buttons = privatePopup.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                LayoutElement layout = buttons[i].GetComponent<LayoutElement>();
+                if (layout != null)
+                {
+                    layout.preferredHeight = portrait ? 60f : 76f;
+                    layout.minHeight = portrait ? 52f : 66f;
+                }
+
+                FitText(buttons[i].GetComponentInChildren<Text>(true), portrait ? 24 : 32, portrait ? 14 : 20);
+            }
+        }
+
+        private void ApplyResponsiveDetailPopupLayout()
+        {
+            if (detailPopup == null)
+            {
+                return;
+            }
+
+            bool portrait = IsPortraitScreen();
+            RectTransform cardRect = FindRectTransform(detailPopup.transform, "DetailCard");
+            if (cardRect != null)
+            {
+                cardRect.anchorMin = portrait ? new Vector2(0.04f, 0.5f) : new Vector2(0.10f, 0.5f);
+                cardRect.anchorMax = portrait ? new Vector2(0.96f, 0.5f) : new Vector2(0.90f, 0.5f);
+                cardRect.pivot = new Vector2(0.5f, 0.5f);
+                cardRect.anchoredPosition = Vector2.zero;
+                cardRect.sizeDelta = new Vector2(0f, portrait ? 900f : 760f);
+
+                ContentSizeFitter fitter = cardRect.GetComponent<ContentSizeFitter>();
+                if (fitter != null)
+                {
+                    fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                    fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+                }
+
+                VerticalLayoutGroup layout = cardRect.GetComponent<VerticalLayoutGroup>();
+                if (layout != null)
+                {
+                    layout.padding = portrait ? new RectOffset(22, 22, 18, 18) : new RectOffset(48, 48, 36, 36);
+                    layout.spacing = portrait ? 10f : 20f;
+                    layout.childAlignment = portrait ? TextAnchor.MiddleCenter : TextAnchor.UpperCenter;
+                    layout.childForceExpandHeight = false;
+                }
+            }
+
+            SetLayoutElement(FindByPath(detailPopup.transform, "DetailCard/HeadRow"), portrait ? 116f : 130f, portrait ? 106f : 120f, 0f);
+            SetLayoutElement(FindByPath(detailPopup.transform, "DetailCard/StatsPanel"), portrait ? 104f : 210f, portrait ? 94f : 170f, 0f);
+            SetLayoutElement(FindByPath(detailPopup.transform, "DetailCard/InfoPanel"), portrait ? 285f : 320f, portrait ? 250f : 260f, 0f);
+            SetLayoutElement(FindByPath(detailPopup.transform, "DetailCard/HintPanel"), portrait ? 96f : 160f, portrait ? 84f : 120f, 0f);
+            SetLayoutElement(FindByPath(detailPopup.transform, "DetailCard/ButtonRow"), portrait ? 82f : 128f, portrait ? 74f : 110f, 0f);
+
+            HorizontalLayoutGroup headLayout = FindComponent<HorizontalLayoutGroup>(detailPopup.transform, "DetailCard/HeadRow");
+            if (headLayout != null)
+            {
+                headLayout.spacing = portrait ? 8f : 14f;
+            }
+
+            VerticalLayoutGroup statsLayout = FindComponent<VerticalLayoutGroup>(detailPopup.transform, "DetailCard/StatsPanel");
+            if (statsLayout != null)
+            {
+                statsLayout.padding = portrait ? new RectOffset(16, 16, 10, 10) : new RectOffset(24, 24, 20, 20);
+                statsLayout.spacing = portrait ? 4f : 10f;
+            }
+
+            VerticalLayoutGroup infoLayout = FindComponent<VerticalLayoutGroup>(detailPopup.transform, "DetailCard/InfoPanel");
+            if (infoLayout != null)
+            {
+                infoLayout.padding = portrait ? new RectOffset(18, 18, 12, 12) : new RectOffset(28, 28, 22, 22);
+                infoLayout.childForceExpandHeight = false;
+            }
+
+            VerticalLayoutGroup hintLayout = FindComponent<VerticalLayoutGroup>(detailPopup.transform, "DetailCard/HintPanel");
+            if (hintLayout != null)
+            {
+                hintLayout.padding = portrait ? new RectOffset(16, 16, 10, 10) : new RectOffset(24, 24, 20, 20);
+            }
+
+            HorizontalLayoutGroup buttonLayout = FindComponent<HorizontalLayoutGroup>(detailPopup.transform, "DetailCard/ButtonRow");
+            if (buttonLayout != null)
+            {
+                buttonLayout.spacing = portrait ? 10f : 20f;
+            }
+
+            SetLayoutElement(detailTitleText != null ? detailTitleText.transform : null, portrait ? 58f : 78f, portrait ? 52f : 70f, 0f);
+            SetLayoutElement(detailMetaText != null ? detailMetaText.transform : null, portrait ? 34f : 52f, portrait ? 30f : 46f, 0f);
+            SetLayoutElement(detailStatsText != null ? detailStatsText.transform : null, portrait ? 42f : 100f, portrait ? 38f : 90f, 0f);
+            SetLayoutElement(detailWalletText != null ? detailWalletText.transform : null, portrait ? 36f : 82f, portrait ? 32f : 72f, 0f);
+            SetLayoutElement(detailPrizeText != null ? detailPrizeText.transform : null, portrait ? 260f : 290f, portrait ? 230f : 250f, 0f);
+            SetLayoutElement(detailHintText != null ? detailHintText.transform : null, portrait ? 76f : 120f, portrait ? 66f : 100f, 0f);
+
+            FitText(detailTitleText, portrait ? 58 : 72, portrait ? 40 : 36);
+            FitText(detailMetaText, portrait ? 34 : 48, portrait ? 24 : 24);
+            FitText(detailStatsText, portrait ? 38 : 54, portrait ? 28 : 26);
+            FitText(detailWalletText, portrait ? 32 : 48, portrait ? 24 : 24);
+            FitText(detailPrizeText, portrait ? 34 : 48, portrait ? 24 : 24);
+            FitText(detailHintText, portrait ? 30 : 50, portrait ? 22 : 22);
+            if (detailPrizeText != null)
+            {
+                detailPrizeText.alignment = TextAnchor.UpperLeft;
+                detailPrizeText.verticalOverflow = portrait ? VerticalWrapMode.Truncate : VerticalWrapMode.Overflow;
+                detailPrizeText.lineSpacing = portrait ? 1.16f : 1.4f;
+            }
+            if (detailHintText != null)
+            {
+                detailHintText.alignment = TextAnchor.MiddleCenter;
+                detailHintText.verticalOverflow = portrait ? VerticalWrapMode.Truncate : VerticalWrapMode.Overflow;
+                detailHintText.lineSpacing = portrait ? 1.1f : 1.2f;
+            }
+
+            ApplyDetailButtonLayout(detailCloseButton, portrait ? 72f : 120f, portrait ? 72f : 120f, portrait ? 38 : 52);
+            ApplyDetailButtonLayout(detailPrimaryButton, portrait ? 310f : 400f, portrait ? 74f : 118f, portrait ? 34 : 52);
+            Button secondaryCloseButton = FindButton(detailPopup.transform, "DetailCard/ButtonRow/CloseButton");
+            ApplyDetailButtonLayout(secondaryCloseButton, portrait ? 170f : 290f, portrait ? 74f : 118f, portrait ? 34 : 52);
+
+            if (cardRect != null)
+            {
+                Canvas.ForceUpdateCanvases();
+                LayoutRebuilder.ForceRebuildLayoutImmediate(cardRect);
+                Canvas.ForceUpdateCanvases();
+            }
+        }
+
+        private void ApplyDetailButtonLayout(Button button, float width, float height, int fontSize)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            LayoutElement layout = button.GetComponent<LayoutElement>();
+            if (layout != null)
+            {
+                layout.preferredWidth = width;
+                layout.minWidth = Mathf.Min(width, width * 0.85f);
+                layout.preferredHeight = height;
+                layout.minHeight = Mathf.Min(height, height * 0.9f);
+                layout.flexibleWidth = 0f;
+            }
+
+            FitText(button.GetComponentInChildren<Text>(true), fontSize, Mathf.Max(11, fontSize - 12));
+        }
+
+        private void SetLayoutElement(Transform target, float preferredHeight, float minHeight, float flexibleHeight)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            LayoutElement layout = target.GetComponent<LayoutElement>();
+            if (layout == null)
+            {
+                layout = target.gameObject.AddComponent<LayoutElement>();
+            }
+
+            layout.preferredHeight = preferredHeight;
+            layout.minHeight = minHeight;
+            layout.flexibleHeight = flexibleHeight;
+        }
+
+        private bool IsPortraitScreen()
+        {
+            return Screen.height >= Screen.width;
+        }
+
+        private void ApplyHeaderButtonLayout(Button button, float rightOffset, float width, float height, int fontSize)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            RectTransform rect = button.GetComponent<RectTransform>();
+            rect.anchorMin = new Vector2(1f, 1f);
+            rect.anchorMax = new Vector2(1f, 1f);
+            rect.pivot = new Vector2(1f, 1f);
+            rect.anchoredPosition = new Vector2(rightOffset, -10f);
+            rect.sizeDelta = new Vector2(width, height);
+            FitText(button.GetComponentInChildren<Text>(true), fontSize, Mathf.Max(14, fontSize - 12));
+        }
+
+        private void FitText(Text text, int maxSize, int minSize)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minSize;
+            text.resizeTextMaxSize = maxSize;
+            text.fontSize = maxSize;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+        }
+
         private void UpdateTournamentGridSizing()
         {
             if (tournamentGrid == null || tournamentViewport == null || listContent == null)
@@ -1693,13 +2407,14 @@ namespace LudoClassicOffline
             }
 
             float viewportHeight = tournamentViewport.rect.height;
-            // Landscape if width > height (game screen is always landscape)
-            bool isLandscape = viewportWidth > viewportHeight;
+            bool isLandscape = !IsPortraitScreen() && viewportWidth > viewportHeight;
+            int visibleCards = Mathf.Max(1, runtimeRows.Count);
 
             if (isLandscape)
             {
-                // 2 cards per row in landscape — wide cards with comfortable height
                 tournamentGrid.constraintCount = 2;
+                tournamentGrid.padding = new RectOffset(16, 16, 16, 24);
+                tournamentGrid.spacing = new Vector2(16f, 24f);
                 float spacing = tournamentGrid.spacing.x;
                 float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right - spacing;
                 float cardWidth = Mathf.Max(usableWidth / 2f, 200f);
@@ -1708,12 +2423,18 @@ namespace LudoClassicOffline
             }
             else
             {
-                // Portrait: single column
                 tournamentGrid.constraintCount = 1;
+                tournamentGrid.padding = new RectOffset(10, 10, 10, 24);
+                tournamentGrid.spacing = new Vector2(0f, 14f);
                 float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right;
                 float cardWidth = Mathf.Max(usableWidth, 200f);
+                float compactHeight = Mathf.Clamp(viewportHeight * 0.42f, 360f, 430f);
                 listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);
-                tournamentGrid.cellSize = new Vector2(cardWidth, 480f);
+                tournamentGrid.cellSize = new Vector2(cardWidth, compactHeight);
+                float contentHeight = tournamentGrid.padding.top + tournamentGrid.padding.bottom
+                    + visibleCards * compactHeight
+                    + Mathf.Max(0, visibleCards - 1) * tournamentGrid.spacing.y;
+                listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(contentHeight, viewportHeight + 1f));
             }
         }
 
@@ -1815,6 +2536,25 @@ namespace LudoClassicOffline
             runtimeFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             return runtimeFont;
         }
+
+#if UNITY_EDITOR
+        private static void DestroyUiRoot(GameObject target)
+        {
+            if (target == null)
+            {
+                return;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(target);
+            }
+            else
+            {
+                DestroyImmediate(target);
+            }
+        }
+#endif
 
         private string ExtractEntryUuid(string json)
         {

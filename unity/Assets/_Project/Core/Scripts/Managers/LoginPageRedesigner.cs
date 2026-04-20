@@ -9,8 +9,8 @@ namespace AndroApps
     /// Overlays the existing login panel with a Zynga-Poker-style landing screen.
     ///
     /// State 0 – Landing  : Model image (left) + choice buttons (right)
-    /// State 1 – Login    : compact login form, social buttons, guest option
-    /// State 2 – Signup   : restores original loginpanel in signup mode
+    /// State 1 – Login    : centered responsive login form
+    /// State 2 – Signup   : centered responsive signup form
     ///
     /// Attach via AuthManager.Start() with AddComponent + Initialize(this).
     /// Assign 'modelSprite' (Model.png) via Inspector on the AuthManager GameObject.
@@ -36,10 +36,11 @@ namespace AndroApps
         private bool           _built;
         private bool           _buildSucceeded;
         private readonly List<GameObject> _disabledOriginalChildren = new List<GameObject>();
+        private const string OverlayName = "_LoginRedesign";
 
         // ── App palette ────────────────────────────────────────────────────────
-        private static readonly Color32 BgColor     = new Color32( 20,   4,   8,  80); // 30% opacity — bg image visible
-        private static readonly Color32 CardColor   = new Color32( 44,  10,  18, 210); // slightly transparent card
+        private static readonly Color32 BgColor     = new Color32( 20,   4,   8,  70); // light dim so the bg image stays visible
+        private static readonly Color32 CardColor   = new Color32( 78,   8,  24, 150); // 50% transparent red modal
         private static readonly Color32 AccentGold  = new Color32(218, 165,  32, 255);
         private static readonly Color32 AccentRed   = new Color32(180,  35,  55, 255);
         private static readonly Color32 DarkRed     = new Color32(118,  18,  28, 255);
@@ -54,6 +55,46 @@ namespace AndroApps
             _auth = auth;
             Build();
         }
+
+#if UNITY_EDITOR
+        public void RebuildPersistentUiInEditor(AuthManager auth = null)
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            _auth = auth != null ? auth : (_auth != null ? _auth : GetComponent<AuthManager>() ?? FindObjectOfType<AuthManager>());
+
+            GameObject loginRoot = _auth != null ? _auth.loginpanel : null;
+            Canvas rootCanvas = ResolveRootCanvas(loginRoot);
+            Transform existingOverlay = rootCanvas != null ? FindDirectChild(rootCanvas.transform, OverlayName) : null;
+            if (existingOverlay != null)
+            {
+                DestroyImmediate(existingOverlay.gameObject);
+            }
+
+            if (_overlay != null)
+            {
+                DestroyImmediate(_overlay);
+            }
+
+            _overlay = null;
+            _landingPanel = null;
+            _loginFormPanel = null;
+            _signupFormPanel = null;
+            _idInput = null;
+            _pwInput = null;
+            _signupMobileOrEmailInput = null;
+            _signupPasswordInput = null;
+            _signupReferralInput = null;
+            _signupTermsToggle = null;
+            _built = false;
+            _buildSucceeded = false;
+
+            Build();
+        }
+#endif
 
         public bool BuildSucceeded => _buildSucceeded && _overlay != null;
 
@@ -80,6 +121,23 @@ namespace AndroApps
                     throw new MissingReferenceException("Login root or root canvas is missing.");
                 }
 
+                if (TryBindExistingOverlay(rootCanvas.transform))
+                {
+                    CacheSceneLogo(loginRoot.transform.root);
+                    loginRoot.SetActive(false);
+                    SetSceneLogoVisible(false);
+                    if (_auth.LogInDetail?.LogInPnl != null)
+                    {
+                        _auth.LogInDetail.LogInPnl.SetActive(false);
+                    }
+
+                    ApplyResponsiveAuthLayout();
+                    ShowLanding();
+                    _buildSucceeded = true;
+                    _built = true;
+                    return;
+                }
+
                 CacheSceneLogo(loginRoot.transform.root);
                 loginRoot.SetActive(false);
                 SetSceneLogoVisible(false);
@@ -88,7 +146,7 @@ namespace AndroApps
                     _auth.LogInDetail.LogInPnl.SetActive(false);
                 }
 
-                _overlay = new GameObject("_LoginRedesign",
+                _overlay = new GameObject(OverlayName,
                     typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
                 Transform parent = rootCanvas.transform;
                 _overlay.transform.SetParent(parent, false);
@@ -105,6 +163,7 @@ namespace AndroApps
                 BuildLoginFormPanel();
                 BuildSignupFormPanel();
 
+                ApplyResponsiveAuthLayout();
                 ShowLanding();
                 _buildSucceeded = true;
                 _built = true;
@@ -291,13 +350,13 @@ namespace AndroApps
             Font font = GetFont();
             EnsureModelSprite();
 
-            // ── Left — Model (30%) ────────────────────────────────────────────
+            // Background model stays visible behind the centered red card.
             var leftPanel = new GameObject("LeftPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
             leftPanel.transform.SetParent(_loginFormPanel.transform, false);
             var lp = leftPanel.GetComponent<RectTransform>();
             lp.anchorMin = new Vector2(0f, 0f);
-            lp.anchorMax = new Vector2(0.32f, 1f);
+            lp.anchorMax = new Vector2(1f, 1f);
             lp.offsetMin = lp.offsetMax = Vector2.zero;
 
             if (modelSprite != null)
@@ -311,33 +370,32 @@ namespace AndroApps
                 img.color = Color.white;
                 var mr = modelGo.GetComponent<RectTransform>();
                 mr.anchorMin = new Vector2(0f, 0.04f);
-                mr.anchorMax = new Vector2(1f, 0.88f);
+                mr.anchorMax = new Vector2(0.42f, 0.88f);
                 mr.offsetMin = mr.offsetMax = Vector2.zero;
             }
 
-            // ── Right — Login form (68%) ──────────────────────────────────────
+            // Form layer covers the screen; the card is centered by ApplyResponsiveAuthLayout.
             var rightPanel = new GameObject("RightPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
             rightPanel.transform.SetParent(_loginFormPanel.transform, false);
             var rp = rightPanel.GetComponent<RectTransform>();
-            rp.anchorMin = new Vector2(0.32f, 0f);
+            rp.anchorMin = new Vector2(0f, 0f);
             rp.anchorMax = new Vector2(1f, 1f);
             rp.offsetMin = rp.offsetMax = Vector2.zero;
 
-            // Card fills the right panel
             var card = new GameObject("LoginCard",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup));
             card.transform.SetParent(rightPanel.transform, false);
             card.GetComponent<Image>().color = CardColor;
             var cr = card.GetComponent<RectTransform>();
-            cr.anchorMin = new Vector2(0.02f, 0.03f);
-            cr.anchorMax = new Vector2(0.98f, 0.97f);
+            cr.anchorMin = new Vector2(0.07f, 0.10f);
+            cr.anchorMax = new Vector2(0.93f, 0.90f);
             cr.offsetMin = cr.offsetMax = Vector2.zero;
 
             var cvl = card.GetComponent<VerticalLayoutGroup>();
-            cvl.padding              = new RectOffset(40, 40, 36, 32);
-            cvl.spacing              = 16f;
+            cvl.padding              = new RectOffset(42, 42, 34, 28);
+            cvl.spacing              = 14f;
             cvl.childControlWidth    = true;
             cvl.childControlHeight   = true;
             cvl.childForceExpandWidth  = true;
@@ -345,60 +403,39 @@ namespace AndroApps
             cvl.childAlignment       = TextAnchor.UpperCenter;
 
             // Heading — bigger
-            AddLabel(card.transform, font, "Welcome Back!", 88, FontStyle.Bold, Color.white, 112f)
+            AddLabel(card.transform, font, "Welcome Back!", 54, FontStyle.Bold, Color.white, 76f)
                 .alignment = TextAnchor.MiddleCenter;
 
             // Sub-text
-            AddLabel(card.transform, font, "Login to your account", 44, FontStyle.Normal, MutedText, 60f)
+            AddLabel(card.transform, font, "Login to your account", 31, FontStyle.Normal, MutedText, 42f)
                 .alignment = TextAnchor.MiddleCenter;
 
             // Identifier input — taller, bigger font
-            AddLabel(card.transform, font, "ID / Mobile / Email", 40, FontStyle.Normal, MutedText, 52f);
-            _idInput = MakeInput(card.transform, font, "Enter your ID, Mobile or Email", false, 108f, 44);
+            AddLabel(card.transform, font, "ID / Mobile / Email / Username", 28, FontStyle.Normal, MutedText, 34f);
+            _idInput = MakeInput(card.transform, font, "Enter your ID, Mobile or Email", false, 76f, 32);
 
             // Password input
-            AddLabel(card.transform, font, "Password", 40, FontStyle.Normal, MutedText, 52f);
-            _pwInput = MakeInput(card.transform, font, "Enter your password", true, 108f, 44);
+            AddLabel(card.transform, font, "Password", 28, FontStyle.Normal, MutedText, 34f);
+            _pwInput = MakeInput(card.transform, font, "Enter your password", true, 76f, 32);
 
             Spacer(card.transform, 4f);
 
             // Login button — green, stylish decorated text
             var loginBtn = MakeBtn(card.transform, font, "✦  LOGIN WITH ROX LUDO  ✦",
-                new Color32(34, 170, 80, 255), Color.white, 50, 116f);
+                new Color32(34, 170, 80, 255), Color.white, 34, 82f);
             var loginShadow = loginBtn.gameObject.AddComponent<Shadow>();
             loginShadow.effectColor    = new Color32(10, 80, 25, 200);
             loginShadow.effectDistance = new Vector2(0f, -4f);
             loginBtn.onClick.AddListener(DoLogin);
 
-            // Divider
-            AddLabel(card.transform, font, "─── OR ───",
-                34, FontStyle.Normal, MutedText, 44f).alignment = TextAnchor.MiddleCenter;
-
-            // Social row — same height as before
-            var socialRow = new GameObject("SocialRow",
-                typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
-            socialRow.transform.SetParent(card.transform, false);
-            socialRow.GetComponent<LayoutElement>().preferredHeight = 96f;
-            var shl = socialRow.GetComponent<HorizontalLayoutGroup>();
-            shl.spacing              = 14f;
-            shl.childControlWidth    = true;
-            shl.childControlHeight   = true;
-            shl.childForceExpandWidth  = true;
-            shl.childForceExpandHeight = false;
-            shl.childAlignment       = TextAnchor.MiddleCenter;
-
-            AddSocialBtn(socialRow.transform, font, "Google",    new Color32(219,  68,  55, 255), () => _auth?.OnClickGoogleLogin(), 36);
-            AddSocialBtn(socialRow.transform, font, "Facebook",  new Color32( 24, 119, 242, 255), () => _auth?.OnClickFacebookLogin(), 36);
-            AddSocialBtn(socialRow.transform, font, "Instagram", new Color32(193,  53, 132, 255), () => _auth?.OnClickInstagramLogin(), 36);
-
             // Guest — lighter, bigger
             var guestBtn = MakeBtn(card.transform, font, "Play as Guest",
-                MidRed, new Color32(255, 235, 200, 255), 40, 80f);
+                MidRed, new Color32(255, 235, 200, 255), 30, 58f);
             guestBtn.onClick.AddListener(DoGuestLogin);
 
             // Back
             var backBtn = MakeBtn(card.transform, font, "← Back",
-                new Color32(0, 0, 0, 0), new Color32(220, 195, 200, 255), 36, 56f);
+                new Color32(0, 0, 0, 0), new Color32(220, 195, 200, 255), 28, 44f);
             var backOutline = backBtn.gameObject.AddComponent<Outline>();
             backOutline.effectColor    = MidRed;
             backOutline.effectDistance = new Vector2(1f, -1f);
@@ -528,10 +565,451 @@ namespace AndroApps
             guestBtn.onClick.AddListener(DoGuestLogin);
         }
 
+        private void ApplyResponsiveAuthLayout()
+        {
+            if (_overlay == null)
+            {
+                return;
+            }
+
+            Image overlayImage = _overlay.GetComponent<Image>();
+            if (overlayImage != null)
+            {
+                overlayImage.color = BgColor;
+            }
+
+            RectTransform overlayRect = _overlay.GetComponent<RectTransform>();
+            Rect rect = overlayRect != null ? overlayRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
+            bool portrait = rect.height >= rect.width;
+
+            ApplyLoginResponsiveLayout(portrait);
+            ApplySignupResponsiveLayout(portrait);
+            HideLegacySocialLoginUi();
+
+            Canvas.ForceUpdateCanvases();
+            RebuildIfAvailable("LoginFormPanel/RightPanel/LoginCard");
+            RebuildIfAvailable("SignupFormPanel/SignupCard");
+        }
+
+        private void ApplyLoginResponsiveLayout(bool portrait)
+        {
+            Transform loginPanel = FindByPath(_overlay.transform, "LoginFormPanel");
+            if (loginPanel == null)
+            {
+                return;
+            }
+
+            Transform leftPanel = FindByPath(loginPanel, "LeftPanel");
+            if (leftPanel != null)
+            {
+                SetAnchors(leftPanel as RectTransform, Vector2.zero, Vector2.one);
+                Transform model = leftPanel.Find("ModelImage");
+                RectTransform modelRect = model as RectTransform;
+                if (modelRect != null)
+                {
+                    SetAnchors(
+                        modelRect,
+                        portrait ? new Vector2(-0.08f, 0.00f) : new Vector2(0.00f, 0.02f),
+                        portrait ? new Vector2(0.56f, 0.72f) : new Vector2(0.38f, 0.92f));
+                }
+            }
+
+            Transform rightPanel = FindByPath(loginPanel, "RightPanel");
+            if (rightPanel != null)
+            {
+                SetAnchors(rightPanel as RectTransform, Vector2.zero, Vector2.one);
+            }
+
+            Transform card = FindByPath(loginPanel, "RightPanel/LoginCard");
+            if (card == null)
+            {
+                return;
+            }
+
+            RectTransform cardRect = card as RectTransform;
+            if (portrait)
+            {
+                SetAnchors(cardRect, new Vector2(0.035f, 0.035f), new Vector2(0.965f, 0.965f));
+            }
+            else
+            {
+                SetAnchors(cardRect, new Vector2(0.34f, 0.045f), new Vector2(0.965f, 0.955f));
+            }
+
+            Image cardImage = card.GetComponent<Image>();
+            if (cardImage != null)
+            {
+                cardImage.color = CardColor;
+            }
+
+            VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
+            if (layout != null)
+            {
+                layout.padding = portrait ? new RectOffset(34, 34, 24, 20) : new RectOffset(38, 38, 22, 18);
+                layout.spacing = portrait ? 10f : 8f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = true;
+                layout.childControlHeight = true;
+                layout.childForceExpandWidth = true;
+                layout.childForceExpandHeight = false;
+            }
+
+            for (int i = 0; i < card.childCount; i++)
+            {
+                Transform child = card.GetChild(i);
+                Text directText = child.GetComponent<Text>();
+                if (directText != null)
+                {
+                    ApplyLoginLabelSize(directText, portrait);
+                    continue;
+                }
+
+                InputField input = child.GetComponent<InputField>();
+                if (input != null)
+                {
+                    StyleInput(input, portrait ? 48 : 42, portrait ? 118f : 98f);
+                    continue;
+                }
+
+                Button button = child.GetComponent<Button>();
+                if (button != null)
+                {
+                    ApplyLoginButtonSize(button, portrait);
+                    continue;
+                }
+
+                if (child.name == "SocialRow")
+                {
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        private void ApplySignupResponsiveLayout(bool portrait)
+        {
+            Transform card = FindByPath(_overlay.transform, "SignupFormPanel/SignupCard");
+            if (card == null)
+            {
+                return;
+            }
+
+            RectTransform cardRect = card as RectTransform;
+            SetAnchors(
+                cardRect,
+                portrait ? new Vector2(0.035f, 0.025f) : new Vector2(0.18f, 0.035f),
+                portrait ? new Vector2(0.965f, 0.975f) : new Vector2(0.82f, 0.965f));
+
+            Image cardImage = card.GetComponent<Image>();
+            if (cardImage != null)
+            {
+                cardImage.color = CardColor;
+            }
+
+            VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
+            if (layout != null)
+            {
+                layout.padding = portrait ? new RectOffset(32, 32, 22, 18) : new RectOffset(38, 38, 22, 18);
+                layout.spacing = portrait ? 9f : 8f;
+                layout.childAlignment = TextAnchor.MiddleCenter;
+                layout.childControlWidth = true;
+                layout.childControlHeight = true;
+                layout.childForceExpandWidth = true;
+                layout.childForceExpandHeight = false;
+            }
+
+            for (int i = 0; i < card.childCount; i++)
+            {
+                Transform child = card.GetChild(i);
+                Text directText = child.GetComponent<Text>();
+                if (directText != null)
+                {
+                    ApplySignupLabelSize(directText, portrait);
+                    continue;
+                }
+
+                InputField input = child.GetComponent<InputField>();
+                if (input != null)
+                {
+                    StyleInput(input, portrait ? 42 : 36, portrait ? 96f : 78f);
+                    continue;
+                }
+
+                Button button = child.GetComponent<Button>();
+                if (button != null)
+                {
+                    ApplyGenericButtonSize(button, portrait ? 42 : 34, portrait ? 84f : 68f);
+                    continue;
+                }
+
+                if (child.name == "TermsRow")
+                {
+                    SetLayoutHeight(child, portrait ? 62f : 52f);
+                    Text termsText = child.GetComponentInChildren<Text>(true);
+                    if (termsText != null)
+                    {
+                        termsText.fontSize = portrait ? 30 : 25;
+                        termsText.resizeTextForBestFit = true;
+                        termsText.resizeTextMinSize = portrait ? 24 : 20;
+                        termsText.resizeTextMaxSize = portrait ? 30 : 25;
+                    }
+                }
+                else if (child.name == "SignupFooterRow")
+                {
+                    SetLayoutHeight(child, portrait ? 78f : 64f);
+                    Button[] buttons = child.GetComponentsInChildren<Button>(true);
+                    for (int b = 0; b < buttons.Length; b++)
+                    {
+                        ApplyGenericButtonSize(buttons[b], portrait ? 38 : 32, portrait ? 74f : 60f);
+                    }
+                }
+            }
+        }
+
+        private void ApplyLoginLabelSize(Text label, bool portrait)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            string text = label.text ?? string.Empty;
+            if (text.IndexOf("OR", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                label.gameObject.SetActive(false);
+                return;
+            }
+
+            label.gameObject.SetActive(true);
+            label.resizeTextForBestFit = false;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+
+            if (text.IndexOf("Welcome", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                label.fontSize = portrait ? 76 : 62;
+                label.alignment = TextAnchor.MiddleCenter;
+                SetLayoutHeight(label.transform, portrait ? 96f : 78f);
+            }
+            else if (text.IndexOf("Login to", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                label.fontSize = portrait ? 52 : 42;
+                label.fontStyle = FontStyle.Bold;
+                label.alignment = TextAnchor.MiddleCenter;
+                SetLayoutHeight(label.transform, portrait ? 64f : 52f);
+            }
+            else
+            {
+                label.fontSize = portrait ? 44 : 36;
+                label.fontStyle = FontStyle.Bold;
+                label.alignment = TextAnchor.MiddleLeft;
+                SetLayoutHeight(label.transform, portrait ? 54f : 44f);
+            }
+        }
+
+        private void ApplySignupLabelSize(Text label, bool portrait)
+        {
+            if (label == null)
+            {
+                return;
+            }
+
+            string text = label.text ?? string.Empty;
+            label.resizeTextForBestFit = false;
+            label.verticalOverflow = VerticalWrapMode.Overflow;
+
+            if (text.IndexOf("Create New", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                label.fontSize = portrait ? 58 : 48;
+                label.alignment = TextAnchor.MiddleCenter;
+                SetLayoutHeight(label.transform, portrait ? 74f : 62f);
+            }
+            else if (text.IndexOf("Sign up", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                label.fontSize = portrait ? 38 : 32;
+                label.alignment = TextAnchor.MiddleCenter;
+                SetLayoutHeight(label.transform, portrait ? 46f : 38f);
+            }
+            else
+            {
+                label.fontSize = portrait ? 34 : 28;
+                label.alignment = TextAnchor.MiddleLeft;
+                SetLayoutHeight(label.transform, portrait ? 42f : 34f);
+            }
+        }
+
+        private void ApplyLoginButtonSize(Button button, bool portrait)
+        {
+            Text label = button.GetComponentInChildren<Text>(true);
+            string text = label != null ? label.text ?? string.Empty : string.Empty;
+
+            if (text.IndexOf("LOGIN WITH", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                ApplyGenericButtonSize(button, portrait ? 46 : 38, portrait ? 102f : 84f);
+            }
+            else if (text.IndexOf("Guest", System.StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                ApplyGenericButtonSize(button, portrait ? 44 : 36, portrait ? 92f : 72f);
+            }
+            else
+            {
+                ApplyGenericButtonSize(button, portrait ? 40 : 32, portrait ? 66f : 54f);
+            }
+        }
+
+        private void ApplyGenericButtonSize(Button button, int fontSize, float height)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            SetLayoutHeight(button.transform, height);
+            Text label = button.GetComponentInChildren<Text>(true);
+            if (label != null)
+            {
+                label.fontSize = fontSize;
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = Mathf.Max(16, fontSize - 8);
+                label.resizeTextMaxSize = fontSize;
+                label.alignment = TextAnchor.MiddleCenter;
+            }
+        }
+
+        private void StyleInput(InputField input, int fontSize, float height)
+        {
+            if (input == null)
+            {
+                return;
+            }
+
+            SetLayoutHeight(input.transform, height);
+
+            Image image = input.GetComponent<Image>();
+            if (image != null)
+            {
+                image.color = InputBg;
+            }
+
+            if (input.textComponent != null)
+            {
+                input.textComponent.fontSize = fontSize;
+                input.textComponent.color = Color.white;
+                input.textComponent.alignment = TextAnchor.MiddleLeft;
+                input.textComponent.resizeTextForBestFit = false;
+                input.textComponent.verticalOverflow = VerticalWrapMode.Overflow;
+                RectTransform textRect = input.textComponent.transform as RectTransform;
+                if (textRect != null)
+                {
+                    textRect.offsetMin = new Vector2(22f, 0f);
+                    textRect.offsetMax = new Vector2(-22f, 0f);
+                }
+            }
+
+            Text placeholder = input.placeholder as Text;
+            if (placeholder != null)
+            {
+                placeholder.fontSize = Mathf.Max(22, fontSize - 2);
+                placeholder.color = new Color32(230, 190, 200, 175);
+                placeholder.alignment = TextAnchor.MiddleLeft;
+                placeholder.resizeTextForBestFit = false;
+                RectTransform placeholderRect = placeholder.transform as RectTransform;
+                if (placeholderRect != null)
+                {
+                    placeholderRect.offsetMin = new Vector2(22f, 0f);
+                    placeholderRect.offsetMax = new Vector2(-22f, 0f);
+                }
+            }
+        }
+
+        private void HideLegacySocialLoginUi()
+        {
+            HideIfFound("LoginFormPanel/RightPanel/LoginCard/SocialRow");
+            HideIfFound("loginpanel/_SocialSection");
+
+            Transform card = FindByPath(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard");
+            if (card == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < card.childCount; i++)
+            {
+                Transform child = card.GetChild(i);
+                if (child == null)
+                {
+                    continue;
+                }
+
+                if (child.name == "SocialRow"
+                    || child.name.IndexOf("Google", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || child.name.IndexOf("Facebook", System.StringComparison.OrdinalIgnoreCase) >= 0
+                    || child.name.IndexOf("Instagram", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    child.gameObject.SetActive(false);
+                    continue;
+                }
+
+                Text label = child.GetComponent<Text>();
+                if (label != null && (label.text ?? string.Empty).IndexOf("OR", System.StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    child.gameObject.SetActive(false);
+                }
+            }
+        }
+
+        private void HideIfFound(string path)
+        {
+            Transform target = FindByPath(_overlay.transform, path);
+            if (target != null)
+            {
+                target.gameObject.SetActive(false);
+            }
+        }
+
+        private void RebuildIfAvailable(string path)
+        {
+            Transform target = FindByPath(_overlay.transform, path);
+            RectTransform rect = target as RectTransform;
+            if (rect != null)
+            {
+                LayoutRebuilder.ForceRebuildLayoutImmediate(rect);
+            }
+        }
+
+        private static void SetAnchors(RectTransform rect, Vector2 min, Vector2 max)
+        {
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.anchorMin = min;
+            rect.anchorMax = max;
+            rect.offsetMin = Vector2.zero;
+            rect.offsetMax = Vector2.zero;
+        }
+
+        private static void SetLayoutHeight(Transform transform, float height)
+        {
+            if (transform == null)
+            {
+                return;
+            }
+
+            LayoutElement layout = transform.GetComponent<LayoutElement>();
+            if (layout == null)
+            {
+                layout = transform.gameObject.AddComponent<LayoutElement>();
+            }
+
+            layout.preferredHeight = height;
+            layout.minHeight = height;
+        }
+
         // ── State transitions ──────────────────────────────────────────────────
 
         private void ShowLanding()
         {
+            ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
             if (_auth.SignUpDetail?.SignUpPnl != null)
             {
@@ -547,6 +1025,7 @@ namespace AndroApps
 
         private void ShowLoginForm()
         {
+            ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
             if (_auth.SignUpDetail?.SignUpPnl != null)
             {
@@ -562,6 +1041,7 @@ namespace AndroApps
 
         private void ShowSignup()
         {
+            ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
             _overlay.SetActive(true);
             _landingPanel.SetActive(false);
@@ -659,6 +1139,125 @@ namespace AndroApps
             }
 
             _auth.OnClickSignUp();
+        }
+
+        private bool TryBindExistingOverlay(Transform parent)
+        {
+            _overlay = FindDirectChild(parent, OverlayName)?.gameObject;
+            if (_overlay == null)
+            {
+                return false;
+            }
+
+            _landingPanel = FindByPath(_overlay.transform, "LandingPanel")?.gameObject;
+            _loginFormPanel = FindByPath(_overlay.transform, "LoginFormPanel")?.gameObject;
+            _signupFormPanel = FindByPath(_overlay.transform, "SignupFormPanel")?.gameObject;
+            Transform loginCard = FindByPath(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard");
+            Transform signupCard = FindByPath(_overlay.transform, "SignupFormPanel/SignupCard");
+            InputField[] loginInputs = loginCard != null ? loginCard.GetComponentsInChildren<InputField>(true) : new InputField[0];
+            InputField[] signupInputs = signupCard != null ? signupCard.GetComponentsInChildren<InputField>(true) : new InputField[0];
+            _idInput = loginInputs.Length > 0 ? loginInputs[0] : null;
+            _pwInput = loginInputs.Length > 1 ? loginInputs[1] : null;
+            _signupMobileOrEmailInput = signupInputs.Length > 0 ? signupInputs[0] : null;
+            _signupPasswordInput = signupInputs.Length > 1 ? signupInputs[1] : null;
+            _signupReferralInput = signupInputs.Length > 2 ? signupInputs[2] : null;
+            _signupTermsToggle = FindComponent<Toggle>(_overlay.transform, "SignupFormPanel/SignupCard/TermsRow/TermsToggle");
+
+            if (_landingPanel == null
+                || _loginFormPanel == null
+                || _signupFormPanel == null
+                || _idInput == null
+                || _pwInput == null
+                || _signupMobileOrEmailInput == null
+                || _signupPasswordInput == null
+                || _signupReferralInput == null
+                || _signupTermsToggle == null)
+            {
+                Debug.LogWarning("[LoginPageRedesigner] Existing _LoginRedesign hierarchy found but some references could not be rebound. Reusing it anyway to avoid duplicate runtime UI.");
+            }
+
+            WirePersistentUiListeners();
+            return true;
+        }
+
+        private void WirePersistentUiListeners()
+        {
+            Button loginWithExistingBtn = FindButton(_overlay.transform, "LandingPanel/RightPanel/LandingContent/Login with existing accountBtn");
+            if (loginWithExistingBtn != null)
+            {
+                loginWithExistingBtn.onClick.RemoveAllListeners();
+                loginWithExistingBtn.onClick.AddListener(ShowLoginForm);
+            }
+
+            Button createAccountBtn = FindButton(_overlay.transform, "LandingPanel/RightPanel/LandingContent/Create new accountBtn");
+            if (createAccountBtn != null)
+            {
+                createAccountBtn.onClick.RemoveAllListeners();
+                createAccountBtn.onClick.AddListener(ShowSignup);
+            }
+
+            Button guestLandingBtn = FindButton(_overlay.transform, "LandingPanel/RightPanel/LandingContent/Play as GuestBtn");
+            if (guestLandingBtn != null)
+            {
+                guestLandingBtn.onClick.RemoveAllListeners();
+                guestLandingBtn.onClick.AddListener(DoGuestLogin);
+            }
+
+            Button exitBtn = FindButton(_overlay.transform, "LandingPanel/ExitAppBtn");
+            if (exitBtn != null)
+            {
+                exitBtn.onClick.RemoveAllListeners();
+                exitBtn.onClick.AddListener(() =>
+                {
+#if UNITY_EDITOR
+                    UnityEditor.EditorApplication.isPlaying = false;
+#else
+                    Application.Quit();
+#endif
+                });
+            }
+
+            Button loginBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/✦  LOGIN WITH ROX LUDO  ✦Btn");
+            if (loginBtn != null)
+            {
+                loginBtn.onClick.RemoveAllListeners();
+                loginBtn.onClick.AddListener(DoLogin);
+            }
+
+            Button guestLoginBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Play as GuestBtn");
+            if (guestLoginBtn != null)
+            {
+                guestLoginBtn.onClick.RemoveAllListeners();
+                guestLoginBtn.onClick.AddListener(DoGuestLogin);
+            }
+
+            Button backBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/← BackBtn");
+            if (backBtn != null)
+            {
+                backBtn.onClick.RemoveAllListeners();
+                backBtn.onClick.AddListener(ShowLanding);
+            }
+
+            Button createBtn = FindButton(_overlay.transform, "SignupFormPanel/SignupCard/Create AccountBtn");
+            if (createBtn != null)
+            {
+                createBtn.onClick.RemoveAllListeners();
+                createBtn.onClick.AddListener(DoSignup);
+            }
+
+            Button signupLoginBtn = FindButton(_overlay.transform, "SignupFormPanel/SignupCard/SignupFooterRow/LoginBtn");
+            if (signupLoginBtn != null)
+            {
+                signupLoginBtn.onClick.RemoveAllListeners();
+                signupLoginBtn.onClick.AddListener(ShowLanding);
+            }
+
+            Button signupGuestBtn = FindButton(_overlay.transform, "SignupFormPanel/SignupCard/SignupFooterRow/Play as GuestBtn");
+            if (signupGuestBtn != null)
+            {
+                signupGuestBtn.onClick.RemoveAllListeners();
+                signupGuestBtn.onClick.AddListener(DoGuestLogin);
+            }
         }
 
         // ── UI factory helpers ─────────────────────────────────────────────────
@@ -830,6 +1429,40 @@ namespace AndroApps
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = rt.offsetMax = Vector2.zero;
+        }
+
+        private static Transform FindByPath(Transform root, string path)
+        {
+            return root == null || string.IsNullOrWhiteSpace(path) ? null : root.Find(path);
+        }
+
+        private static Button FindButton(Transform root, string path)
+        {
+            return FindByPath(root, path)?.GetComponent<Button>();
+        }
+
+        private static T FindComponent<T>(Transform root, string path) where T : Component
+        {
+            return FindByPath(root, path)?.GetComponent<T>();
+        }
+
+        private static Transform FindDirectChild(Transform parent, string childName)
+        {
+            if (parent == null)
+            {
+                return null;
+            }
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+                if (child != null && child.name == childName)
+                {
+                    return child;
+                }
+            }
+
+            return null;
         }
 
         private void CacheSceneLogo(Transform root)

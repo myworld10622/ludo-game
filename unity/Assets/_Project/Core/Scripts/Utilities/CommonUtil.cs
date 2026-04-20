@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using EasyUI.Toast;
 using UnityEngine;
@@ -9,7 +8,6 @@ public static class CommonUtil
     private static GameObject statusPopup;
     private static Text statusPopupTitleText;
     private static Text statusPopupMessageText;
-    private static Action statusPopupCloseAction;
 
     public static void CheckLog(string text)
     {
@@ -49,17 +47,6 @@ public static class CommonUtil
         Toast.Show(finalMessage, 3f);
     }
 
-    public static void ShowStyledMessageWithAction(
-        string message,
-        string caption,
-        bool isError,
-        Action onClose
-    )
-    {
-        statusPopupCloseAction = onClose;
-        ShowStyledMessage(message, caption, isError);
-    }
-
     public static void ShowToastDebug(string message)
     {
         Toast.Show(message, 3f);
@@ -72,7 +59,12 @@ public static class CommonUtil
             return true;
         }
 
-        Canvas parentCanvas = UnityEngine.Object.FindObjectOfType<Canvas>();
+        if (TryBindExistingStatusPopup())
+        {
+            return true;
+        }
+
+        Canvas parentCanvas = FindPreferredPopupCanvas();
         if (parentCanvas == null)
         {
             return false;
@@ -252,21 +244,136 @@ public static class CommonUtil
         return true;
     }
 
+    private static bool TryBindExistingStatusPopup()
+    {
+        GameObject existingPopup = FindSceneObjectByName("CommonStatusPopup");
+        if (existingPopup == null)
+        {
+            return false;
+        }
+
+        Text title = FindChildText(existingPopup.transform, "Title");
+        Text message = FindChildText(existingPopup.transform, "Message");
+        Button closeButton = FindChildButton(existingPopup.transform, "CloseButton");
+        Button okButton = FindChildButton(existingPopup.transform, "OkButton");
+
+        if (title == null || message == null || closeButton == null || okButton == null)
+        {
+            return false;
+        }
+
+        statusPopup = existingPopup;
+        statusPopupTitleText = title;
+        statusPopupMessageText = message;
+        closeButton.onClick.RemoveAllListeners();
+        closeButton.onClick.AddListener(HideStyledMessage);
+        okButton.onClick.RemoveAllListeners();
+        okButton.onClick.AddListener(HideStyledMessage);
+
+        RectTransform overlayRect = statusPopup.GetComponent<RectTransform>();
+        if (overlayRect != null)
+        {
+            overlayRect.anchorMin = Vector2.zero;
+            overlayRect.anchorMax = Vector2.one;
+            overlayRect.offsetMin = Vector2.zero;
+            overlayRect.offsetMax = Vector2.zero;
+        }
+
+        statusPopup.SetActive(false);
+        return true;
+    }
+
+    private static GameObject FindSceneObjectByName(string objectName)
+    {
+        GameObject activeObject = GameObject.Find(objectName);
+        if (activeObject != null)
+        {
+            return activeObject;
+        }
+
+        GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+        for (int i = 0; i < allObjects.Length; i++)
+        {
+            GameObject candidate = allObjects[i];
+            if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+            {
+                return candidate;
+            }
+        }
+
+        return null;
+    }
+
+    private static Canvas FindPreferredPopupCanvas()
+    {
+        Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
+        string[] preferredNames = { "CanvasMain", "Canvas", "HomePageCanvas", "CanvasOverlay(for popups)" };
+        for (int p = 0; p < preferredNames.Length; p++)
+        {
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                Canvas canvas = canvases[i];
+                if (canvas != null && canvas.gameObject.scene.IsValid() && canvas.name == preferredNames[p])
+                {
+                    return canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+                }
+            }
+        }
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+            if (canvas != null && canvas.gameObject.scene.IsValid())
+            {
+                return canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+            }
+        }
+
+        return null;
+    }
+
+    private static Text FindChildText(Transform root, string childName)
+    {
+        Transform child = FindChildTransform(root, childName);
+        return child != null ? child.GetComponent<Text>() : null;
+    }
+
+    private static Button FindChildButton(Transform root, string childName)
+    {
+        Transform child = FindChildTransform(root, childName);
+        return child != null ? child.GetComponent<Button>() : null;
+    }
+
+    private static Transform FindChildTransform(Transform root, string childName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        if (root.name == childName)
+        {
+            return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindChildTransform(root.GetChild(i), childName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
     public static void HideStyledMessage()
     {
         if (statusPopup != null)
         {
             statusPopup.SetActive(false);
         }
-
-        var action = statusPopupCloseAction;
-        statusPopupCloseAction = null;
-        action?.Invoke();
-    }
-
-    public static void SetNextStyledMessageAction(Action onClose)
-    {
-        statusPopupCloseAction = onClose;
     }
 
     public static string GetFormattedWallet(string wallet = "")

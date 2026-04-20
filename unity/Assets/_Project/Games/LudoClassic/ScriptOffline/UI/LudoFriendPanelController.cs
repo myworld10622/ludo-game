@@ -20,7 +20,7 @@ namespace LudoClassicOffline
         private const string BoxSpriteAssetPath = "Assets/_Project/Core/UI/HomePage/Icons/Box.png";
         private const float PanelWidthScale = 1.3f;
         private const float PanelHeightScale = 1.1f;
-        private const float TextScale = 1.2f;
+        private const float TextScale = 1.45f;
         private enum FriendUiMode
         {
             Hidden,
@@ -65,6 +65,44 @@ namespace LudoClassicOffline
             TryBuildUi();
             SetRoomActionAvailability(false);
         }
+
+#if UNITY_EDITOR
+        public void RebuildPersistentUiInEditor()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            GameObject existingCanvas = GameObject.Find(OverlayCanvasName);
+            if (existingCanvas != null)
+            {
+                DestroyImmediate(existingCanvas);
+            }
+
+            rootCanvas = null;
+            rootPanel = null;
+            roomPopup = null;
+            requestsContent = null;
+            toggleButton = null;
+            addByIdButton = null;
+            requestsTabButton = null;
+            friendsTabButton = null;
+            roomAddFriendButton = null;
+            playerIdInput = null;
+            resultTitleText = null;
+            resultSubtitleText = null;
+            listSectionTitleText = null;
+            roomPopupTitleText = null;
+            requestsStateText = null;
+            requestBadgeText = null;
+            toggleCaptionText = null;
+            requestBadgeObject = null;
+            uiReady = false;
+
+            TryBuildUi();
+        }
+#endif
 
         private void OnDestroy()
         {
@@ -138,6 +176,14 @@ namespace LudoClassicOffline
         {
             if (uiReady)
             {
+                return;
+            }
+
+            if (TryBindExistingUi())
+            {
+                uiReady = true;
+                EnsureApiService();
+                ApplyResponsiveHomePanelLayout();
                 return;
             }
 
@@ -395,6 +441,118 @@ namespace LudoClassicOffline
             UpdateTogglePlacement();
             nextRequestsRefreshAt = 0f;
             SetListMode(false);
+            ApplyResponsiveHomePanelLayout();
+        }
+
+        private bool TryBindExistingUi()
+        {
+            GameObject existingCanvasObject = GameObject.Find(OverlayCanvasName);
+            if (existingCanvasObject == null)
+            {
+                return false;
+            }
+
+            rootCanvas = existingCanvasObject.GetComponent<Canvas>();
+            rootPanel = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel");
+            roomPopup = FindRectTransform(existingCanvasObject.transform, "LudoFriendRoomPopup");
+            requestsContent = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent");
+            toggleButton = FindButton(existingCanvasObject.transform, "LudoFriendToggle");
+            addByIdButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/SENDREQUESTButton");
+            requestsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/REQUESTSButton");
+            friendsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/FRIENDSButton");
+            roomAddFriendButton = FindButton(existingCanvasObject.transform, "LudoFriendRoomPopup/ADDFRIENDButton");
+            playerIdInput = FindComponent<TMP_InputField>(existingCanvasObject.transform, "LudoFriendPanel/InputRow/PlayerIdInput");
+            Transform resultCard = FindByPath(existingCanvasObject.transform, "LudoFriendPanel/ResultCard");
+            TextMeshProUGUI[] resultLabels = resultCard != null ? resultCard.GetComponentsInChildren<TextMeshProUGUI>(true) : new TextMeshProUGUI[0];
+            resultTitleText = resultLabels.Length > 0 ? resultLabels[0] : null;
+            resultSubtitleText = resultLabels.Length > 1 ? resultLabels[1] : null;
+            listSectionTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsHeader/TMPLabel");
+            roomPopupTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendRoomPopup/TMPLabel");
+            requestsStateText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent/TMPLabel");
+            requestBadgeObject = FindByPath(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge")?.gameObject;
+            requestBadgeText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge/TMPLabel");
+            toggleCaptionText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/TMPLabel");
+
+            if (rootCanvas == null
+                || rootPanel == null
+                || roomPopup == null
+                || requestsContent == null
+                || toggleButton == null
+                || addByIdButton == null
+                || requestsTabButton == null
+                || friendsTabButton == null
+                || roomAddFriendButton == null
+                || playerIdInput == null
+                || resultTitleText == null
+                || resultSubtitleText == null
+                || listSectionTitleText == null
+                || roomPopupTitleText == null
+                || requestBadgeObject == null
+                || requestBadgeText == null
+                || toggleCaptionText == null)
+            {
+                Debug.LogWarning("[LudoFriendPanelController] Existing LudoFriendOverlayCanvas found but some references could not be rebound. Reusing it anyway to avoid duplicate runtime UI.");
+            }
+
+            if (rootCanvas != null
+                && toggleButton != null
+                && addByIdButton != null
+                && requestsTabButton != null
+                && friendsTabButton != null
+                && roomAddFriendButton != null)
+            {
+                WirePersistentUiListeners();
+            }
+
+            if (requestsStateText == null)
+            {
+                EnsureRequestsStateLabel();
+            }
+            ApplyResponsiveHomePanelLayout();
+            return true;
+        }
+
+        private void WirePersistentUiListeners()
+        {
+            toggleButton.onClick.RemoveAllListeners();
+            toggleButton.onClick.AddListener(() => SetPanelOpen(rootPanel == null || !rootPanel.gameObject.activeSelf));
+
+            Button closePanelButton = FindButton(rootCanvas.transform, "LudoFriendPanel/HeaderRow/XButton");
+            if (closePanelButton != null)
+            {
+                closePanelButton.onClick.RemoveAllListeners();
+                closePanelButton.onClick.AddListener(() => SetPanelOpen(false));
+            }
+
+            Button searchButton = FindButton(rootCanvas.transform, "LudoFriendPanel/InputRow/SEARCHButton");
+            if (searchButton != null)
+            {
+                searchButton.onClick.RemoveAllListeners();
+                searchButton.onClick.AddListener(HandleSearchClicked);
+            }
+
+            addByIdButton.onClick.RemoveAllListeners();
+            addByIdButton.onClick.AddListener(HandleAddByIdClicked);
+            requestsTabButton.onClick.RemoveAllListeners();
+            requestsTabButton.onClick.AddListener(() => SetListMode(false));
+            friendsTabButton.onClick.RemoveAllListeners();
+            friendsTabButton.onClick.AddListener(() => SetListMode(true));
+            roomAddFriendButton.onClick.RemoveAllListeners();
+            roomAddFriendButton.onClick.AddListener(HandleRoomAddFriendClicked);
+
+            Button refreshButton = FindButton(rootCanvas.transform, "LudoFriendPanel/RequestsHeader/REFRESHButton");
+            if (refreshButton != null)
+            {
+                refreshButton.onClick.RemoveAllListeners();
+                refreshButton.onClick.AddListener(RefreshActiveList);
+            }
+
+            Button closeRoomPopupButton = FindButton(rootCanvas.transform, "LudoFriendRoomPopup/CLOSEButton");
+            if (closeRoomPopupButton != null)
+            {
+                closeRoomPopupButton.onClick.RemoveAllListeners();
+                closeRoomPopupButton.onClick.AddListener(HideRoomPopup);
+            }
         }
 
         private Canvas CreateOverlayCanvas()
@@ -402,7 +560,11 @@ namespace LudoClassicOffline
             GameObject existingCanvas = GameObject.Find(OverlayCanvasName);
             if (existingCanvas != null)
             {
-                Destroy(existingCanvas);
+                Canvas existing = existingCanvas.GetComponent<Canvas>();
+                if (existing != null)
+                {
+                    return existing;
+                }
             }
 
             GameObject canvasObject = new GameObject(
@@ -671,6 +833,11 @@ namespace LudoClassicOffline
 
         private void SetPanelOpen(bool shouldOpen)
         {
+            if (shouldOpen)
+            {
+                ApplyResponsiveHomePanelLayout();
+            }
+
             if (rootPanel != null)
             {
                 rootPanel.gameObject.SetActive(shouldOpen);
@@ -680,6 +847,216 @@ namespace LudoClassicOffline
             {
                 RefreshActiveList();
             }
+        }
+
+        private void ApplyResponsiveHomePanelLayout()
+        {
+            if (rootCanvas == null || rootPanel == null)
+            {
+                return;
+            }
+
+            RectTransform canvasRect = rootCanvas.transform as RectTransform;
+            Rect canvasBounds = canvasRect != null ? canvasRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
+            bool portrait = canvasBounds.height >= canvasBounds.width;
+
+            rootPanel.anchorMin = new Vector2(0.5f, 0.5f);
+            rootPanel.anchorMax = new Vector2(0.5f, 0.5f);
+            rootPanel.pivot = new Vector2(0.5f, 0.5f);
+            rootPanel.anchoredPosition = portrait ? new Vector2(0f, 20f) : new Vector2(0f, 10f);
+            rootPanel.sizeDelta = portrait
+                ? new Vector2(1000f, 1220f)
+                : new Vector2(1560f, 900f);
+
+            VerticalLayoutGroup panelLayout = rootPanel.GetComponent<VerticalLayoutGroup>();
+            if (panelLayout != null)
+            {
+                panelLayout.padding = portrait ? new RectOffset(48, 48, 34, 34) : new RectOffset(44, 44, 26, 24);
+                panelLayout.spacing = portrait ? 16f : 10f;
+                panelLayout.childControlHeight = false;
+                panelLayout.childControlWidth = true;
+                panelLayout.childForceExpandHeight = false;
+                panelLayout.childForceExpandWidth = true;
+            }
+
+            SetRectHeight(FindRectTransform(rootPanel, "HeaderRow"), portrait ? 104f : 88f);
+            RectTransform titleBadge = FindRectTransform(rootPanel, "HeaderRow/TitleBadge");
+            if (titleBadge != null)
+            {
+                titleBadge.sizeDelta = portrait ? new Vector2(440f, 76f) : new Vector2(380f, 64f);
+            }
+
+            Button closeButton = FindButton(rootPanel, "HeaderRow/XButton");
+            if (closeButton != null)
+            {
+                RectTransform closeRect = closeButton.GetComponent<RectTransform>();
+                if (closeRect != null)
+                {
+                    closeRect.sizeDelta = portrait ? new Vector2(78f, 78f) : new Vector2(64f, 64f);
+                    closeRect.anchoredPosition = portrait ? new Vector2(-4f, -4f) : new Vector2(-6f, -6f);
+                }
+            }
+
+            SetDirectTmp(rootPanel, "TMPLabel", portrait ? 31f : 26f, FontStyles.Bold);
+            SetRectHeight(FindRectTransform(rootPanel, "InputRow"), portrait ? 118f : 88f);
+            if (playerIdInput != null)
+            {
+                StyleFriendInput(playerIdInput, portrait ? 34f : 28f);
+            }
+
+            Button searchButton = FindButton(rootPanel, "InputRow/SEARCHButton");
+            if (searchButton != null)
+            {
+                SetButtonLayout(searchButton, portrait ? 210f : 180f, portrait ? 94f : 64f, portrait ? 26f : 21f);
+            }
+
+            RectTransform resultCard = FindRectTransform(rootPanel, "ResultCard");
+            SetRectHeight(resultCard, portrait ? 154f : 108f);
+            if (resultTitleText != null)
+            {
+                resultTitleText.fontSize = portrait ? 34f : 31f;
+                resultTitleText.fontStyle = FontStyles.Bold;
+            }
+            if (resultSubtitleText != null)
+            {
+                resultSubtitleText.fontSize = portrait ? 29f : 25f;
+            }
+
+            if (addByIdButton != null)
+            {
+                SetButtonLayout(addByIdButton, 0f, portrait ? 90f : 66f, portrait ? 28f : 23f);
+            }
+
+            SetRectHeight(FindRectTransform(rootPanel, "TabRow"), portrait ? 82f : 58f);
+            SetButtonLayout(requestsTabButton, portrait ? 300f : 250f, portrait ? 76f : 54f, portrait ? 28f : 23f);
+            SetButtonLayout(friendsTabButton, portrait ? 300f : 250f, portrait ? 76f : 54f, portrait ? 28f : 23f);
+
+            SetRectHeight(FindRectTransform(rootPanel, "RequestsHeader"), portrait ? 78f : 56f);
+            if (listSectionTitleText != null)
+            {
+                listSectionTitleText.fontSize = portrait ? 34f : 31f;
+                listSectionTitleText.fontStyle = FontStyles.Bold;
+            }
+            SetButtonLayout(FindButton(rootPanel, "RequestsHeader/REFRESHButton"), portrait ? 210f : 190f, portrait ? 72f : 56f, portrait ? 25f : 21f);
+
+            RectTransform scrollRoot = FindRectTransform(rootPanel, "RequestsScrollRoot");
+            SetLayoutHeight(scrollRoot, portrait ? 430f : 380f);
+            if (requestsContent != null)
+            {
+                VerticalLayoutGroup contentLayout = requestsContent.GetComponent<VerticalLayoutGroup>();
+                if (contentLayout != null)
+                {
+                    contentLayout.spacing = portrait ? 12f : 8f;
+                    contentLayout.padding = portrait ? new RectOffset(12, 12, 12, 12) : new RectOffset(8, 8, 8, 8);
+                }
+            }
+            if (requestsStateText != null)
+            {
+                requestsStateText.fontSize = portrait ? 30f : 26f;
+            }
+
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(rootPanel);
+        }
+
+        private void StyleFriendInput(TMP_InputField input, float fontSize)
+        {
+            if (input == null)
+            {
+                return;
+            }
+
+            if (input.textComponent != null)
+            {
+                input.textComponent.fontSize = fontSize;
+                input.textComponent.fontStyle = FontStyles.Bold;
+                input.textComponent.color = new Color32(45, 29, 29, 255);
+                input.textComponent.enableAutoSizing = false;
+            }
+
+            TMP_Text placeholder = input.placeholder as TMP_Text;
+            if (placeholder != null)
+            {
+                placeholder.fontSize = Mathf.Max(24f, fontSize - 3f);
+                placeholder.fontStyle = FontStyles.Italic;
+                placeholder.enableAutoSizing = false;
+            }
+        }
+
+        private static void SetButtonLayout(Button button, float width, float height, float fontSize)
+        {
+            if (button == null)
+            {
+                return;
+            }
+
+            LayoutElement layout = button.GetComponent<LayoutElement>();
+            if (layout == null)
+            {
+                layout = button.gameObject.AddComponent<LayoutElement>();
+            }
+
+            if (width > 0f)
+            {
+                layout.minWidth = width;
+                layout.preferredWidth = width;
+            }
+
+            layout.minHeight = height;
+            layout.preferredHeight = height;
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                label.fontSize = fontSize;
+                label.fontStyle = FontStyles.Bold;
+                label.enableAutoSizing = false;
+            }
+        }
+
+        private static void SetDirectTmp(Transform parent, string childName, float fontSize, FontStyles style)
+        {
+            if (parent == null)
+            {
+                return;
+            }
+
+            Transform child = parent.Find(childName);
+            TMP_Text text = child != null ? child.GetComponent<TMP_Text>() : null;
+            if (text != null)
+            {
+                text.fontSize = fontSize;
+                text.fontStyle = style;
+                text.enableAutoSizing = false;
+            }
+        }
+
+        private static void SetRectHeight(RectTransform rect, float height)
+        {
+            if (rect == null)
+            {
+                return;
+            }
+
+            rect.sizeDelta = new Vector2(rect.sizeDelta.x, height);
+            SetLayoutHeight(rect, height);
+        }
+
+        private static void SetLayoutHeight(Component component, float height)
+        {
+            if (component == null)
+            {
+                return;
+            }
+
+            LayoutElement layout = component.GetComponent<LayoutElement>();
+            if (layout == null)
+            {
+                layout = component.gameObject.AddComponent<LayoutElement>();
+            }
+
+            layout.minHeight = height;
+            layout.preferredHeight = height;
         }
 
         private void UpdateTogglePlacement()
@@ -1512,6 +1889,31 @@ namespace LudoClassicOffline
             GameObject gameObject = new GameObject(name, typeof(CanvasRenderer));
             gameObject.transform.SetParent(parent, false);
             return gameObject;
+        }
+
+        private static Transform FindByPath(Transform root, string path)
+        {
+            return root == null || string.IsNullOrWhiteSpace(path) ? null : root.Find(path);
+        }
+
+        private static RectTransform FindRectTransform(Transform root, string path)
+        {
+            return FindByPath(root, path) as RectTransform;
+        }
+
+        private static Button FindButton(Transform root, string path)
+        {
+            return FindByPath(root, path)?.GetComponent<Button>();
+        }
+
+        private static T FindComponent<T>(Transform root, string path) where T : Component
+        {
+            return FindByPath(root, path)?.GetComponent<T>();
+        }
+
+        private static TextMeshProUGUI FindTmp(Transform root, string path)
+        {
+            return FindByPath(root, path)?.GetComponent<TextMeshProUGUI>();
         }
 
         private static void StretchRect(RectTransform rectTransform, Vector2 offsetMin, Vector2 offsetMax)

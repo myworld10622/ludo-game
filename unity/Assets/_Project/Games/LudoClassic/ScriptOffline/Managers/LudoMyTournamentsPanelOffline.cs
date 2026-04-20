@@ -20,6 +20,7 @@ namespace LudoClassicOffline
         private bool isLoading;
         private bool hasBuiltUi;
         private Font runtimeFont;
+        private const string PanelName = "MyTournamentsPanel";
 
         // ── Initialization ────────────────────────────────────────────────────
 
@@ -32,6 +33,7 @@ namespace LudoClassicOffline
         public void OpenPanel()
         {
             EnsureUi();
+            ApplyResponsiveLayout();
             panelRoot.transform.SetAsLastSibling();
             panelRoot.SetActive(true);
             Refresh();
@@ -95,6 +97,7 @@ namespace LudoClassicOffline
             }
             finally
             {
+                ApplyResponsiveLayout();
                 isLoading = false;
             }
         }
@@ -250,8 +253,15 @@ namespace LudoClassicOffline
                 ? dashboard.dashBordPanal.transform
                 : transform;
 
+            if (TryBindExistingUi(parent))
+            {
+                hasBuiltUi = true;
+                panelRoot.SetActive(false);
+                return;
+            }
+
             // Full-screen panel (own Canvas overrides sorting to cover game overlay buttons)
-            panelRoot = new GameObject("MyTournamentsPanel",
+            panelRoot = new GameObject(PanelName,
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
             panelRoot.GetComponent<Image>().color = new Color32(14, 3, 7, 255);
@@ -377,6 +387,233 @@ namespace LudoClassicOffline
 
             panelRoot.SetActive(false);
             hasBuiltUi = true;
+            ApplyResponsiveLayout();
+        }
+
+        private bool TryBindExistingUi(Transform preferredParent)
+        {
+            GameObject existing = FindChildByName(preferredParent, PanelName);
+            if (existing == null)
+            {
+                existing = FindSceneObjectByName(PanelName);
+            }
+
+            if (existing == null)
+            {
+                return false;
+            }
+
+            panelRoot = existing;
+            listContent = FindChildRect(panelRoot.transform, "Content");
+            statusText = FindStatusText(panelRoot.transform, listContent);
+
+            Button[] buttons = panelRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button button = buttons[i];
+                string label = GetButtonLabel(button);
+                if (label.Contains("Refresh") || button.name.Contains("Refresh"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(Refresh);
+                }
+                else if (label.Contains("Close") || label.Contains("Back") || label.Contains("X") || label.Contains("x") || label.Contains("✕") || button.name.Contains("Close") || button.name.Contains("✕"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(ClosePanel);
+                }
+            }
+
+            if (listContent == null)
+            {
+                Debug.LogWarning("MyTournamentsPanel found in scene, but Content was not found. Dynamic history rows cannot render until Content exists.");
+            }
+
+            ApplyResponsiveLayout();
+            return true;
+        }
+
+        private void ApplyResponsiveLayout()
+        {
+            if (panelRoot == null)
+            {
+                return;
+            }
+
+            bool portrait = Screen.height >= Screen.width;
+            RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                panelRect.anchorMin = Vector2.zero;
+                panelRect.anchorMax = Vector2.one;
+                panelRect.offsetMin = Vector2.zero;
+                panelRect.offsetMax = Vector2.zero;
+            }
+
+            Text[] labels = panelRoot.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                FitText(labels[i], portrait ? 30 : 46, portrait ? 14 : 22);
+            }
+
+            Button[] buttons = panelRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                RectTransform rect = buttons[i].GetComponent<RectTransform>();
+                if (rect != null && buttons[i].transform.parent == panelRoot.transform)
+                {
+                    bool isClose = GetButtonLabel(buttons[i]).Contains("Close") || buttons[i].name.Contains("Close") || buttons[i].name.Contains("✕");
+                    rect.sizeDelta = portrait ? new Vector2(isClose ? 128f : 136f, 64f) : rect.sizeDelta;
+                    rect.anchoredPosition = portrait
+                        ? new Vector2(isClose ? -14f : -156f, -18f)
+                        : rect.anchoredPosition;
+                }
+
+                FitText(buttons[i].GetComponentInChildren<Text>(true), portrait ? 24 : 36, portrait ? 14 : 22);
+            }
+
+            RectTransform header = FindChildRect(panelRoot.transform, "ColHeader");
+            if (header != null)
+            {
+                header.anchoredPosition = portrait ? new Vector2(0f, -94f) : header.anchoredPosition;
+                header.sizeDelta = portrait ? new Vector2(0f, 58f) : header.sizeDelta;
+            }
+
+            ScrollRect scroll = panelRoot.GetComponentInChildren<ScrollRect>(true);
+            if (scroll != null)
+            {
+                RectTransform scrollRect = scroll.GetComponent<RectTransform>();
+                if (scrollRect != null)
+                {
+                    scrollRect.anchorMin = new Vector2(0.02f, 0.02f);
+                    scrollRect.anchorMax = new Vector2(0.98f, portrait ? 0.82f : 0.78f);
+                    scrollRect.offsetMin = Vector2.zero;
+                    scrollRect.offsetMax = Vector2.zero;
+                }
+
+                scroll.horizontal = false;
+                scroll.vertical = true;
+            }
+
+            VerticalLayoutGroup contentLayout = listContent != null ? listContent.GetComponent<VerticalLayoutGroup>() : null;
+            if (contentLayout != null)
+            {
+                contentLayout.padding = portrait ? new RectOffset(12, 12, 12, 24) : new RectOffset(20, 20, 20, 32);
+                contentLayout.spacing = portrait ? 12f : 18f;
+            }
+        }
+
+        private static void FitText(Text text, int maxSize, int minSize)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minSize;
+            text.resizeTextMaxSize = maxSize;
+            text.fontSize = Mathf.Min(text.fontSize, maxSize);
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+        }
+
+        private static GameObject FindChildByName(Transform root, string objectName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                if (children[i].name == objectName)
+                {
+                    return children[i].gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static RectTransform FindChildRect(Transform root, string objectName)
+        {
+            GameObject child = FindChildByName(root, objectName);
+            return child != null ? child.GetComponent<RectTransform>() : null;
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static Text FindStatusText(Transform root, Transform content)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                Text label = labels[i];
+                if (label != null && !IsChildOf(label.transform, content) && string.IsNullOrEmpty(label.text))
+                {
+                    return label;
+                }
+            }
+
+            return labels.Length > 0 ? labels[labels.Length - 1] : null;
+        }
+
+        private static bool IsChildOf(Transform child, Transform parent)
+        {
+            if (child == null || parent == null)
+            {
+                return false;
+            }
+
+            Transform current = child;
+            while (current != null)
+            {
+                if (current == parent)
+                {
+                    return true;
+                }
+
+                current = current.parent;
+            }
+
+            return false;
+        }
+
+        private static string GetButtonLabel(Button button)
+        {
+            if (button == null)
+            {
+                return string.Empty;
+            }
+
+            Text label = button.GetComponentInChildren<Text>(true);
+            return label != null ? label.text : button.name;
         }
 
         private Button CreateButton(Transform parent, string label, Color32 color)

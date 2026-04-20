@@ -278,11 +278,8 @@ public class ImageUtil : MonoBehaviour
         string imgUrl
     )
     {
-        string key = (name ?? string.Empty).Trim().ToLowerInvariant();
-        key = key.Replace(" ", "").Replace("-", "_");
-
         // Check the image name and update the UI components accordingly
-        if (key == "passbook")
+        if (name == "passbook")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -293,7 +290,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (key == "profile")
+        else if (name == "profile")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -302,7 +299,7 @@ public class ImageUtil : MonoBehaviour
             SpriteManager.Instance.base64forimgrofile = imgUrl;
             SpriteManager.Instance.profile_image = sprite;
         }
-        else if (key == "ticket")
+        else if (name == "ticket")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -311,7 +308,7 @@ public class ImageUtil : MonoBehaviour
             SpriteManager.Instance.base64forimgeforticket = imgUrl;
             //SpriteManager.Instance.profile_image = sprite;
         }
-        else if (key == "adhar")
+        else if (name == "adhar")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -322,7 +319,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (key == "pan")
+        else if (name == "pan")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -333,7 +330,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (key == "qr")
+        else if (name == "qr")
         {
             // Set the sprite of the image UI component
             spriteimg.sprite = sprite;
@@ -345,7 +342,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (key.Contains("manual"))
+        else if (name == "manual_ss")
         {
             spriteimg.sprite = sprite;
 
@@ -355,7 +352,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (key.Contains("usdt"))
+        if (name == "usdt_screenshort")
         {
             spriteimg.sprite = sprite;
             SpriteManager.Instance.base64forimgeforusdt = imgUrl;

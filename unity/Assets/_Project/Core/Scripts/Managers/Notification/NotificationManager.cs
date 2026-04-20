@@ -29,40 +29,61 @@ public class NotificationManager : MonoBehaviour
             { "user_id", Configuration.GetId() },
             { "token", Configuration.GetToken() },
         };
-        ResponseDataNotification data = new ResponseDataNotification();
-        data = await APIManager.Instance.Post<ResponseDataNotification>(Url, formData);
+        ResponseDataNotification data = await APIManager.Instance.Post<ResponseDataNotification>(Url, formData);
+        if (prefabs == null)
+        {
+            prefabs = new List<GameObject>();
+        }
+
         for (int j = 0; j < prefabs.Count; j++)
         {
-            Destroy(prefabs[j]);
+            if (prefabs[j] != null)
+            {
+                Destroy(prefabs[j]);
+            }
         }
 
         prefabs.Clear();
 
-        if (data.code == 200)
+        if (data == null)
         {
-            if (data.notification.Length > 0)
-            {
-                NOdata.SetActive(false);
-            }
-            else
+            if (NOdata != null)
             {
                 NOdata.SetActive(true);
             }
+            if (LoaderUtil.instance != null)
+            {
+                LoaderUtil.instance.ShowToast("Unable to load notifications.");
+            }
+            return;
+        }
+
+        Notifications[] notifications = data.notification ?? new Notifications[0];
+
+        if (data.code == 200)
+        {
+            if (NOdata != null)
+            {
+                NOdata.SetActive(notifications.Length <= 0);
+            }
             int index = 0;
-            for (int i = 0; i < data.notification.Length; i++)
+            for (int i = 0; i < notifications.Length; i++)
             {
                 index = i;
+                if (prefab == null || parent == null || notifications[i] == null)
+                {
+                    continue;
+                }
+
                 GameObject go = Instantiate(prefab, parent);
                 go.transform.GetChild(1).GetComponent<TextMeshProUGUI>().text = (i + 1) + "";
-                go.transform.GetChild(2).GetComponent<TextMeshProUGUI>().text = data.notification[
-                    i
-                ].msg;
+                go.transform.GetChild(2).GetComponent<TextMeshProUGUI>().text = notifications[i].msg;
                 go.transform.GetChild(3).GetComponent<TextMeshProUGUI>().text = FormatDateTime(
-                    data.notification[i].added_date
+                    notifications[i].added_date
                 );
-                string img = data.notification[index].image;
-                string url = data.notification[index].url;
-                Debug.Log("RES_Check + notification image " + data.notification[index].image);
+                string img = notifications[index].image;
+                string url = notifications[index].url;
+                Debug.Log("RES_Check + notification image " + notifications[index].image);
                 Debug.Log("RES_Check + notification image 2 " + img);
                 go.GetComponent<Button>().onClick.AddListener(() => GetImage(img));
                 prefabs.Add(go);
@@ -70,8 +91,14 @@ public class NotificationManager : MonoBehaviour
         }
         else
         {
-            NOdata.SetActive(true);
-            LoaderUtil.instance.ShowToast(data.message);
+            if (NOdata != null)
+            {
+                NOdata.SetActive(true);
+            }
+            if (LoaderUtil.instance != null)
+            {
+                LoaderUtil.instance.ShowToast(data.message);
+            }
         }
     }
 

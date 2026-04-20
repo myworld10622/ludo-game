@@ -9,6 +9,9 @@ using UnityEngine.UI;
 
 public class GameHistory : MonoBehaviour
 {
+    private const float MinStatementContentWidth = 1280f;
+    private const float MinStatementRowHeight = 86f;
+
     public List<GameObject> myhistoryobjects;
 
     public List<Transform> m_allChild;
@@ -35,6 +38,7 @@ public class GameHistory : MonoBehaviour
 
         GameTitle.text = "History";
         NodataPenal.SetActive(true);
+        ConfigureStatementScroll();
         PostGetLudoStatement(Configuration.Url + Configuration.Statement);
     }
 
@@ -1565,12 +1569,15 @@ public class GameHistory : MonoBehaviour
             for (int i = 0; i < output.statement.Count; i++)
             {
                 GameObject go = Instantiate(Prefab, parent.transform);
+                ApplyStatementRowLayout(go);
                 go.transform.GetChild(1).GetComponent<Text>().text = (i + 1).ToString();
                 go.transform.GetChild(2).GetComponent<Text>().text = output.statement[i].amount;
                 go.transform.GetChild(3).GetComponent<Text>().text = output.statement[i].admin_commission;
                 go.transform.GetChild(4).GetComponent<Text>().text = FormatDateTime(output.statement[i].added_date);
                 myhistoryobjects.Add(go);
             }
+
+            ConfigureStatementScroll();
         }
         else
         {
@@ -1579,4 +1586,69 @@ public class GameHistory : MonoBehaviour
     }
 
     #endregion
+
+    private void ConfigureStatementScroll()
+    {
+        if (scrollRect != null)
+        {
+            scrollRect.horizontal = true;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.inertia = true;
+            scrollRect.scrollSensitivity = 55f;
+        }
+
+        RectTransform content = parent != null ? parent.transform as RectTransform : null;
+        if (content == null)
+        {
+            content = scrollRect != null ? scrollRect.content : null;
+        }
+
+        if (content != null)
+        {
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(0f, 1f);
+            content.pivot = new Vector2(0f, 1f);
+            content.sizeDelta = new Vector2(Mathf.Max(content.sizeDelta.x, MinStatementContentWidth), content.sizeDelta.y);
+
+            if (scrollRect != null)
+            {
+                scrollRect.content = content;
+            }
+        }
+    }
+
+    private void ApplyStatementRowLayout(GameObject row)
+    {
+        if (row == null)
+        {
+            return;
+        }
+
+        RectTransform rowRect = row.transform as RectTransform;
+        if (rowRect != null)
+        {
+            rowRect.sizeDelta = new Vector2(MinStatementContentWidth, MinStatementRowHeight);
+        }
+
+        LayoutElement layout = row.GetComponent<LayoutElement>();
+        if (layout == null)
+        {
+            layout = row.AddComponent<LayoutElement>();
+        }
+
+        layout.minWidth = MinStatementContentWidth;
+        layout.preferredWidth = MinStatementContentWidth;
+        layout.minHeight = MinStatementRowHeight;
+        layout.preferredHeight = MinStatementRowHeight;
+
+        Text[] texts = row.GetComponentsInChildren<Text>(true);
+        for (int i = 0; i < texts.Length; i++)
+        {
+            texts[i].fontSize = Mathf.Max(texts[i].fontSize, 24);
+            texts[i].resizeTextForBestFit = true;
+            texts[i].resizeTextMinSize = 18;
+            texts[i].resizeTextMaxSize = Mathf.Max(texts[i].fontSize, 24);
+        }
+    }
 }

@@ -7,6 +7,9 @@ using UnityEngine.UI;
 
 public class StatementManager : MonoBehaviour
 {
+    private const float MinStatementContentWidth = 1280f;
+    private const float MinStatementRowHeight = 92f;
+
     public GameObject prefab;
     public Transform parent;
     public List<GameObject> statementobj;
@@ -24,6 +27,7 @@ public class StatementManager : MonoBehaviour
         // Destroy all existing pool objects and reset active objects queue
         //  ObjectPoolUtil.DestroyPool(pool_key);
         // activeObjects.Clear();
+        EnsureStatementScrollLayout();
         LoadStatements();
     }
 
@@ -65,6 +69,7 @@ public class StatementManager : MonoBehaviour
             {
                 itemcount++;
                 GameObject go = Instantiate(prefab, parent);
+                ApplyStatementRowLayout(go);
                 statementobj.Add(go);
                 // statements.Add(go);
 
@@ -87,6 +92,8 @@ public class StatementManager : MonoBehaviour
                 string formattedDateTime = FormatDateTime(statement.added_date);
                 SetText(go.transform.GetChild(4).GetChild(0), formattedDateTime);
             }
+
+            EnsureStatementScrollLayout();
         }
         catch (Exception ex)
         {
@@ -98,11 +105,79 @@ public class StatementManager : MonoBehaviour
     private void SetText(Transform element, string text, Color? color = null)
     {
         var textComponent = element.GetComponent<Text>();
+        if (textComponent == null)
+        {
+            return;
+        }
+
         textComponent.text = text;
+        textComponent.fontSize = Mathf.Max(textComponent.fontSize, 24);
+        textComponent.resizeTextForBestFit = true;
+        textComponent.resizeTextMinSize = 18;
+        textComponent.resizeTextMaxSize = Mathf.Max(textComponent.fontSize, 24);
         if (color.HasValue)
         {
             textComponent.color = color.Value;
         }
+    }
+
+    private void EnsureStatementScrollLayout()
+    {
+        if (parent == null)
+        {
+            return;
+        }
+
+        RectTransform content = parent as RectTransform;
+        if (content != null)
+        {
+            content.anchorMin = new Vector2(0f, 1f);
+            content.anchorMax = new Vector2(0f, 1f);
+            content.pivot = new Vector2(0f, 1f);
+            content.sizeDelta = new Vector2(Mathf.Max(content.sizeDelta.x, MinStatementContentWidth), content.sizeDelta.y);
+        }
+
+        ScrollRect scrollRect = parent.GetComponentInParent<ScrollRect>(true);
+        if (scrollRect != null)
+        {
+            scrollRect.horizontal = true;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.inertia = true;
+            scrollRect.scrollSensitivity = 55f;
+            scrollRect.content = content;
+        }
+
+        HorizontalLayoutGroup horizontalLayout = parent.GetComponent<HorizontalLayoutGroup>();
+        if (horizontalLayout != null)
+        {
+            horizontalLayout.enabled = false;
+        }
+    }
+
+    private void ApplyStatementRowLayout(GameObject row)
+    {
+        if (row == null)
+        {
+            return;
+        }
+
+        RectTransform rowRect = row.transform as RectTransform;
+        if (rowRect != null)
+        {
+            rowRect.sizeDelta = new Vector2(MinStatementContentWidth, MinStatementRowHeight);
+        }
+
+        LayoutElement rowLayout = row.GetComponent<LayoutElement>();
+        if (rowLayout == null)
+        {
+            rowLayout = row.AddComponent<LayoutElement>();
+        }
+
+        rowLayout.minWidth = MinStatementContentWidth;
+        rowLayout.preferredWidth = MinStatementContentWidth;
+        rowLayout.minHeight = MinStatementRowHeight;
+        rowLayout.preferredHeight = MinStatementRowHeight;
     }
 
     // Helper to format the bracket amount

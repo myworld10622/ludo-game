@@ -14,6 +14,7 @@ namespace LudoClassicOffline
         private GameObject panelRoot;
         private bool hasBuiltUi;
         private Font runtimeFont;
+        private const string PanelName = "CreateTournamentPanel";
 
         private static readonly Color32 BgColor     = new Color32(14,  3,   7,   252);
         private static readonly Color32 CardColor   = new Color32(48,  10,  18,  255);
@@ -32,6 +33,7 @@ namespace LudoClassicOffline
         public void OpenPanel()
         {
             EnsureUi();
+            ApplyResponsiveLayout();
             // Refresh the URL label each time (user_id might not have been ready on first build)
             RefreshUrlLabel();
             panelRoot.transform.SetAsLastSibling();
@@ -66,8 +68,15 @@ namespace LudoClassicOffline
                 ? dashboard.dashBordPanal.transform
                 : transform;
 
+            if (TryBindExistingUi(parent))
+            {
+                hasBuiltUi = true;
+                panelRoot.SetActive(false);
+                return;
+            }
+
             // Full-screen backdrop
-            panelRoot = new GameObject("CreateTournamentPanel",
+            panelRoot = new GameObject(PanelName,
                 typeof(RectTransform), typeof(Canvas), typeof(GraphicRaycaster), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
             var panelCanvas = panelRoot.GetComponent<Canvas>();
@@ -229,6 +238,212 @@ namespace LudoClassicOffline
 
             panelRoot.SetActive(false);
             hasBuiltUi = true;
+            ApplyResponsiveLayout();
+        }
+
+        private bool TryBindExistingUi(Transform preferredParent)
+        {
+            GameObject existing = FindChildByName(preferredParent, PanelName);
+            if (existing == null)
+            {
+                existing = FindSceneObjectByName(PanelName);
+            }
+
+            if (existing == null)
+            {
+                return false;
+            }
+
+            panelRoot = existing;
+            urlLabel = FindTextContaining(panelRoot.transform, Configuration.Website)
+                ?? FindTextContaining(panelRoot.transform, "login");
+
+            Button[] buttons = panelRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button button = buttons[i];
+                string label = GetButtonLabel(button);
+                if (label.Contains("Open Panel") || label.Contains("Panel URL") || button.name.Contains("Open"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(() =>
+                    {
+                        Application.OpenURL(Configuration.Website + "login");
+                        ClosePanel();
+                    });
+                }
+                else if (label.Contains("Close") || label.Contains("Back") || label.Contains("X") || label.Contains("x") || label.Contains("✕") || button.name.Contains("Close") || button.name.Contains("✕"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(ClosePanel);
+                }
+            }
+
+            ApplyResponsiveLayout();
+            return true;
+        }
+
+        private void ApplyResponsiveLayout()
+        {
+            if (panelRoot == null)
+            {
+                return;
+            }
+
+            bool portrait = Screen.height >= Screen.width;
+            RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
+            if (panelRect != null)
+            {
+                panelRect.anchorMin = Vector2.zero;
+                panelRect.anchorMax = Vector2.one;
+                panelRect.offsetMin = Vector2.zero;
+                panelRect.offsetMax = Vector2.zero;
+            }
+
+            GameObject namedCard = FindChildByName(panelRoot.transform, "Card");
+            RectTransform card = namedCard != null ? namedCard.GetComponent<RectTransform>() : FindLargestChildRect(panelRoot.transform);
+            if (card != null && card.gameObject != panelRoot)
+            {
+                card.anchorMin = portrait ? new Vector2(0.04f, 0.08f) : new Vector2(0.12f, 0.12f);
+                card.anchorMax = portrait ? new Vector2(0.96f, 0.92f) : new Vector2(0.88f, 0.88f);
+                card.pivot = new Vector2(0.5f, 0.5f);
+                card.offsetMin = Vector2.zero;
+                card.offsetMax = Vector2.zero;
+
+                VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
+                if (layout != null)
+                {
+                    layout.padding = portrait ? new RectOffset(24, 24, 22, 22) : new RectOffset(54, 54, 42, 42);
+                    layout.spacing = portrait ? 14f : 24f;
+                }
+            }
+
+            Text[] labels = panelRoot.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                FitText(labels[i], portrait ? 34 : 56, portrait ? 16 : 26);
+            }
+
+            Button[] buttons = panelRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                RectTransform rect = buttons[i].GetComponent<RectTransform>();
+                if (rect != null && buttons[i].transform.parent == panelRoot.transform)
+                {
+                    rect.sizeDelta = portrait ? new Vector2(72f, 72f) : new Vector2(100f, 100f);
+                    rect.anchoredPosition = portrait ? new Vector2(-18f, -18f) : new Vector2(-36f, -36f);
+                }
+
+                FitText(buttons[i].GetComponentInChildren<Text>(true), portrait ? 30 : 44, portrait ? 16 : 24);
+            }
+        }
+
+        private static RectTransform FindLargestChildRect(Transform root)
+        {
+            RectTransform[] rects = root != null ? root.GetComponentsInChildren<RectTransform>(true) : new RectTransform[0];
+            RectTransform best = null;
+            float bestArea = 0f;
+            for (int i = 0; i < rects.Length; i++)
+            {
+                if (rects[i] == null || rects[i].transform == root)
+                {
+                    continue;
+                }
+
+                float area = Mathf.Abs(rects[i].rect.width * rects[i].rect.height);
+                if (area > bestArea)
+                {
+                    best = rects[i];
+                    bestArea = area;
+                }
+            }
+
+            return best;
+        }
+
+        private static void FitText(Text text, int maxSize, int minSize)
+        {
+            if (text == null)
+            {
+                return;
+            }
+
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = minSize;
+            text.resizeTextMaxSize = maxSize;
+            text.fontSize = Mathf.Min(text.fontSize, maxSize);
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Truncate;
+        }
+
+        private static GameObject FindChildByName(Transform root, string objectName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                if (children[i].name == objectName)
+                {
+                    return children[i].gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static Text FindTextContaining(Transform root, string value)
+        {
+            if (root == null || string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                if (labels[i] != null && !string.IsNullOrEmpty(labels[i].text) && labels[i].text.Contains(value))
+                {
+                    return labels[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static string GetButtonLabel(Button button)
+        {
+            if (button == null)
+            {
+                return string.Empty;
+            }
+
+            Text label = button.GetComponentInChildren<Text>(true);
+            return label != null ? label.text : button.name;
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

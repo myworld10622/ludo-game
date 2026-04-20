@@ -9,15 +9,12 @@ using static System.Net.WebRequestMethods;
 public class Configuration : MonoBehaviour
 {
 
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
-    public const string BaseUrl = "http://localhost:8000/";
-    public const string Website = "http://localhost:8000/";
-    public const string BaseSocketUrl = "http://localhost:4000";
-#else
+    // public const string BaseUrl = "http://localhost:8000/";
+    // public const string Website = "http://localhost:8000/";
+    // public const string BaseSocketUrl = "http://localhost:3002";
     public const string BaseUrl = "https://roxludo.com/";
     public const string Website = "https://roxludo.com/";
-    public const string BaseSocketUrl = "https://socket.betzono.tech:4000/";
-#endif
+    public const string BaseSocketUrl = "https://socket.betzono.tech/";
     public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string LudoTournamentInfoUrl = BaseUrl + "api/v1/tournaments/";
 
@@ -427,20 +424,6 @@ public class Configuration : MonoBehaviour
 
     public static string GetName()
     {
-        string username = PlayerPrefs.GetString("username");
-        if (!string.IsNullOrWhiteSpace(username))
-        {
-            PlayerPrefs.SetString("userName", username);
-            PlayerPrefs.SetString("name", username);
-            return username;
-        }
-
-        string legacyUserName = PlayerPrefs.GetString("userName");
-        if (!string.IsNullOrWhiteSpace(legacyUserName))
-        {
-            return legacyUserName;
-        }
-
         return PlayerPrefs.GetString("name");
     }
 

@@ -305,10 +305,15 @@ namespace AndroApps
                 return true;
             }
 
+            if (TryBindExistingAuthErrorPopup())
+            {
+                return true;
+            }
+
             Canvas parentCanvas = GetComponentInParent<Canvas>();
             if (parentCanvas == null)
             {
-                parentCanvas = FindObjectOfType<Canvas>();
+                parentCanvas = FindPreferredPopupCanvas();
             }
 
             if (parentCanvas == null)
@@ -345,7 +350,7 @@ namespace AndroApps
             cardRect.anchorMin = new Vector2(0.5f, 0.5f);
             cardRect.anchorMax = new Vector2(0.5f, 0.5f);
             cardRect.pivot = new Vector2(0.5f, 0.5f);
-            cardRect.sizeDelta = new Vector2(1120f, 640f);
+            cardRect.sizeDelta = new Vector2(560f, 320f);
             Image cardImage = card.GetComponent<Image>();
             cardImage.color = new Color32(44, 10, 18, 245);
             Outline cardOutline = card.GetComponent<Outline>();
@@ -363,7 +368,7 @@ namespace AndroApps
             titleBarRect.anchorMin = new Vector2(0f, 1f);
             titleBarRect.anchorMax = new Vector2(1f, 1f);
             titleBarRect.pivot = new Vector2(0.5f, 1f);
-            titleBarRect.sizeDelta = new Vector2(0f, 90f);
+            titleBarRect.sizeDelta = new Vector2(0f, 72f);
             titleBarRect.anchoredPosition = Vector2.zero;
             titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
 
@@ -376,7 +381,7 @@ namespace AndroApps
             titleObj.transform.SetParent(titleBar.transform, false);
             authErrorTitleText = titleObj.GetComponent<Text>();
             authErrorTitleText.font = popupFont;
-            authErrorTitleText.fontSize = 32;
+            authErrorTitleText.fontSize = 28;
             authErrorTitleText.fontStyle = FontStyle.Bold;
             authErrorTitleText.alignment = TextAnchor.MiddleLeft;
             authErrorTitleText.color = Color.white;
@@ -398,7 +403,7 @@ namespace AndroApps
             closeRect.anchorMin = new Vector2(1f, 0.5f);
             closeRect.anchorMax = new Vector2(1f, 0.5f);
             closeRect.pivot = new Vector2(1f, 0.5f);
-            closeRect.sizeDelta = new Vector2(60f, 60f);
+            closeRect.sizeDelta = new Vector2(46f, 46f);
             closeRect.anchoredPosition = new Vector2(-18f, 0f);
             Image closeImage = closeObj.GetComponent<Image>();
             closeImage.color = new Color32(165, 36, 47, 255);
@@ -414,7 +419,7 @@ namespace AndroApps
             closeLabelObj.transform.SetParent(closeObj.transform, false);
             Text closeLabel = closeLabelObj.GetComponent<Text>();
             closeLabel.font = popupFont;
-            closeLabel.fontSize = 26;
+            closeLabel.fontSize = 22;
             closeLabel.fontStyle = FontStyle.Bold;
             closeLabel.alignment = TextAnchor.MiddleCenter;
             closeLabel.color = Color.white;
@@ -434,7 +439,7 @@ namespace AndroApps
             messageObj.transform.SetParent(card.transform, false);
             authErrorMessageText = messageObj.GetComponent<Text>();
             authErrorMessageText.font = popupFont;
-            authErrorMessageText.fontSize = 30;
+            authErrorMessageText.fontSize = 28;
             authErrorMessageText.fontStyle = FontStyle.Normal;
             authErrorMessageText.alignment = TextAnchor.MiddleCenter;
             authErrorMessageText.color = new Color32(255, 244, 232, 255);
@@ -444,8 +449,8 @@ namespace AndroApps
             RectTransform messageRect = authErrorMessageText.GetComponent<RectTransform>();
             messageRect.anchorMin = new Vector2(0f, 0f);
             messageRect.anchorMax = new Vector2(1f, 1f);
-            messageRect.offsetMin = new Vector2(40f, 40f);
-            messageRect.offsetMax = new Vector2(-40f, -150f);
+            messageRect.offsetMin = new Vector2(34f, 30f);
+            messageRect.offsetMax = new Vector2(-34f, -94f);
 
             GameObject okObj = new GameObject(
                 "OkButton",
@@ -459,8 +464,8 @@ namespace AndroApps
             okRect.anchorMin = new Vector2(0.5f, 0f);
             okRect.anchorMax = new Vector2(0.5f, 0f);
             okRect.pivot = new Vector2(0.5f, 0f);
-            okRect.sizeDelta = new Vector2(220f, 70f);
-            okRect.anchoredPosition = new Vector2(0f, 32f);
+            okRect.sizeDelta = new Vector2(164f, 52f);
+            okRect.anchoredPosition = new Vector2(0f, 26f);
             Image okImage = okObj.GetComponent<Image>();
             okImage.color = new Color32(214, 136, 42, 255);
             Button okButton = okObj.GetComponent<Button>();
@@ -475,7 +480,7 @@ namespace AndroApps
             okLabelObj.transform.SetParent(okObj.transform, false);
             Text okLabel = okLabelObj.GetComponent<Text>();
             okLabel.font = popupFont;
-            okLabel.fontSize = 26;
+            okLabel.fontSize = 24;
             okLabel.fontStyle = FontStyle.Bold;
             okLabel.alignment = TextAnchor.MiddleCenter;
             okLabel.color = Color.white;
@@ -488,6 +493,130 @@ namespace AndroApps
 
             authErrorPopup.SetActive(false);
             return true;
+        }
+
+        private bool TryBindExistingAuthErrorPopup()
+        {
+            GameObject existingPopup = FindSceneObjectByName("AuthErrorPopup");
+            if (existingPopup == null)
+            {
+                return false;
+            }
+
+            Text title = FindChildText(existingPopup.transform, "Title");
+            Text message = FindChildText(existingPopup.transform, "Message");
+            Button closeButton = FindChildButton(existingPopup.transform, "CloseButton");
+            Button okButton = FindChildButton(existingPopup.transform, "OkButton");
+
+            if (title == null || message == null || closeButton == null || okButton == null)
+            {
+                return false;
+            }
+
+            authErrorPopup = existingPopup;
+            authErrorTitleText = title;
+            authErrorMessageText = message;
+            closeButton.onClick.RemoveAllListeners();
+            closeButton.onClick.AddListener(HideAuthErrorPopup);
+            okButton.onClick.RemoveAllListeners();
+            okButton.onClick.AddListener(HideAuthErrorPopup);
+
+            RectTransform overlayRect = authErrorPopup.GetComponent<RectTransform>();
+            if (overlayRect != null)
+            {
+                overlayRect.anchorMin = Vector2.zero;
+                overlayRect.anchorMax = Vector2.one;
+                overlayRect.offsetMin = Vector2.zero;
+                overlayRect.offsetMax = Vector2.zero;
+            }
+
+            authErrorPopup.SetActive(false);
+            return true;
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static Canvas FindPreferredPopupCanvas()
+        {
+            Canvas[] canvases = Resources.FindObjectsOfTypeAll<Canvas>();
+            string[] preferredNames = { "CanvasMain", "Canvas", "HomePageCanvas", "CanvasOverlay(for popups)" };
+            for (int p = 0; p < preferredNames.Length; p++)
+            {
+                for (int i = 0; i < canvases.Length; i++)
+                {
+                    Canvas canvas = canvases[i];
+                    if (canvas != null && canvas.gameObject.scene.IsValid() && canvas.name == preferredNames[p])
+                    {
+                        return canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+                    }
+                }
+            }
+
+            for (int i = 0; i < canvases.Length; i++)
+            {
+                Canvas canvas = canvases[i];
+                if (canvas != null && canvas.gameObject.scene.IsValid())
+                {
+                    return canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+                }
+            }
+
+            return null;
+        }
+
+        private static Text FindChildText(Transform root, string childName)
+        {
+            Transform child = FindChildTransform(root, childName);
+            return child != null ? child.GetComponent<Text>() : null;
+        }
+
+        private static Button FindChildButton(Transform root, string childName)
+        {
+            Transform child = FindChildTransform(root, childName);
+            return child != null ? child.GetComponent<Button>() : null;
+        }
+
+        private static Transform FindChildTransform(Transform root, string childName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            if (root.name == childName)
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindChildTransform(root.GetChild(i), childName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         private void HideAuthErrorPopup()
@@ -1495,6 +1624,8 @@ namespace AndroApps
             if (inputField.textComponent != null)
             {
                 inputField.textComponent.color = Color.white;
+                inputField.textComponent.fontSize = Mathf.Max(inputField.textComponent.fontSize, 30f);
+                inputField.textComponent.enableAutoSizing = false;
             }
 
             if (inputField.placeholder != null)
@@ -1503,6 +1634,8 @@ namespace AndroApps
                 if (placeholder != null)
                 {
                     placeholder.color = new Color32(255, 255, 255, 150);
+                    placeholder.fontSize = Mathf.Max(placeholder.fontSize, 28f);
+                    placeholder.enableAutoSizing = false;
                 }
             }
         }

@@ -22,6 +22,7 @@ namespace LudoClassicOffline
         private Text titleText;
         private bool isLoading;
         private bool hasBuiltUi;
+        private const string PanelName = "BracketViewerPanel";
         private Font runtimeFont;
 
         // Stored so the refresh button can re-fetch
@@ -333,8 +334,15 @@ namespace LudoClassicOffline
                 ? dashboard.dashBordPanal.transform
                 : transform;
 
+            if (TryBindExistingUi(parent))
+            {
+                hasBuiltUi = true;
+                panelRoot.SetActive(false);
+                return;
+            }
+
             // Full-screen panel
-            panelRoot = new GameObject("BracketViewerPanel",
+            panelRoot = new GameObject(PanelName,
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panelRoot.transform.SetParent(parent, false);
             panelRoot.GetComponent<Image>().color = new Color32(7, 14, 26, 252);
@@ -425,6 +433,177 @@ namespace LudoClassicOffline
 
             panelRoot.SetActive(false);
             hasBuiltUi = true;
+        }
+
+        private bool TryBindExistingUi(Transform preferredParent)
+        {
+            GameObject existing = FindChildByName(preferredParent, PanelName);
+            if (existing == null)
+            {
+                existing = FindSceneObjectByName(PanelName);
+            }
+
+            if (existing == null)
+            {
+                return false;
+            }
+
+            panelRoot = existing;
+            listContent = FindChildRect(panelRoot.transform, "Content");
+            titleText = FindTextContaining(panelRoot.transform, "Bracket") ?? FindFirstText(panelRoot.transform);
+            statusText = FindStatusText(panelRoot.transform, listContent);
+
+            Button[] buttons = panelRoot.GetComponentsInChildren<Button>(true);
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                Button button = buttons[i];
+                string label = GetButtonLabel(button);
+                if (label.Contains("Refresh") || button.name.Contains("Refresh"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(FetchBracket);
+                }
+                else if (label.Contains("Close") || label.Contains("Back") || label.Contains("X") || label.Contains("x") || label.Contains("✕") || button.name.Contains("Close") || button.name.Contains("Back") || button.name.Contains("✕"))
+                {
+                    button.onClick.RemoveAllListeners();
+                    button.onClick.AddListener(ClosePanel);
+                }
+            }
+
+            if (listContent == null)
+            {
+                Debug.LogWarning("BracketViewerPanel found in scene, but Content was not found. Dynamic bracket rows cannot render until Content exists.");
+            }
+
+            return true;
+        }
+
+        private static GameObject FindChildByName(Transform root, string objectName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Transform[] children = root.GetComponentsInChildren<Transform>(true);
+            for (int i = 0; i < children.Length; i++)
+            {
+                if (children[i].name == objectName)
+                {
+                    return children[i].gameObject;
+                }
+            }
+
+            return null;
+        }
+
+        private static RectTransform FindChildRect(Transform root, string objectName)
+        {
+            GameObject child = FindChildByName(root, objectName);
+            return child != null ? child.GetComponent<RectTransform>() : null;
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private static Text FindTextContaining(Transform root, string value)
+        {
+            if (root == null || string.IsNullOrEmpty(value))
+            {
+                return null;
+            }
+
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                if (labels[i] != null && !string.IsNullOrEmpty(labels[i].text) && labels[i].text.Contains(value))
+                {
+                    return labels[i];
+                }
+            }
+
+            return null;
+        }
+
+        private static Text FindFirstText(Transform root)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            return labels.Length > 0 ? labels[0] : null;
+        }
+
+        private static Text FindStatusText(Transform root, Transform content)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            Text[] labels = root.GetComponentsInChildren<Text>(true);
+            for (int i = 0; i < labels.Length; i++)
+            {
+                Text label = labels[i];
+                if (label != null && !IsChildOf(label.transform, content) && string.IsNullOrEmpty(label.text))
+                {
+                    return label;
+                }
+            }
+
+            return labels.Length > 0 ? labels[labels.Length - 1] : null;
+        }
+
+        private static bool IsChildOf(Transform child, Transform parent)
+        {
+            if (child == null || parent == null)
+            {
+                return false;
+            }
+
+            Transform current = child;
+            while (current != null)
+            {
+                if (current == parent)
+                {
+                    return true;
+                }
+
+                current = current.parent;
+            }
+
+            return false;
+        }
+
+        private static string GetButtonLabel(Button button)
+        {
+            if (button == null)
+            {
+                return string.Empty;
+            }
+
+            Text label = button.GetComponentInChildren<Text>(true);
+            return label != null ? label.text : button.name;
         }
     }
 }

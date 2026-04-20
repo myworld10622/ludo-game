@@ -56,8 +56,6 @@ public class PaymentManager : MonoBehaviour
     private int _paymentMethod = 0;
     private GameObject _upiTab, _cryptoTab;
     private GameObject _extrasRoot;   // holds injected UI — destroyed on disable
-    [Header("Add Cash UI")]
-    public bool UseInjectedExtras = false;
 
     void OnDisable()
     {
@@ -71,18 +69,20 @@ public class PaymentManager : MonoBehaviour
         USDT_AUTO.SetActive(false);
 #endif
         ApplyDirectSkin();
-        InjectAddCashExtras();
+        ApplyResponsiveAddCashLayout();
         await AvailableChips();
         DefaultSet();
-        BindCustomAmountInput();
+        ApplyResponsiveAddCashLayout();
     }
 
     private void ApplyDirectSkin()
     {
-        if (popupBgSprite != null)
+        Image rootImg = GetComponent<Image>();
+        if (rootImg != null)
         {
-            var rootImg = GetComponent<Image>();
-            if (rootImg != null) rootImg.sprite = popupBgSprite;
+            rootImg.sprite = null;
+            rootImg.type = Image.Type.Simple;
+            rootImg.color = new Color32(44, 8, 16, 245);
         }
 
         foreach (Image img in GetComponentsInChildren<Image>(true))
@@ -112,16 +112,6 @@ public class PaymentManager : MonoBehaviour
     // ── Inject Bank/UPI + Crypto toggle and preset amounts ─────────────────────
     private void InjectAddCashExtras()
     {
-        if (!UseInjectedExtras)
-        {
-            // Ensure the existing custom input (if any) stays visible.
-            if (custom != null)
-            {
-                custom.gameObject.SetActive(true);
-            }
-            return;
-        }
-
         if (content == null) return;
 
         Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -171,10 +161,6 @@ public class PaymentManager : MonoBehaviour
             if (USDT_AUTO != null) USDT_AUTO.SetActive(true);
         });
 
-        // ── Custom amount input ────────────────────────────────────────────────
-        MakeLabel(_extrasRoot.transform, font, "Enter Amount:", 28);
-        CreateCustomAmountInput(_extrasRoot.transform);
-
         // ── "Select Amount" label ──────────────────────────────────────────────
         MakeLabel(_extrasRoot.transform, font, "Select Amount:", 28);
 
@@ -188,10 +174,7 @@ public class PaymentManager : MonoBehaviour
                 int amt = presets[i + j];
                 var btn = MakeAmountBtn(row.transform, font, "+" + amt, amountBtnSprite);
                 int captured = amt;
-                btn.onClick.AddListener(() => {
-                    if (custom != null) custom.text = captured.ToString();
-                    CustomPayment();
-                });
+                btn.onClick.AddListener(() => { if (custom != null) custom.text = captured.ToString(); });
             }
             if (presets.Length - i == 1)
             {
@@ -337,34 +320,6 @@ public class PaymentManager : MonoBehaviour
         return t;
     }
 
-    private void CreateCustomAmountInput(Transform parent)
-    {
-        if (custom == null)
-        {
-            return;
-        }
-
-        var clone = Instantiate(custom.gameObject, parent);
-        clone.name = "CustomAmountInput";
-
-        var rt = clone.GetComponent<RectTransform>();
-        if (rt != null)
-        {
-            rt.sizeDelta = new Vector2(0f, 90f);
-        }
-
-        var input = clone.GetComponent<TMP_InputField>();
-        if (input != null)
-        {
-            input.text = "";
-            input.contentType = TMP_InputField.ContentType.IntegerNumber;
-            input.characterLimit = 9;
-        }
-
-        // Use the visible input as the active target for CustomPayment
-        custom = input != null ? input : custom;
-    }
-
     // ── Tab styling ────────────────────────────────────────────────────────────
     private static readonly Color32 TabActive   = new Color32(218, 130,  20, 255);
     private static readonly Color32 TabInactive = new Color32( 90,  14,  24, 255);
@@ -408,8 +363,9 @@ public class PaymentManager : MonoBehaviour
         if (custom != null)
         {
             custom.text = "";
-            UpdateCustomAmountUI(custom.text);
         }
+
+        ApplyResponsiveAddCashLayout();
     }
 
     #region Add Chips
@@ -428,6 +384,345 @@ public class PaymentManager : MonoBehaviour
             if (obj != null)
             {
                 obj.SetActive(true);
+            }
+        }
+
+        ApplyResponsiveAddCashLayout();
+    }
+
+    private void ApplyResponsiveAddCashLayout()
+    {
+        RectTransform root = transform as RectTransform;
+        Canvas canvas = GetComponentInParent<Canvas>();
+        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+        Rect bounds = canvasRect != null ? canvasRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
+        bool portrait = bounds.height >= bounds.width;
+
+        if (root != null)
+        {
+            root.anchorMin = new Vector2(0.5f, 0.5f);
+            root.anchorMax = new Vector2(0.5f, 0.5f);
+            root.pivot = new Vector2(0.5f, 0.5f);
+            root.anchoredPosition = Vector2.zero;
+            root.localScale = Vector3.one;
+            root.sizeDelta = portrait ? new Vector2(980f, 1420f) : new Vector2(1540f, 900f);
+        }
+
+        if (_extrasRoot != null)
+        {
+            RectTransform extrasRect = _extrasRoot.transform as RectTransform;
+            if (extrasRect != null)
+            {
+                extrasRect.anchorMin = portrait ? new Vector2(0.04f, 0.05f) : new Vector2(0.02f, 0.04f);
+                extrasRect.anchorMax = portrait ? new Vector2(0.96f, 0.82f) : new Vector2(0.98f, 0.82f);
+                extrasRect.offsetMin = Vector2.zero;
+                extrasRect.offsetMax = Vector2.zero;
+            }
+
+            VerticalLayoutGroup extrasLayout = _extrasRoot.GetComponent<VerticalLayoutGroup>();
+            if (extrasLayout != null)
+            {
+                extrasLayout.spacing = portrait ? 18f : 14f;
+                extrasLayout.padding = portrait ? new RectOffset(18, 18, 18, 18) : new RectOffset(12, 12, 12, 12);
+            }
+        }
+
+        ApplyAddCashInnerPanelLayout(portrait);
+        StylePopupTexts(transform, portrait ? 32 : 26, portrait ? 36 : 30);
+        StylePopupInputs(transform, portrait ? 42 : 34, portrait ? 108f : 82f);
+        StylePopupButtons(transform, portrait ? 34 : 28, portrait ? 92f : 72f);
+        StylePopupScrollRects(transform, portrait ? 920f : 1280f);
+
+        if (root != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(root);
+        }
+    }
+
+    private void ApplyAddCashInnerPanelLayout(bool portrait)
+    {
+        Vector2 panelSize = portrait ? new Vector2(900f, 1260f) : new Vector2(1320f, 780f);
+        SetCenteredChildRect(transform, "panel-bg", panelSize);
+        SetCenteredChildRect(transform, "Automatic", panelSize);
+        SetCenteredChildRect(transform, "Dialogue", panelSize);
+        SetCenteredChildRect(transform, "Manual", panelSize);
+        SetCenteredChildRect(transform, "USDT Auto", panelSize);
+        SetCenteredChildRect(transform, "USDT-Manual", panelSize);
+
+        SetCenteredChildRect(transform, "Table-Bg", panelSize);
+        SetCenteredChildRect(transform, "BG", panelSize);
+
+        SetChildRectByName(transform, "AddCashDetails", portrait ? new Vector2(760f, 980f) : new Vector2(920f, 560f));
+        SetChildRectByName(transform, "Recent Transaction", portrait ? new Vector2(820f, 980f) : new Vector2(1120f, 620f));
+        SetChildRectByName(transform, "Scroll View", portrait ? new Vector2(760f, 520f) : new Vector2(940f, 420f));
+        SetChildRectByName(transform, "homepage-input-field", portrait ? new Vector2(660f, 108f) : new Vector2(560f, 82f));
+        SetChildRectByName(transform, "Enter Amount", portrait ? new Vector2(720f, 108f) : new Vector2(620f, 82f));
+        SetChildRectByName(transform, "Enter UTR", portrait ? new Vector2(720f, 108f) : new Vector2(620f, 82f));
+        SetChildRectByName(transform, "submit", portrait ? new Vector2(420f, 110f) : new Vector2(320f, 88f));
+        SetChildRectByName(transform, "Submit Button", portrait ? new Vector2(460f, 110f) : new Vector2(340f, 88f));
+        SetChildRectByName(transform, "upload-ss", portrait ? new Vector2(230f, 230f) : new Vector2(180f, 180f));
+        SetChildRectByName(transform, "SS_Image", portrait ? new Vector2(230f, 230f) : new Vector2(180f, 180f));
+        SetChildRectByName(transform, "Scanner", portrait ? new Vector2(340f, 320f) : new Vector2(260f, 250f));
+
+        LayoutAutomaticAddCashPanel(portrait);
+    }
+
+    private void LayoutAutomaticAddCashPanel(bool portrait)
+    {
+        RectTransform automatic = FindDeepChild(transform, "Automatic") as RectTransform;
+        if (automatic == null)
+        {
+            return;
+        }
+
+        SetRect(FindDirectTextChild(automatic, "Add Cash"), portrait ? new Vector2(420f, 86f) : new Vector2(360f, 64f), portrait ? new Vector2(0f, 545f) : new Vector2(0f, 325f));
+
+        RectTransform details = FindDeepChild(automatic, "AddCashDetails") as RectTransform;
+        SetRect(details, portrait ? new Vector2(760f, 980f) : new Vector2(980f, 560f), portrait ? new Vector2(0f, -50f) : new Vector2(0f, -35f));
+        if (details == null)
+        {
+            return;
+        }
+
+        SetRect(FindDirectChild(details, "homepage-input-field"), portrait ? new Vector2(660f, 108f) : new Vector2(560f, 82f), portrait ? new Vector2(0f, 360f) : new Vector2(-170f, 205f));
+        SetRect(FindDirectChild(details, "Scroll View"), portrait ? new Vector2(720f, 500f) : new Vector2(920f, 320f), portrait ? new Vector2(0f, 35f) : new Vector2(0f, -10f));
+
+        RectTransform final = FindDeepChild(details, "Final") as RectTransform;
+        SetRect(final, portrait ? new Vector2(460f, 110f) : new Vector2(340f, 82f), portrait ? new Vector2(0f, -410f) : new Vector2(315f, 205f));
+        if (final != null)
+        {
+            SetRect(FindDirectChild(final, "Add Cash"), portrait ? new Vector2(420f, 96f) : new Vector2(320f, 74f), Vector2.zero);
+        }
+    }
+
+    private static void SetRect(RectTransform rect, Vector2 size, Vector2 anchoredPosition)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = size;
+
+        LayoutElement layout = rect.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minWidth = size.x;
+            layout.preferredWidth = size.x;
+            layout.minHeight = size.y;
+            layout.preferredHeight = size.y;
+        }
+    }
+
+    private static RectTransform FindDirectChild(Transform parent, string childName)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (string.Equals(child.name, childName, StringComparison.OrdinalIgnoreCase))
+            {
+                return child as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private static RectTransform FindDirectTextChild(Transform parent, string textContains)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            TMP_Text tmp = child.GetComponent<TMP_Text>();
+            if (tmp != null && tmp.text != null && tmp.text.IndexOf(textContains, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return child as RectTransform;
+            }
+
+            Text text = child.GetComponent<Text>();
+            if (text != null && text.text != null && text.text.IndexOf(textContains, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return child as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private static void SetCenteredChildRect(Transform root, string childName, Vector2 size)
+    {
+        RectTransform rect = FindDeepChild(root, childName) as RectTransform;
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = size;
+    }
+
+    private static void SetChildRectByName(Transform root, string childName, Vector2 size)
+    {
+        RectTransform rect = FindDeepChild(root, childName) as RectTransform;
+        if (rect == null)
+        {
+            return;
+        }
+
+        Vector2 anchorCenter = (rect.anchorMin + rect.anchorMax) * 0.5f;
+        rect.anchorMin = anchorCenter;
+        rect.anchorMax = anchorCenter;
+        rect.sizeDelta = size;
+        LayoutElement layout = rect.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minWidth = size.x;
+            layout.preferredWidth = size.x;
+            layout.minHeight = size.y;
+            layout.preferredHeight = size.y;
+        }
+    }
+
+    private static Transform FindDeepChild(Transform root, string childName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        if (root.name == childName)
+        {
+            return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindDeepChild(root.GetChild(i), childName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
+    }
+
+    private static void StylePopupTexts(Transform root, int minTextSize, int minTitleSize)
+    {
+        foreach (Text text in root.GetComponentsInChildren<Text>(true))
+        {
+            if (text == null) continue;
+            bool title = text.text != null && (text.text.IndexOf("Add Cash", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.text.IndexOf("Payment", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.text.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0);
+            int size = title ? minTitleSize : minTextSize;
+            text.fontSize = Mathf.Max(text.fontSize, size);
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = Mathf.Max(18, size - 8);
+            text.resizeTextMaxSize = Mathf.Max(text.fontSize, size);
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        }
+
+        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (text == null) continue;
+            bool title = text.text != null && (text.text.IndexOf("Add Cash", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.text.IndexOf("Payment", StringComparison.OrdinalIgnoreCase) >= 0
+                || text.text.IndexOf("Select", StringComparison.OrdinalIgnoreCase) >= 0);
+            float size = title ? minTitleSize : minTextSize;
+            text.fontSize = Mathf.Max(text.fontSize, size);
+            text.enableAutoSizing = true;
+            text.fontSizeMin = Mathf.Max(18f, size - 8f);
+            text.fontSizeMax = Mathf.Max(text.fontSize, size);
+            text.overflowMode = TextOverflowModes.Overflow;
+        }
+    }
+
+    private static void StylePopupInputs(Transform root, int fontSize, float height)
+    {
+        foreach (TMP_InputField input in root.GetComponentsInChildren<TMP_InputField>(true))
+        {
+            if (input == null) continue;
+            LayoutElement layout = input.GetComponent<LayoutElement>() ?? input.gameObject.AddComponent<LayoutElement>();
+            layout.minHeight = height;
+            layout.preferredHeight = height;
+            if (input.textComponent != null)
+            {
+                input.textComponent.fontSize = fontSize;
+                input.textComponent.enableAutoSizing = false;
+            }
+            TMP_Text placeholder = input.placeholder as TMP_Text;
+            if (placeholder != null)
+            {
+                placeholder.fontSize = Mathf.Max(24, fontSize - 4);
+                placeholder.enableAutoSizing = false;
+            }
+        }
+    }
+
+    private static void StylePopupButtons(Transform root, int fontSize, float height)
+    {
+        foreach (Button button in root.GetComponentsInChildren<Button>(true))
+        {
+            if (button == null) continue;
+            LayoutElement layout = button.GetComponent<LayoutElement>() ?? button.gameObject.AddComponent<LayoutElement>();
+            layout.minHeight = Mathf.Max(layout.minHeight, height);
+            layout.preferredHeight = Mathf.Max(layout.preferredHeight, height);
+            Text label = button.GetComponentInChildren<Text>(true);
+            if (label != null)
+            {
+                label.fontSize = Mathf.Max(label.fontSize, fontSize);
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = Mathf.Max(18, fontSize - 8);
+                label.resizeTextMaxSize = Mathf.Max(label.fontSize, fontSize);
+            }
+            TMP_Text tmpLabel = button.GetComponentInChildren<TMP_Text>(true);
+            if (tmpLabel != null)
+            {
+                tmpLabel.fontSize = Mathf.Max(tmpLabel.fontSize, fontSize);
+                tmpLabel.enableAutoSizing = true;
+                tmpLabel.fontSizeMin = Mathf.Max(18, fontSize - 8);
+                tmpLabel.fontSizeMax = Mathf.Max(tmpLabel.fontSize, fontSize);
+            }
+        }
+    }
+
+    private static void StylePopupScrollRects(Transform root, float minContentWidth)
+    {
+        foreach (ScrollRect scrollRect in root.GetComponentsInChildren<ScrollRect>(true))
+        {
+            if (scrollRect == null) continue;
+            scrollRect.vertical = true;
+            scrollRect.horizontal = true;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.scrollSensitivity = 70f;
+            RectTransform contentRect = scrollRect.content;
+            if (contentRect != null)
+            {
+                contentRect.anchorMin = new Vector2(0f, 1f);
+                contentRect.anchorMax = new Vector2(0f, 1f);
+                contentRect.pivot = new Vector2(0f, 1f);
+                contentRect.sizeDelta = new Vector2(Mathf.Max(contentRect.sizeDelta.x, minContentWidth), contentRect.sizeDelta.y);
             }
         }
     }
@@ -649,7 +944,6 @@ public class PaymentManager : MonoBehaviour
             }
             else
             {
-                UpdateCustomAmountUI(custom.text);
                 automatic_button.onClick.RemoveAllListeners();
                 automatic_button.onClick.AddListener(
                     async () => await PlaceOrderAPI("", custom.text)
@@ -703,14 +997,6 @@ public class PaymentManager : MonoBehaviour
 
             // Assign the sprite to the Image component
             qr_code_image.sprite = sprite;
-            qr_code_image.color = Color.white;
-            qr_code_image.canvasRenderer.SetAlpha(1f);
-            var groups = qr_code_image.GetComponentsInParent<CanvasGroup>(true);
-            foreach (var group in groups)
-            {
-                if (group == null) continue;
-                group.alpha = 1f;
-            }
             Debug.Log("QR code updated successfully.");
         }
     }
@@ -770,29 +1056,16 @@ public class PaymentManager : MonoBehaviour
 
     public async void SubmitManualPayment()
     {
-        if (utr_inputfield == null)
-        {
-            Debug.LogError("Manual payment UTR input field is not assigned.");
-            CommonUtil.ShowStyledMessage("UTR input not configured.", "Error", true);
-            return;
-        }
-
         if (string.IsNullOrEmpty(utr_inputfield.text))
         {
-            CommonUtil.ShowStyledMessage("Please enter UTR number.", "Error", true);
-            return;
-        }
-
-        if (manual_amount <= 0)
-        {
-            CommonUtil.ShowStyledMessage("Please select amount first.", "Error", true);
+            LoaderUtil.instance.ShowToast("Please enter UTR Address");
             return;
         }
 
         // Check if payment screenshot is missing
-        if (SpriteManager.Instance == null || string.IsNullOrEmpty(SpriteManager.Instance.base64forimgmanualss))
+        if (string.IsNullOrEmpty(SpriteManager.Instance.base64forimgmanualss))
         {
-            CommonUtil.ShowStyledMessage("Please upload the payment screenshot.", "Error", true);
+            LoaderUtil.instance.ShowToast("Please upload the Screen Shot of your payment");
             return;
         }
 
@@ -910,15 +1183,10 @@ public class PaymentManager : MonoBehaviour
         };
         OrderDetails details = new OrderDetails();
         details = await APIManager.Instance.Post<OrderDetails>(Url, formData);
-        if (details != null && details.code == 200 && !string.IsNullOrWhiteSpace(details.intentData))
-        {
+        if (details.code == 200)
             OpenURLInBrowser(details.intentData);
-        }
         else
-        {
-            CommonUtil.ShowToast(details != null ? details.message : "Automatic gateway failed.");
-            OpenManual();
-        }
+            CommonUtil.ShowToast(details.message);
     }
 
     public async Task QR_API()
@@ -936,46 +1204,14 @@ public class PaymentManager : MonoBehaviour
 
         Debug.Log(response.message);
         Debug.Log(response.qr_image);
-        if (string.IsNullOrWhiteSpace(response.qr_image))
-        {
-            CommonUtil.ShowToast("QR not configured. Please contact admin.");
-            return;
-        }
+        //StartDownloadQR(response.qr_image);
         StartCoroutine(DownloadQR(response.qr_image));
-    }
-
-    private void BindCustomAmountInput()
-    {
-        if (custom == null) return;
-        custom.onValueChanged.RemoveListener(UpdateCustomAmountUI);
-        custom.onValueChanged.AddListener(UpdateCustomAmountUI);
-        custom.onEndEdit.RemoveListener(UpdateCustomAmountUI);
-        custom.onEndEdit.AddListener(UpdateCustomAmountUI);
-    }
-
-    private void UpdateCustomAmountUI(string amountText)
-    {
-        if (string.IsNullOrWhiteSpace(amountText)) return;
-        if (!int.TryParse(amountText, out var amount) || amount <= 0) return;
-        ShowNewUI("", amount.ToString(), amount.ToString());
     }
 
     public async Task Manual_Payment_API()
     {
         string Url = Configuration.addcash;
         CommonUtil.CheckLog("RES_Check + API-Call + Manual_Payment_API");
-
-        if (utr_inputfield == null)
-        {
-            CommonUtil.ShowStyledMessage("UTR input not configured.", "Error", true);
-            return;
-        }
-
-        if (SpriteManager.Instance == null)
-        {
-            CommonUtil.ShowStyledMessage("Screenshot manager not ready.", "Error", true);
-            return;
-        }
 
         var formData = new Dictionary<string, string>
         {
@@ -989,30 +1225,15 @@ public class PaymentManager : MonoBehaviour
         UPISuccessResponse response = new UPISuccessResponse();
         response = await APIManager.Instance.Post<UPISuccessResponse>(Url, formData);
 
-        if (response == null)
-        {
-            CommonUtil.ShowStyledMessage("Manual payment failed. Please try again.", "Error", true);
-            return;
-        }
-
-        CommonUtil.ShowStyledMessage(response.message, response.code == 200 ? "Success" : "Error", response.code != 200);
-        if (manual_panel != null)
-        {
-            manual_panel.SetActive(false);
-        }
+        LoaderUtil.instance.ShowToast(response.message);
+        manual_panel.SetActive(false);
 
         if (response.code == 200)
         {
             utr_inputfield.text = "";
-            if (manual_ss_logo != null)
-            {
-                manual_ss_logo.SetActive(true);
-            }
+            manual_ss_logo.SetActive(true);
 
-            if (manual_ss_img != null)
-            {
-                manual_ss_img.sprite = UploadScreenshort;
-            }
+            manual_ss_img.sprite = UploadScreenshort;
         }
     }
 

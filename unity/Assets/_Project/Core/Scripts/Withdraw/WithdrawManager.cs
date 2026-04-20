@@ -33,7 +33,6 @@ public class WithdrawManager : MonoBehaviour
     public GameObject Crypto, Bank;
 
     public Profile Profile;
-    public GameObject accountDetailsPopup;
 
     public GameObject withdraw;
     public GameObject Withdrawlogs;
@@ -49,6 +48,7 @@ public class WithdrawManager : MonoBehaviour
     async void OnEnable()
     {
         ApplyDirectSkin();
+        ApplyResponsiveWithdrawLayout();
 
         if (custominput != null)
         {
@@ -75,6 +75,7 @@ public class WithdrawManager : MonoBehaviour
 
 
         SetDefault();
+        ApplyResponsiveWithdrawLayout();
     }
 
     public void SetDefault()
@@ -86,6 +87,7 @@ public class WithdrawManager : MonoBehaviour
 
         StyleTabButton(withdrawSelect,    active: true);
         StyleTabButton(WithdrawlogSelect, active: false);
+        ApplyResponsiveWithdrawLayout();
     }
 
     // ── Tab button styling ─────────────────────────────────────────────────────
@@ -116,6 +118,7 @@ public class WithdrawManager : MonoBehaviour
         StyleTabButton(withdrawSelect,    active: false);
 
         await ShowWithdrawTransactionsAPI();
+        ApplyResponsiveWithdrawLayout();
     }
 
     private string setOption = "0";
@@ -153,6 +156,7 @@ public class WithdrawManager : MonoBehaviour
 
         StyleTabButton(withdrawSelect,    active: true);
         StyleTabButton(WithdrawlogSelect, active: false);
+        ApplyResponsiveWithdrawLayout();
     }
 
     #endregion
@@ -280,6 +284,7 @@ public class WithdrawManager : MonoBehaviour
                     continue;
                 }
                 GameObject go = Instantiate(transaction_prefab, transaction_parent);
+                ApplyWideRowLayout(go, 1280f, 92f);
                 go.transform.SetSiblingIndex(0); // Add to the top of the parent
                 WithdrawtransactionsUI ui = go.GetComponent<WithdrawtransactionsUI>();
                 if (ui == null)
@@ -317,6 +322,7 @@ public class WithdrawManager : MonoBehaviour
                 no_data.SetActive(true);
             }
         }
+        ApplyResponsiveWithdrawLayout();
     }
 
     #endregion
@@ -369,34 +375,10 @@ public class WithdrawManager : MonoBehaviour
             { "redeem_id", id },
             { "type", setOption },
         };
-        messageprint output = await APIManager.Instance.Post<messageprint>(Url, formData);
+        messageprint output = new messageprint();
+        output = await APIManager.Instance.Post<messageprint>(Url, formData);
 
-        if (output == null)
-        {
-            EasyUI.Toast.Toast.Show("Withdrawal request failed. Please try again.", 3f);
-            return;
-        }
-
-        if (ShouldPromptAccountDetails(output))
-        {
-            CommonUtil.SetNextStyledMessageAction(() =>
-            {
-                PopUpUtil.ButtonCancel(this.gameObject);
-                OpenAccountDetailsPopup();
-            });
-            CommonUtil.ShowStyledMessage(
-                "Account details missing. Please update your bank or crypto details to request withdrawal.",
-                "Account Details Required",
-                true
-            );
-            return;
-        }
-
-        CommonUtil.ShowStyledMessage(
-            string.IsNullOrWhiteSpace(output.message) ? "Withdrawal request submitted." : output.message,
-            output.code == 200 ? "Success" : "Withdrawal",
-            output.code != 200
-        );
+        LoaderUtil.instance.ShowToast(output.message);
         PopUpUtil.ButtonCancel(this.gameObject);
 
         if (output.code == 200)
@@ -436,35 +418,16 @@ public class WithdrawManager : MonoBehaviour
             return;
         }
 
-        if (ShouldPromptAccountDetails(output))
-        {
-            CommonUtil.SetNextStyledMessageAction(() =>
-            {
-                PopUpUtil.ButtonCancel(this.gameObject);
-                OpenAccountDetailsPopup();
-            });
-            CommonUtil.ShowStyledMessage(
-                "Account details missing. Please update your bank or crypto details to request withdrawal.",
-                "Account Details Required",
-                true
-            );
-            return;
-        }
-
         string msg = string.IsNullOrWhiteSpace(output.message) ? "Request submitted." : output.message;
-        CommonUtil.ShowStyledMessage(msg, output.code == 200 ? "Success" : "Withdrawal", output.code != 200);
+        if (LoaderUtil.instance != null)
+            LoaderUtil.instance.ShowToast(msg);
+        else
+            EasyUI.Toast.Toast.Show(msg, 3f);
 
         PopUpUtil.ButtonCancel(this.gameObject);
         if (output.code == 200)
         {
             StartCoroutine(Profile.UpdateWallet());
-            DOVirtual.DelayedCall(0.25f, () =>
-            {
-                total.text = Configuration.GetWallet();
-                bonus.text = Configuration.GetBonus();
-                winning_wallet.text = Configuration.GetWinning();
-                unutilized_wallet.text = Configuration.GetUnutilized();
-            });
         }
     }
     #endregion
@@ -492,101 +455,6 @@ public class WithdrawManager : MonoBehaviour
 
         return formattedDate + "\n" + formattedTime;
         // return formattedDate + "\n" + formattedTime;
-    }
-
-    private bool ShouldPromptAccountDetails(messageprint output)
-    {
-        if (output == null || string.IsNullOrWhiteSpace(output.message))
-        {
-            return false;
-        }
-
-        string msg = output.message.Trim();
-        if (msg.IndexOf("Account Details", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (msg.IndexOf("bank details", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        if (msg.IndexOf("crypto details", StringComparison.OrdinalIgnoreCase) >= 0)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private void OpenAccountDetailsPopup()
-    {
-        if (Profile == null)
-        {
-            Profile = FindObjectOfType<Profile>();
-        }
-
-        GameObject popup = accountDetailsPopup;
-        if (popup == null)
-        {
-            popup = GameObject.Find("Bank Details") ?? GameObject.Find("Account Details");
-        }
-
-        if (popup == null)
-        {
-            foreach (var go in Resources.FindObjectsOfTypeAll<GameObject>())
-            {
-                if (!go) continue;
-                if (go.name != "Bank Details" && go.name != "Account Details")
-                {
-                    continue;
-                }
-                // Prefer the actual popup panel (no Button component).
-                if (go.GetComponent<Button>() != null)
-                {
-                    continue;
-                }
-                popup = go;
-                break;
-            }
-        }
-
-        if (popup == null)
-        {
-            Debug.LogWarning("Account Details popup not found. Assign it in WithdrawManager.");
-            return;
-        }
-
-        var popupTransform = popup.transform;
-        var rootCanvas = popup.GetComponentInParent<Canvas>(true);
-        if (rootCanvas != null)
-        {
-            popupTransform.SetParent(rootCanvas.transform, true);
-        }
-
-        popup.SetActive(true);
-        var popupRect = popup.GetComponent<RectTransform>();
-        if (popupRect != null)
-        {
-            popupRect.SetAsLastSibling();
-        }
-        var popupCanvas = popup.GetComponentInParent<Canvas>(true);
-        if (popupCanvas != null)
-        {
-            popupCanvas.overrideSorting = true;
-            popupCanvas.sortingOrder = 5000;
-        }
-
-        if (Profile != null)
-        {
-            Profile.PopUpPanelOpen(popup);
-            Profile.SwitchBankAndCrypto(0);
-        }
-        else
-        {
-            PopUpUtil.ButtonClick(popup);
-        }
     }
 
     private string GetMonthAbbreviation(int month)
@@ -624,10 +492,12 @@ public class WithdrawManager : MonoBehaviour
 
     private void ApplyDirectSkin()
     {
-        if (popupBgSprite != null)
+        Image rootImg = GetComponent<Image>();
+        if (rootImg != null)
         {
-            var rootImg = GetComponent<Image>();
-            if (rootImg != null) rootImg.sprite = popupBgSprite;
+            rootImg.sprite = null;
+            rootImg.type = Image.Type.Simple;
+            rootImg.color = new Color32(44, 8, 16, 245);
         }
 
         // Recolor large white background Images — skip buttons/icons/close by name
@@ -651,6 +521,517 @@ public class WithdrawManager : MonoBehaviour
         if (backgroundImages != null)
             foreach (var img in backgroundImages)
                 if (img != null) img.color = new Color32(44, 8, 16, 245);
+    }
+
+    private void ApplyResponsiveWithdrawLayout()
+    {
+        RectTransform root = transform as RectTransform;
+        Canvas canvas = GetComponentInParent<Canvas>();
+        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+        Rect bounds = canvasRect != null ? canvasRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
+        bool portrait = bounds.height >= bounds.width;
+
+        if (root != null)
+        {
+            root.anchorMin = new Vector2(0.5f, 0.5f);
+            root.anchorMax = new Vector2(0.5f, 0.5f);
+            root.pivot = new Vector2(0.5f, 0.5f);
+            root.anchoredPosition = Vector2.zero;
+            root.localScale = Vector3.one;
+            root.sizeDelta = portrait ? new Vector2(980f, 1420f) : new Vector2(1540f, 900f);
+        }
+
+        ApplyWithdrawInnerPanelLayout(portrait);
+        StylePopupTexts(transform, portrait ? 32 : 26, portrait ? 38 : 30);
+        StylePopupInputs(transform, portrait ? 42 : 34, portrait ? 108f : 82f);
+        StylePopupButtons(transform, portrait ? 34 : 28, portrait ? 92f : 72f);
+        StylePopupScrollRects(transform, portrait ? 960f : 1280f);
+
+        if (redeem_parent != null)
+        {
+            EnsureContentWidth(redeem_parent as RectTransform, portrait ? 920f : 1180f);
+        }
+        if (transaction_parent != null)
+        {
+            EnsureContentWidth(transaction_parent as RectTransform, 1280f);
+        }
+
+        if (root != null)
+        {
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(root);
+        }
+    }
+
+    private static void ApplyWideRowLayout(GameObject row, float width, float height)
+    {
+        if (row == null)
+        {
+            return;
+        }
+
+        RectTransform rect = row.transform as RectTransform;
+        if (rect != null)
+        {
+            rect.sizeDelta = new Vector2(width, height);
+        }
+
+        LayoutElement layout = row.GetComponent<LayoutElement>() ?? row.AddComponent<LayoutElement>();
+        layout.minWidth = width;
+        layout.preferredWidth = width;
+        layout.minHeight = height;
+        layout.preferredHeight = height;
+    }
+
+    private static void EnsureContentWidth(RectTransform content, float width)
+    {
+        if (content == null)
+        {
+            return;
+        }
+
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(0f, 1f);
+        content.pivot = new Vector2(0f, 1f);
+        content.sizeDelta = new Vector2(Mathf.Max(content.sizeDelta.x, width), content.sizeDelta.y);
+    }
+
+    private static void StylePopupTexts(Transform root, int minTextSize, int minTitleSize)
+    {
+        foreach (Text text in root.GetComponentsInChildren<Text>(true))
+        {
+            if (text == null) continue;
+            bool title = text.text != null && text.text.IndexOf("Withdraw", StringComparison.OrdinalIgnoreCase) >= 0;
+            int size = title ? minTitleSize : minTextSize;
+            text.fontSize = Mathf.Max(text.fontSize, size);
+            text.resizeTextForBestFit = true;
+            text.resizeTextMinSize = Mathf.Max(18, size - 8);
+            text.resizeTextMaxSize = Mathf.Max(text.fontSize, size);
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        }
+
+        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (text == null) continue;
+            bool title = text.text != null && text.text.IndexOf("Withdraw", StringComparison.OrdinalIgnoreCase) >= 0;
+            float size = title ? minTitleSize : minTextSize;
+            text.fontSize = Mathf.Max(text.fontSize, size);
+            text.enableAutoSizing = true;
+            text.fontSizeMin = Mathf.Max(18f, size - 8f);
+            text.fontSizeMax = Mathf.Max(text.fontSize, size);
+            text.overflowMode = TextOverflowModes.Overflow;
+        }
+    }
+
+    private static void StylePopupInputs(Transform root, int fontSize, float height)
+    {
+        foreach (TMP_InputField input in root.GetComponentsInChildren<TMP_InputField>(true))
+        {
+            if (input == null) continue;
+            LayoutElement layout = input.GetComponent<LayoutElement>() ?? input.gameObject.AddComponent<LayoutElement>();
+            layout.minHeight = height;
+            layout.preferredHeight = height;
+            if (input.textComponent != null)
+            {
+                input.textComponent.fontSize = fontSize;
+                input.textComponent.enableAutoSizing = false;
+            }
+            TMP_Text placeholder = input.placeholder as TMP_Text;
+            if (placeholder != null)
+            {
+                placeholder.fontSize = Mathf.Max(24, fontSize - 4);
+                placeholder.enableAutoSizing = false;
+            }
+        }
+    }
+
+    private static void StylePopupButtons(Transform root, int fontSize, float height)
+    {
+        foreach (Button button in root.GetComponentsInChildren<Button>(true))
+        {
+            if (button == null) continue;
+            LayoutElement layout = button.GetComponent<LayoutElement>() ?? button.gameObject.AddComponent<LayoutElement>();
+            layout.minHeight = Mathf.Max(layout.minHeight, height);
+            layout.preferredHeight = Mathf.Max(layout.preferredHeight, height);
+            Text label = button.GetComponentInChildren<Text>(true);
+            if (label != null)
+            {
+                label.fontSize = Mathf.Max(label.fontSize, fontSize);
+                label.resizeTextForBestFit = true;
+                label.resizeTextMinSize = Mathf.Max(18, fontSize - 8);
+                label.resizeTextMaxSize = Mathf.Max(label.fontSize, fontSize);
+            }
+            TMP_Text tmpLabel = button.GetComponentInChildren<TMP_Text>(true);
+            if (tmpLabel != null)
+            {
+                tmpLabel.fontSize = Mathf.Max(tmpLabel.fontSize, fontSize);
+                tmpLabel.enableAutoSizing = true;
+                tmpLabel.fontSizeMin = Mathf.Max(18, fontSize - 8);
+                tmpLabel.fontSizeMax = Mathf.Max(tmpLabel.fontSize, fontSize);
+            }
+        }
+    }
+
+    private static void StylePopupScrollRects(Transform root, float minContentWidth)
+    {
+        foreach (ScrollRect scrollRect in root.GetComponentsInChildren<ScrollRect>(true))
+        {
+            if (scrollRect == null) continue;
+            scrollRect.vertical = true;
+            scrollRect.horizontal = true;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.scrollSensitivity = 70f;
+            RectTransform contentRect = scrollRect.content;
+            if (contentRect != null)
+            {
+                EnsureContentWidth(contentRect, minContentWidth);
+            }
+        }
+    }
+
+    private void ApplyWithdrawInnerPanelLayout(bool portrait)
+    {
+        Vector2 panelSize = portrait ? new Vector2(900f, 1260f) : new Vector2(1320f, 780f);
+        SetCenteredChildRect(transform, "panel-bg", panelSize);
+        SetCenteredChildRect(transform, "Withdraw", panelSize);
+        SetCenteredChildRect(transform, "Transactions", panelSize);
+
+        LayoutWithdrawTabs(portrait);
+        LayoutWithdrawPanel(portrait);
+        LayoutWithdrawTransactionsPanel(portrait);
+    }
+
+    private void LayoutWithdrawTabs(bool portrait)
+    {
+        RectTransform tabs = FindDeepChild(transform, "Buttons") as RectTransform;
+        if (tabs == null)
+        {
+            return;
+        }
+
+        SetRect(tabs, portrait ? new Vector2(760f, 104f) : new Vector2(820f, 88f), portrait ? new Vector2(0f, 500f) : new Vector2(0f, 315f));
+
+        int visibleIndex = 0;
+        for (int i = 0; i < tabs.childCount; i++)
+        {
+            RectTransform child = tabs.GetChild(i) as RectTransform;
+            if (child == null || !child.gameObject.activeSelf)
+            {
+                continue;
+            }
+
+            float x = visibleIndex == 0 ? -195f : 195f;
+            SetRect(child, portrait ? new Vector2(340f, 88f) : new Vector2(360f, 72f), new Vector2(x, 0f));
+            visibleIndex++;
+        }
+    }
+
+    private void LayoutWithdrawPanel(bool portrait)
+    {
+        RectTransform panel = FindDeepChild(transform, "Withdraw") as RectTransform;
+        if (panel == null)
+        {
+            return;
+        }
+
+        RectTransform title = null;
+        RectTransform walletSummary = null;
+
+        for (int i = 0; i < panel.childCount; i++)
+        {
+            RectTransform child = panel.GetChild(i) as RectTransform;
+            if (child == null)
+            {
+                continue;
+            }
+
+            if (string.Equals(child.name, "redeem-title", StringComparison.OrdinalIgnoreCase))
+            {
+                if (child.GetComponent<Image>() != null)
+                {
+                    walletSummary = child;
+                }
+                else
+                {
+                    title = child;
+                }
+            }
+        }
+
+        SetRect(title, portrait ? new Vector2(520f, 90f) : new Vector2(520f, 70f), portrait ? new Vector2(0f, 545f) : new Vector2(0f, 335f));
+        SetRect(walletSummary, portrait ? new Vector2(820f, 150f) : new Vector2(1040f, 110f), portrait ? new Vector2(0f, 390f) : new Vector2(0f, 245f));
+        LayoutWalletSummary(walletSummary, portrait);
+
+        SetRect(FindDirectChild(panel, "Bank"), portrait ? new Vector2(330f, 90f) : new Vector2(280f, 72f), portrait ? new Vector2(-200f, 250f) : new Vector2(-170f, 145f));
+        SetRect(FindDirectChild(panel, "Crypto"), portrait ? new Vector2(330f, 90f) : new Vector2(280f, 72f), portrait ? new Vector2(200f, 250f) : new Vector2(170f, 145f));
+
+        RectTransform label = FindDirectTextChild(panel, "Please Select");
+        SetRect(label, portrait ? new Vector2(760f, 56f) : new Vector2(940f, 46f), portrait ? new Vector2(0f, 140f) : new Vector2(0f, 75f));
+
+        SetRect(FindDirectChild(panel, "Scroll View"), portrait ? new Vector2(820f, 300f) : new Vector2(1080f, 260f), portrait ? new Vector2(0f, -60f) : new Vector2(0f, -95f));
+        SetRect(FindDirectChild(panel, "homepage-input-field"), portrait ? new Vector2(520f, 96f) : new Vector2(520f, 76f), portrait ? new Vector2(-145f, -405f) : new Vector2(-160f, -285f));
+        SetRect(FindDirectChild(panel, "button"), portrait ? new Vector2(260f, 96f) : new Vector2(300f, 76f), portrait ? new Vector2(300f, -405f) : new Vector2(310f, -285f));
+    }
+
+    private void LayoutWithdrawTransactionsPanel(bool portrait)
+    {
+        RectTransform panel = FindDeepChild(transform, "Transactions") as RectTransform;
+        if (panel == null)
+        {
+            return;
+        }
+
+        SetRect(FindDirectTextChild(panel, "Withdraw Logs"), portrait ? new Vector2(560f, 90f) : new Vector2(560f, 70f), portrait ? new Vector2(0f, 545f) : new Vector2(0f, 335f));
+
+        RectTransform header = FindDirectChild(panel, "Withdrawal Logs");
+        SetRect(header, portrait ? new Vector2(820f, 76f) : new Vector2(1120f, 68f), portrait ? new Vector2(0f, 405f) : new Vector2(0f, 240f));
+        LayoutHeaderRow(header);
+
+        SetRect(FindDirectChild(panel, "Scroll View"), portrait ? new Vector2(820f, 620f) : new Vector2(1120f, 420f), portrait ? new Vector2(0f, 45f) : new Vector2(0f, -20f));
+        SetRect(FindDirectTextChild(panel, "No Logs"), portrait ? new Vector2(760f, 120f) : new Vector2(900f, 90f), Vector2.zero);
+    }
+
+    private static void LayoutWalletSummary(RectTransform walletSummary, bool portrait)
+    {
+        if (walletSummary == null)
+        {
+            return;
+        }
+
+        float[] xs = portrait
+            ? new[] { -300f, -100f, 100f, 300f }
+            : new[] { -390f, -130f, 130f, 390f };
+        string[] keys = { "TOTAL", "BONUS", "WINNING", "UNUTILIZED" };
+
+        for (int i = 0; i < keys.Length; i++)
+        {
+            RectTransform label = FindChildContaining(walletSummary, keys[i], false);
+            RectTransform value = FindChildContaining(walletSummary, keys[i], true);
+            float x = xs[i];
+            SetRect(label, portrait ? new Vector2(185f, 52f) : new Vector2(240f, 42f), new Vector2(x, 28f));
+            SetRect(value, portrait ? new Vector2(185f, 52f) : new Vector2(240f, 42f), new Vector2(x, -35f));
+            LayoutWalletValue(value);
+        }
+    }
+
+    private static void LayoutWalletValue(RectTransform value)
+    {
+        if (value == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < value.childCount; i++)
+        {
+            RectTransform child = value.GetChild(i) as RectTransform;
+            if (child == null)
+            {
+                continue;
+            }
+
+            if (child.GetComponent<Image>() != null)
+            {
+                SetRect(child, new Vector2(32f, 32f), new Vector2(-62f, 0f));
+                continue;
+            }
+
+            if (child.GetComponent<Text>() != null || child.GetComponent<TMP_Text>() != null)
+            {
+                SetRect(child, new Vector2(120f, 42f), new Vector2(20f, 0f));
+            }
+        }
+    }
+
+    private static void LayoutHeaderRow(RectTransform header)
+    {
+        if (header == null)
+        {
+            return;
+        }
+
+        string[] names = { "Sr.N", "Coin", "Status", "Added Date" };
+        float[] xs = { -315f, -95f, 125f, 330f };
+        float[] widths = { 140f, 180f, 180f, 230f };
+
+        for (int i = 0; i < names.Length; i++)
+        {
+            RectTransform child = FindDirectChild(header, names[i]);
+            SetRect(child, new Vector2(widths[i], 68f), new Vector2(xs[i], 0f));
+        }
+    }
+
+    private static void SetRect(RectTransform rect, Vector2 size, Vector2 anchoredPosition)
+    {
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.localScale = Vector3.one;
+        rect.sizeDelta = size;
+
+        LayoutElement layout = rect.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minWidth = size.x;
+            layout.preferredWidth = size.x;
+            layout.minHeight = size.y;
+            layout.preferredHeight = size.y;
+        }
+    }
+
+    private static RectTransform FindDirectChild(Transform parent, string childName)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            if (string.Equals(child.name, childName, StringComparison.OrdinalIgnoreCase))
+            {
+                return child as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private static RectTransform FindDirectTextChild(Transform parent, string textContains)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            string text = GetTextValue(child);
+            if (!string.IsNullOrEmpty(text) && text.IndexOf(textContains, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return child as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private static RectTransform FindChildContaining(Transform parent, string nameContains, bool allowUnderscore)
+    {
+        if (parent == null)
+        {
+            return null;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform child = parent.GetChild(i);
+            string name = child.name ?? string.Empty;
+            bool nameMatches = name.IndexOf(nameContains, StringComparison.OrdinalIgnoreCase) >= 0;
+            bool isValue = name.EndsWith("_", StringComparison.OrdinalIgnoreCase);
+            if (allowUnderscore && !isValue)
+            {
+                nameMatches = false;
+            }
+
+            if (!allowUnderscore && isValue)
+            {
+                nameMatches = false;
+            }
+
+            if (nameMatches)
+            {
+                return child as RectTransform;
+            }
+        }
+
+        return null;
+    }
+
+    private static string GetTextValue(Transform transform)
+    {
+        if (transform == null)
+        {
+            return null;
+        }
+
+        Text text = transform.GetComponent<Text>();
+        if (text != null)
+        {
+            return text.text;
+        }
+
+        TMP_Text tmp = transform.GetComponent<TMP_Text>();
+        return tmp != null ? tmp.text : null;
+    }
+
+    private static void SetCenteredChildRect(Transform root, string childName, Vector2 size)
+    {
+        RectTransform rect = FindDeepChild(root, childName) as RectTransform;
+        if (rect == null)
+        {
+            return;
+        }
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = Vector2.zero;
+        rect.sizeDelta = size;
+    }
+
+    private static void SetChildRectByName(Transform root, string childName, Vector2 size)
+    {
+        RectTransform rect = FindDeepChild(root, childName) as RectTransform;
+        if (rect == null)
+        {
+            return;
+        }
+
+        Vector2 anchorCenter = (rect.anchorMin + rect.anchorMax) * 0.5f;
+        rect.anchorMin = anchorCenter;
+        rect.anchorMax = anchorCenter;
+        rect.sizeDelta = size;
+        LayoutElement layout = rect.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minWidth = size.x;
+            layout.preferredWidth = size.x;
+            layout.minHeight = size.y;
+            layout.preferredHeight = size.y;
+        }
+    }
+
+    private static Transform FindDeepChild(Transform root, string childName)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        if (string.Equals(root.name, childName, StringComparison.OrdinalIgnoreCase))
+        {
+            return root;
+        }
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform found = FindDeepChild(root.GetChild(i), childName);
+            if (found != null)
+            {
+                return found;
+            }
+        }
+
+        return null;
     }
 
     private void ApplyPopupFallbackSkin()

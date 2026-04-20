@@ -1,6 +1,4 @@
-using System;
 using System.Collections.Generic;
-using System.Globalization;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -162,32 +160,9 @@ public class TournamentDetailUI : MonoBehaviour
     private static string FormatDateTime(string iso)
     {
         if (string.IsNullOrEmpty(iso)) return "--";
-        if (DateTimeOffset.TryParse(
-                iso,
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
-                out DateTimeOffset dto))
-        {
-            DateTimeOffset local = dto.ToLocalTime();
-            string tz = FormatOffset(TimeZoneInfo.Local.GetUtcOffset(local.DateTime));
-            return $"{local:dd MMM yyyy, hh:mm tt} ({tz})";
-        }
-
         if (System.DateTime.TryParse(iso, out var dt))
-        {
-            DateTime local = dt.Kind == DateTimeKind.Utc ? dt.ToLocalTime() : dt;
-            string tz = FormatOffset(TimeZoneInfo.Local.GetUtcOffset(local));
-            return $"{local:dd MMM yyyy, hh:mm tt} ({tz})";
-        }
-
+            return dt.ToLocalTime().ToString("dd MMM yyyy, hh:mm tt");
         return iso;
-    }
-
-    private static string FormatOffset(TimeSpan offset)
-    {
-        string sign = offset < TimeSpan.Zero ? "-" : "+";
-        offset = offset.Duration();
-        return $"GMT{sign}{offset.Hours:00}:{offset.Minutes:00}";
     }
 }
 

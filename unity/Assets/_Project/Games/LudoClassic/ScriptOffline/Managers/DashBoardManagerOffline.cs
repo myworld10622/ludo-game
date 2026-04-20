@@ -193,15 +193,9 @@ public class DashBoardManagerOffline : MonoBehaviour
                         PlayerPrefs.GetString("AvatarDetails")
                     );
 
-                string savedUsername = PlayerPrefs.GetString("username");
-                if (!string.IsNullOrWhiteSpace(savedUsername))
+                if (PlayerPrefs.HasKey("userName"))
                 {
-                    playerUserNameStore = savedUsername;
-                    PlayerPrefs.SetString("userName", savedUsername);
-                    PlayerPrefs.SetString("name", savedUsername);
-                }
-                else if (PlayerPrefs.HasKey("userName"))
-                {
+                    //playerUserNameStore = Configuration.GetName();
                     playerUserNameStore = PlayerPrefs.GetString("userName");
                 }
                 else
@@ -1109,6 +1103,8 @@ public class DashBoardManagerOffline : MonoBehaviour
                 bool shouldShow = hasServerConfig && allowedFees.Contains(fee);
                 card.SetActive(shouldShow);
             }
+
+            ApplyClassicLobbyResponsiveLayout(lobbyRoot);
         }
 
         private void HideClassicLobbyFeeCards(GameObject lobbyRoot)
@@ -1132,6 +1128,106 @@ public class DashBoardManagerOffline : MonoBehaviour
                 }
 
                 card.SetActive(false);
+            }
+
+            ApplyClassicLobbyResponsiveLayout(lobbyRoot);
+        }
+
+        private void ApplyClassicLobbyResponsiveLayout(GameObject lobbyRoot)
+        {
+            if (lobbyRoot == null)
+            {
+                return;
+            }
+
+            bool portrait = Screen.height >= Screen.width;
+
+            ScrollRect[] scrollRects = lobbyRoot.GetComponentsInChildren<ScrollRect>(true);
+            for (int i = 0; i < scrollRects.Length; i++)
+            {
+                ScrollRect scroll = scrollRects[i];
+                if (scroll == null)
+                {
+                    continue;
+                }
+
+                scroll.horizontal = false;
+                scroll.vertical = true;
+                scroll.inertia = true;
+                scroll.movementType = ScrollRect.MovementType.Clamped;
+                scroll.scrollSensitivity = portrait ? 75f : 55f;
+
+                RectTransform scrollRect = scroll.GetComponent<RectTransform>();
+                if (scrollRect != null && portrait)
+                {
+                    scrollRect.anchorMin = new Vector2(0f, 0f);
+                    scrollRect.anchorMax = new Vector2(1f, 1f);
+                    scrollRect.offsetMin = new Vector2(0f, 8f);
+                    scrollRect.offsetMax = new Vector2(0f, -8f);
+                }
+            }
+
+            GridLayoutGroup[] grids = lobbyRoot.GetComponentsInChildren<GridLayoutGroup>(true);
+            for (int i = 0; i < grids.Length; i++)
+            {
+                GridLayoutGroup grid = grids[i];
+                if (grid == null)
+                {
+                    continue;
+                }
+
+                RectTransform gridRect = grid.GetComponent<RectTransform>();
+                float width = gridRect != null ? gridRect.rect.width : 0f;
+                RectTransform parentRect = gridRect != null ? gridRect.parent as RectTransform : null;
+                if (width <= 0f && parentRect != null)
+                {
+                    width = parentRect.rect.width;
+                }
+                if (width <= 0f)
+                {
+                    width = Screen.width;
+                }
+
+                int columns = portrait ? 1 : 2;
+                grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+                grid.constraintCount = columns;
+                grid.padding = portrait ? new RectOffset(14, 14, 12, 28) : new RectOffset(20, 20, 18, 32);
+                grid.spacing = portrait ? new Vector2(0f, 16f) : new Vector2(18f, 20f);
+
+                float usableWidth = width - grid.padding.left - grid.padding.right - ((columns - 1) * grid.spacing.x);
+                float cardWidth = Mathf.Max(usableWidth / columns, 220f);
+                float cardHeight = portrait ? Mathf.Clamp(cardWidth * 0.48f, 210f, 260f) : Mathf.Clamp(cardWidth * 0.36f, 190f, 240f);
+                grid.cellSize = new Vector2(cardWidth, cardHeight);
+
+                int activeCards = 0;
+                for (int j = 0; j < grid.transform.childCount; j++)
+                {
+                    Transform child = grid.transform.GetChild(j);
+                    if (child == null || !child.gameObject.activeSelf)
+                    {
+                        continue;
+                    }
+
+                    activeCards++;
+                    LayoutElement element = child.GetComponent<LayoutElement>();
+                    if (element == null)
+                    {
+                        element = child.gameObject.AddComponent<LayoutElement>();
+                    }
+                    element.preferredWidth = cardWidth;
+                    element.preferredHeight = cardHeight;
+                }
+
+                if (gridRect != null)
+                {
+                    int rows = Mathf.CeilToInt(activeCards / (float)columns);
+                    float contentHeight = grid.padding.top + grid.padding.bottom
+                        + rows * cardHeight
+                        + Mathf.Max(0, rows - 1) * grid.spacing.y;
+                    gridRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+                    gridRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(contentHeight, gridRect.rect.height));
+                    LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+                }
             }
         }
 
@@ -1236,11 +1332,27 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 if (TryParseLobbyFeeValue(texts[i].text, out int value))
                 {
-                    numericValues.Add(value);
+                    return value;
                 }
             }
 
             TextMeshProUGUI[] tmpTexts = root.GetComponentsInChildren<TextMeshProUGUI>(true);
+            for (int i = 0; i < tmpTexts.Length; i++)
+            {
+                if (TryParseLobbyFeeValue(tmpTexts[i].text, out int value))
+                {
+                    return value;
+                }
+            }
+
+            for (int i = 0; i < texts.Length; i++)
+            {
+                if (TryParseLobbyFeeValue(texts[i].text, out int value))
+                {
+                    numericValues.Add(value);
+                }
+            }
+
             for (int i = 0; i < tmpTexts.Length; i++)
             {
                 if (TryParseLobbyFeeValue(tmpTexts[i].text, out int value))
@@ -1597,27 +1709,7 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             if (tournamentTab == null)
             {
-                GameObject clone = Object.Instantiate(player4.gameObject, player4.parent);
-                clone.name = "TournamentTab";
-                tournamentTab = clone.GetComponent<RectTransform>();
-                tournamentTabImage = clone.GetComponent<Image>();
-                tournamentTabButton = clone.GetComponentInChildren<Button>(true);
-
-                if (tournamentTabButton == null)
-                {
-                    tournamentTabButton = clone.GetComponent<Button>();
-                }
-
-                if (tournamentTabButton != null)
-                {
-                    tournamentTabButton.onClick.RemoveAllListeners();
-                    tournamentTabButton.onClick.AddListener(OpenTournamentPanel);
-                }
-
-                ReplaceTabText(clone.transform, "4 PLAYER", "TOURNAMENT");
-                ReplaceTabText(clone.transform, "4 Player", "Tournament");
-                ReplaceTabText(clone.transform, "4PLAYER", "TOURNAMENT");
-                ReplaceTabText(clone.transform, "PLAYER", "TOURNAMENT");
+                BindOrCreateTournamentClassicTab();
             }
 
             float centerX  = (cachedPlayer2Position.x + cachedPlayer4Position.x) * 0.5f;
@@ -1647,6 +1739,57 @@ public class DashBoardManagerOffline : MonoBehaviour
             UpdateClassicModeTabSelection(4);
         }
 
+        private void BindOrCreateTournamentClassicTab()
+        {
+            Transform parent = player4 != null ? player4.parent : null;
+            Transform existingTab = parent != null ? parent.Find("TournamentTab") : null;
+
+            if (existingTab != null)
+            {
+                BindTournamentClassicTab(existingTab.gameObject);
+                return;
+            }
+
+            GameObject sceneTab = FindSceneObjectByName("TournamentTab");
+            if (sceneTab != null)
+            {
+                BindTournamentClassicTab(sceneTab);
+                return;
+            }
+
+            GameObject clone = Object.Instantiate(player4.gameObject, player4.parent);
+            clone.name = "TournamentTab";
+            BindTournamentClassicTab(clone);
+
+            ReplaceTabText(clone.transform, "4 PLAYER", "TOURNAMENT");
+            ReplaceTabText(clone.transform, "4 Player", "Tournament");
+            ReplaceTabText(clone.transform, "4PLAYER", "TOURNAMENT");
+            ReplaceTabText(clone.transform, "PLAYER", "TOURNAMENT");
+        }
+
+        private void BindTournamentClassicTab(GameObject tabObject)
+        {
+            if (tabObject == null)
+            {
+                return;
+            }
+
+            tournamentTab = tabObject.GetComponent<RectTransform>();
+            tournamentTabImage = tabObject.GetComponent<Image>();
+            tournamentTabButton = tabObject.GetComponentInChildren<Button>(true);
+
+            if (tournamentTabButton == null)
+            {
+                tournamentTabButton = tabObject.GetComponent<Button>();
+            }
+
+            if (tournamentTabButton != null)
+            {
+                tournamentTabButton.onClick.RemoveAllListeners();
+                tournamentTabButton.onClick.AddListener(OpenTournamentPanel);
+            }
+        }
+
         private void HideTournamentClassicTab()
         {
             if (hasCachedTabPositions)
@@ -1663,6 +1806,27 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
 
             UpdateClassicModeTabSelection(4);
+        }
+
+        private static GameObject FindSceneObjectByName(string objectName)
+        {
+            GameObject activeObject = GameObject.Find(objectName);
+            if (activeObject != null)
+            {
+                return activeObject;
+            }
+
+            GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+            for (int i = 0; i < allObjects.Length; i++)
+            {
+                GameObject candidate = allObjects[i];
+                if (candidate != null && candidate.name == objectName && candidate.scene.IsValid())
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
         }
 
         private void ReplaceTabText(Transform root, string source, string target)
@@ -1917,6 +2081,11 @@ public class DashBoardManagerOffline : MonoBehaviour
                 return;
             }
 
+            if (TryBindExistingPassNPlayPlayerCountPopup())
+            {
+                return;
+            }
+
             Font popupFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             Canvas rootCanvas =
                 dashBordPanal != null
@@ -2119,7 +2288,123 @@ public class DashBoardManagerOffline : MonoBehaviour
             RectTransform cancelRect = cancelButton.GetComponent<RectTransform>();
             cancelRect.sizeDelta = new Vector2(360f, 84f);
 
+            WirePassNPlayPlayerCountPopupButtons();
             passNPlayPlayerCountPopup.SetActive(false);
+        }
+
+        private bool TryBindExistingPassNPlayPlayerCountPopup()
+        {
+            GameObject existingPopup = FindSceneObjectByName("PassNPlayPlayerCountPopup");
+            if (existingPopup == null)
+            {
+                return false;
+            }
+
+            Button twoPlayerButton = FindChildButton(existingPopup.transform, "2PlayersButton");
+            Button threePlayerButton = FindChildButton(existingPopup.transform, "3PlayersButton");
+            Button fourPlayerButton = FindChildButton(existingPopup.transform, "4PlayersButton");
+            Button cancelButton = FindChildButton(existingPopup.transform, "CancelButton");
+            Button closeButton = FindChildButton(existingPopup.transform, "CloseButton");
+
+            if (twoPlayerButton == null || threePlayerButton == null || fourPlayerButton == null)
+            {
+                return false;
+            }
+
+            passNPlayPlayerCountPopup = existingPopup;
+            RectTransform overlayRect = passNPlayPlayerCountPopup.GetComponent<RectTransform>();
+            if (overlayRect != null)
+            {
+                overlayRect.anchorMin = Vector2.zero;
+                overlayRect.anchorMax = Vector2.one;
+                overlayRect.offsetMin = Vector2.zero;
+                overlayRect.offsetMax = Vector2.zero;
+            }
+
+            Canvas popupCanvas = passNPlayPlayerCountPopup.GetComponent<Canvas>();
+            if (popupCanvas != null)
+            {
+                popupCanvas.overrideSorting = true;
+                popupCanvas.sortingOrder = 32760;
+            }
+
+            WirePassNPlayPlayerCountPopupButtons();
+            if (cancelButton != null || closeButton != null)
+            {
+                passNPlayPlayerCountPopup.SetActive(false);
+            }
+
+            return true;
+        }
+
+        private void WirePassNPlayPlayerCountPopupButtons()
+        {
+            if (passNPlayPlayerCountPopup == null)
+            {
+                return;
+            }
+
+            Button twoPlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "2PlayersButton");
+            Button threePlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "3PlayersButton");
+            Button fourPlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "4PlayersButton");
+            Button cancelButton = FindChildButton(passNPlayPlayerCountPopup.transform, "CancelButton");
+            Button closeButton = FindChildButton(passNPlayPlayerCountPopup.transform, "CloseButton");
+
+            if (twoPlayerButton != null)
+            {
+                twoPlayerButton.onClick.RemoveAllListeners();
+                twoPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(2));
+            }
+            if (threePlayerButton != null)
+            {
+                threePlayerButton.onClick.RemoveAllListeners();
+                threePlayerButton.onClick.AddListener(() => StartPassNPlayMatch(3));
+            }
+            if (fourPlayerButton != null)
+            {
+                fourPlayerButton.onClick.RemoveAllListeners();
+                fourPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(4));
+            }
+            if (cancelButton != null)
+            {
+                cancelButton.onClick.RemoveAllListeners();
+                cancelButton.onClick.AddListener(HidePassNPlayPlayerCountPopup);
+            }
+            if (closeButton != null)
+            {
+                closeButton.onClick.RemoveAllListeners();
+                closeButton.onClick.AddListener(HidePassNPlayPlayerCountPopup);
+            }
+        }
+
+        private static Button FindChildButton(Transform root, string childName)
+        {
+            Transform child = FindChildTransform(root, childName);
+            return child != null ? child.GetComponent<Button>() : null;
+        }
+
+        private static Transform FindChildTransform(Transform root, string childName)
+        {
+            if (root == null)
+            {
+                return null;
+            }
+
+            if (root.name == childName)
+            {
+                return root;
+            }
+
+            for (int i = 0; i < root.childCount; i++)
+            {
+                Transform found = FindChildTransform(root.GetChild(i), childName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         private Text CreatePopupText(
