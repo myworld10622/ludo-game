@@ -284,7 +284,6 @@ public class WithdrawManager : MonoBehaviour
                     continue;
                 }
                 GameObject go = Instantiate(transaction_prefab, transaction_parent);
-                ApplyWideRowLayout(go, 1280f, 92f);
                 go.transform.SetSiblingIndex(0); // Add to the top of the parent
                 WithdrawtransactionsUI ui = go.GetComponent<WithdrawtransactionsUI>();
                 if (ui == null)
@@ -492,75 +491,14 @@ public class WithdrawManager : MonoBehaviour
 
     private void ApplyDirectSkin()
     {
-        Image rootImg = GetComponent<Image>();
-        if (rootImg != null)
-        {
-            rootImg.sprite = null;
-            rootImg.type = Image.Type.Simple;
-            rootImg.color = new Color32(44, 8, 16, 245);
-        }
-
-        // Recolor large white background Images — skip buttons/icons/close by name
-        foreach (Image img in GetComponentsInChildren<Image>(true))
-        {
-            if (img == null) continue;
-            string n = img.gameObject.name.ToLowerInvariant();
-            if (n.Contains("close") || n.Contains("exit") || n.Contains("btn")
-                || n.Contains("button") || n.Contains("icon") || n.Contains("logo")
-                || n.Contains("chip") || n.Contains("coin") || n.Contains("toggle")) continue;
-            RectTransform rt = img.rectTransform;
-            float w = rt != null ? Mathf.Abs(rt.rect.width)  : 0f;
-            float h = rt != null ? Mathf.Abs(rt.rect.height) : 0f;
-            if (w < 100f || h < 100f) continue;
-            Color c = img.color;
-            if (c.r > 0.85f && c.g > 0.85f && c.b > 0.85f && c.a > 0.5f)
-                img.color = new Color32(44, 8, 16, 245);
-        }
-
-        // Also apply any explicitly-assigned background images
-        if (backgroundImages != null)
-            foreach (var img in backgroundImages)
-                if (img != null) img.color = new Color32(44, 8, 16, 245);
+        // Withdrawal visuals are authored in the HomePage scene. Do not overwrite
+        // sprites/colors here, otherwise Play Mode diverges from the hierarchy.
     }
 
     private void ApplyResponsiveWithdrawLayout()
     {
-        RectTransform root = transform as RectTransform;
-        Canvas canvas = GetComponentInParent<Canvas>();
-        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
-        Rect bounds = canvasRect != null ? canvasRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
-        bool portrait = bounds.height >= bounds.width;
-
-        if (root != null)
-        {
-            root.anchorMin = new Vector2(0.5f, 0.5f);
-            root.anchorMax = new Vector2(0.5f, 0.5f);
-            root.pivot = new Vector2(0.5f, 0.5f);
-            root.anchoredPosition = Vector2.zero;
-            root.localScale = Vector3.one;
-            root.sizeDelta = portrait ? new Vector2(980f, 1420f) : new Vector2(1540f, 900f);
-        }
-
-        ApplyWithdrawInnerPanelLayout(portrait);
-        StylePopupTexts(transform, portrait ? 32 : 26, portrait ? 38 : 30);
-        StylePopupInputs(transform, portrait ? 42 : 34, portrait ? 108f : 82f);
-        StylePopupButtons(transform, portrait ? 34 : 28, portrait ? 92f : 72f);
-        StylePopupScrollRects(transform, portrait ? 960f : 1280f);
-
-        if (redeem_parent != null)
-        {
-            EnsureContentWidth(redeem_parent as RectTransform, portrait ? 920f : 1180f);
-        }
-        if (transaction_parent != null)
-        {
-            EnsureContentWidth(transaction_parent as RectTransform, 1280f);
-        }
-
-        if (root != null)
-        {
-            Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(root);
-        }
+        // Layout is controlled by the saved scene hierarchy. Runtime resizing
+        // caused the Withdrawal popup/logs to look different in Play Mode.
     }
 
     private static void ApplyWideRowLayout(GameObject row, float width, float height)

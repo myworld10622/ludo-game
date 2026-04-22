@@ -69,7 +69,7 @@ namespace LudoClassicOffline
             {
                 case "CONNECTION_SUCCESS":
                     socketConnection.OnSocketConnected();
-                    if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                    if (!string.Equals(GetCurrentLobbyGameModeName(), "CLASSIC", StringComparison.OrdinalIgnoreCase))
                     {
                         SetCookiePosition();
                     }
@@ -197,8 +197,9 @@ namespace LudoClassicOffline
                 joinTableResponse.data.maxPlayerCount = maxPlayers;
                 signUpResponce.data.numberOfPlayers = maxPlayers;
                 signUpResponce.data.activePlayer = maxPlayers;
+                string currentGameMode = GetCurrentLobbyGameModeName();
 
-                if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("NUMBER"))
+                if (string.Equals(currentGameMode, "NUMBER", StringComparison.OrdinalIgnoreCase))
                 {
                     for (int i = 0; i < 24; i++)
                     {
@@ -238,7 +239,7 @@ namespace LudoClassicOffline
                      //    ludoNumberUiManager.moveShowGameObjectList[i].SetActive(true);
                      //}*/
                 }
-                else if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("DICE"))
+                else if (string.Equals(currentGameMode, "DICE", StringComparison.OrdinalIgnoreCase))
                 {
 
 
@@ -324,13 +325,16 @@ namespace LudoClassicOffline
 
         public void ChangeCukiSeatIndex()
         {
+            string currentGameMode = GetCurrentLobbyGameModeName();
+            bool isClassicMode = string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase);
+
             if (joinTableResponse.data.maxPlayerCount == 4)
             {
                 for (int i = 0; i < ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl.Length; i++)
                 {
                     for (int j = 0; j < 4; j++)
                     {
-                        if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                        if (isClassicMode)
                             ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
                         else
                             ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockie[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
@@ -343,7 +347,7 @@ namespace LudoClassicOffline
                 {
                     for (int j = 0; j < 4; j++)
                     {
-                        if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                        if (isClassicMode)
                             ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
                         else
                             ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockie[j].GetComponent<CoockieMovementOffline>().seatIndex = i;
@@ -355,12 +359,30 @@ namespace LudoClassicOffline
 
                 for (int j = 0; j < 4; j++)
                 {
-                    if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                    if (isClassicMode)
                         ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[2].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovementOffline>().seatIndex = 1;
                     else
                         ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[2].ludoNumbersUserData.playerCoockie[j].GetComponent<CoockieMovementOffline>().seatIndex = 1;
                 }
 
+            }
+        }
+
+        private string GetCurrentLobbyGameModeName()
+        {
+            try
+            {
+                string gameModeName = MGPSDK.MGPGameManager.instance
+                    ?.sdkConfig
+                    ?.data
+                    ?.lobbyData
+                    ?.gameModeName;
+
+                return string.IsNullOrWhiteSpace(gameModeName) ? "CLASSIC" : gameModeName;
+            }
+            catch (Exception)
+            {
+                return "CLASSIC";
             }
         }
 

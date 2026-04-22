@@ -146,34 +146,16 @@ namespace LudoClassicOffline
             // ludoNumbersAcknowledgementHandler.yesBtn.GetComponent<Image>().raycastTarget = false;
             //  ludoNumbersAcknowledgementHandler.noBtn.GetComponent<Image>().raycastTarget = false;
 
-            // Scale board to fill portrait screen — larger on tall phones, fallback for landscape
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
+
+            // The actual play board is landscape-only; lobby/popups remain responsive before entry.
             if (board != null && board.transform.parent != null)
             {
-                float boardScale;
-                if (Screen.height > Screen.width)
-                {
-                    // Portrait: fill ~92% of screen width like Ludo King
-                    // Step 1 — canvas width in canvas units (CanvasScaler ref=1080x1920, match=0.5)
-                    float wScale    = (float)Screen.width  / 1080f;
-                    float hScale    = (float)Screen.height / 1920f;
-                    float canvasScale = Mathf.Lerp(wScale, hScale, 0.5f);
-                    float canvasWidth = Screen.width / canvasScale;
-
-                    // Step 2 — actual board rect width at this moment (before we apply scale)
-                    RectTransform boardRect = board.GetComponent<RectTransform>()
-                                          ?? board.transform.parent.GetComponent<RectTransform>();
-                    float boardNativeWidth = boardRect != null ? boardRect.rect.width : 900f;
-                    if (boardNativeWidth < 100f) boardNativeWidth = 900f; // safety if not laid out yet
-
-                    // Step 3 — scale so board = 92% of canvas width
-                    boardScale = (canvasWidth * 0.92f) / boardNativeWidth;
-                    boardScale = Mathf.Clamp(boardScale, 1.05f, 1.40f);
-                }
-                else
-                {
-                    boardScale = 1.10f; // landscape fallback
-                }
-                board.transform.parent.localScale = new Vector3(boardScale, boardScale, 1f);
+                board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
             }
 
             ludoNumberUiManager.gameManager.gameState = GameState.run;
@@ -484,11 +466,8 @@ namespace LudoClassicOffline
                 if (socketNumberEventReceiver.moveToken.data.isCapturedToken || isTokenReachHome)
                 {
                     isCukiKillNumberMode = true;
-                    extraMove.transform.DOScale(Vector3.one, 0.1f);
-                    socketNumberEventReceiver.Invoke(
-                        nameof(socketNumberEventReceiver.StartUserTurn),
-                        0.7f
-                    );
+                    HideExtraMoveAlert();
+                    socketNumberEventReceiver.StartUserTurn();
                     //  ludoNumberUiManager.Invoke(nameof(ludoNumberUiManager.DisableMyBox), 0.8f);
                     Debug.Log("check 2");
                 }
@@ -505,11 +484,8 @@ namespace LudoClassicOffline
                     || isTokenReachHome
                 )
                 {
-                    extraMove.transform.DOScale(Vector3.one, 0.1f);
-                    socketNumberEventReceiver.Invoke(
-                        nameof(socketNumberEventReceiver.StartUserTurn),
-                        0.7f
-                    );
+                    HideExtraMoveAlert();
+                    socketNumberEventReceiver.StartUserTurn();
                     Debug.Log("check 2");
                 }
                 else
@@ -520,6 +496,18 @@ namespace LudoClassicOffline
             socketNumberEventReceiver.moveToken.data.capturedSeatIndex = -1;
             socketNumberEventReceiver.moveToken.data.capturedTokenIndex = -1;
             tokenMovement = false;
+        }
+
+        private void HideExtraMoveAlert()
+        {
+            if (extraMove == null)
+            {
+                return;
+            }
+
+            extraMove.transform.DOKill();
+            extraMove.transform.localScale = Vector3.zero;
+            extraMove.SetActive(false);
         }
 
         #endregion

@@ -1,4 +1,5 @@
 using DG.Tweening;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
@@ -518,10 +519,13 @@ namespace LudoClassicOffline
         public void PlayerDataSetRejoin(int seatIndex, int refernceIndex)
         {
 
-            Debug.Log("User ID => " + GameManagerOffline.instace.selfUserID);
+            string selfUserId = GameManagerOffline.instace != null
+                ? GameManagerOffline.instace.selfUserID
+                : "0";
+            Debug.Log("User ID => " + selfUserId);
             /*if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("NUMBER"))
                 ludoNumberUiManager.moveLeft.SetActive(true);*/
-            emojiHandler.senderId = GameManagerOffline.instace.selfUserID;
+            emojiHandler.senderId = selfUserId;
             for (int i = 0; i < socketNumberEventReceiver.signUpResponce.data.playerInfo.Count; i++)
             {
                 if (seatIndex == socketNumberEventReceiver.signUpResponce.data.playerInfo[i].seatIndex)
@@ -541,7 +545,7 @@ namespace LudoClassicOffline
                     //myUserId = socketNumberEvnetReceiver.signUpResponce.data.playerInfo[i].userId;
                     //emojiHandler.senderId = ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userId;
                     // ludoNumberUiManager.SpriteLoder(ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userImage, socketNumberEventReceiver.signUpResponce.data.playerInfo[i].avatar);
-                    if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                    if (!string.Equals(GetCurrentLobbyGameModeName(), "CLASSIC", StringComparison.OrdinalIgnoreCase))
                     {
                         Debug.Log("Check");
                         ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.scoreBox.SetActive(true);
@@ -569,7 +573,11 @@ namespace LudoClassicOffline
             emojiHandler.tabelId = socketNumberEventReceiver.signUpResponce.tableId;
             /* if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                  ludoNumberUiManager.moveLeft.SetActive(true);*/
-            emojiHandler.senderId = GameManagerOffline.instace.selfUserID;
+            emojiHandler.senderId = GameManagerOffline.instace != null
+                ? GameManagerOffline.instace.selfUserID
+                : "0";
+            string currentGameMode = GetCurrentLobbyGameModeName();
+            bool isClassicMode = string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase);
             try
             {
 
@@ -595,7 +603,7 @@ namespace LudoClassicOffline
                         SetPlayerSlotVisualState(ludoNumberPlayerControl[refernceIndex], true);
                         Debug.Log("Token On => " + ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockie.Count);
 
-                        if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                        if (!isClassicMode)
                         {
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockie.ForEach((cookie) => cookie.SetActive(true));
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockie.ForEach((cookie) => cookie.transform.SetParent(ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.tokenParent.transform));
@@ -606,10 +614,10 @@ namespace LudoClassicOffline
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.playerCoockieForClassicMode.ForEach((cookie) => cookie.transform.SetParent(ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.tokenParentForClassicMode.transform));
                         }
                         ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.leaveTableImage.SetActive(false);
-                        if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                        if (isClassicMode)
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.smallRoundImage.SetActive(true);
                         //   ludoNumberUiManager.SpriteLoder(ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.userImage, socketNumberEventReceiver.joinTableResponse.data.playerInfo[i].userProfile);
-                        if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                        if (!isClassicMode)
                         {
                             Debug.Log("Not Classic mode =>");
                             ludoNumberPlayerControl[refernceIndex].ludoNumbersUserData.scoreBox.SetActive(true);
@@ -632,6 +640,24 @@ namespace LudoClassicOffline
             for (int i = 0; i < ludoNumberPlayerControl.Length; i++)
             {
                 ludoNumberPlayerControl[i].ludoNumbersUserData.scoreText.text = 0.ToString();
+            }
+        }
+
+        private string GetCurrentLobbyGameModeName()
+        {
+            try
+            {
+                string gameModeName = MGPSDK.MGPGameManager.instance
+                    ?.sdkConfig
+                    ?.data
+                    ?.lobbyData
+                    ?.gameModeName;
+
+                return string.IsNullOrWhiteSpace(gameModeName) ? "CLASSIC" : gameModeName;
+            }
+            catch (Exception)
+            {
+                return "CLASSIC";
             }
         }
 

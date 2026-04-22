@@ -12,6 +12,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
+[ExecuteAlways]
 public class PaymentManager : MonoBehaviour
 {
     public Transform content;
@@ -56,15 +57,27 @@ public class PaymentManager : MonoBehaviour
     private int _paymentMethod = 0;
     private GameObject _upiTab, _cryptoTab;
     private GameObject _extrasRoot;   // holds injected UI — destroyed on disable
+    private Vector2 _lastLayoutCanvasSize = new Vector2(-1f, -1f);
+    private Vector2 _lastLayoutScreenSize = new Vector2(-1f, -1f);
+    private ScreenOrientation _lastLayoutOrientation = ScreenOrientation.Unknown;
+    private bool _lastLayoutPortrait = true;
 
     void OnDisable()
     {
-        if (_extrasRoot != null) { Destroy(_extrasRoot); _extrasRoot = null; }
+        if (_extrasRoot != null) { RemoveGeneratedObject(_extrasRoot); _extrasRoot = null; }
         _upiTab = null; _cryptoTab = null;
     }
 
     async void OnEnable()
     {
+#if UNITY_EDITOR
+        if (!Application.isPlaying)
+        {
+            ApplyDirectSkin();
+            ApplyResponsiveAddCashLayout();
+            return;
+        }
+#endif
 #if UNITY_WEBGL
         USDT_AUTO.SetActive(false);
 #endif
@@ -75,38 +88,33 @@ public class PaymentManager : MonoBehaviour
         ApplyResponsiveAddCashLayout();
     }
 
+    void Update()
+    {
+        if (!gameObject.activeInHierarchy) return;
+
+        Canvas canvas = GetComponentInParent<Canvas>();
+        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+        Vector2 canvasSize = canvasRect != null
+            ? new Vector2(canvasRect.rect.width, canvasRect.rect.height)
+            : new Vector2(Screen.width, Screen.height);
+        Vector2 screenSize = new Vector2(Screen.width, Screen.height);
+        bool portrait = IsPortraitLayout(canvasSize);
+
+        if (Vector2.SqrMagnitude(canvasSize - _lastLayoutCanvasSize) < 0.25f
+            && Vector2.SqrMagnitude(screenSize - _lastLayoutScreenSize) < 0.25f
+            && Screen.orientation == _lastLayoutOrientation
+            && portrait == _lastLayoutPortrait)
+        {
+            return;
+        }
+
+        ApplyResponsiveAddCashLayout();
+    }
+
     private void ApplyDirectSkin()
     {
-        Image rootImg = GetComponent<Image>();
-        if (rootImg != null)
-        {
-            rootImg.sprite = null;
-            rootImg.type = Image.Type.Simple;
-            rootImg.color = new Color32(44, 8, 16, 245);
-        }
-
-        foreach (Image img in GetComponentsInChildren<Image>(true))
-        {
-            if (img == null) continue;
-            // Skip close/X buttons and small icons by name
-            string n = img.gameObject.name.ToLowerInvariant();
-            if (n.Contains("close") || n.Contains("exit") || n.Contains("btn")
-                || n.Contains("button") || n.Contains("icon") || n.Contains("logo")
-                || n.Contains("chip") || n.Contains("coin") || n.Contains("toggle")) continue;
-            // Skip small images
-            RectTransform rt = img.rectTransform;
-            float w = rt != null ? Mathf.Abs(rt.rect.width)  : 0f;
-            float h = rt != null ? Mathf.Abs(rt.rect.height) : 0f;
-            if (w < 100f || h < 100f) continue;
-
-            Color c = img.color;
-            if (c.r > 0.85f && c.g > 0.85f && c.b > 0.85f && c.a > 0.5f)
-                img.color = new Color32(44, 8, 16, 245);
-        }
-
-        if (backgroundImages != null)
-            foreach (var img in backgroundImages)
-                if (img != null) img.color = new Color32(44, 8, 16, 245);
+        // Add Cash visuals are authored in CanvasMain/ADD Chip. Do not recolor
+        // scene images at runtime, otherwise Play Mode diverges from hierarchy.
     }
 
     // ── Inject Bank/UPI + Crypto toggle and preset amounts ─────────────────────
@@ -339,14 +347,6 @@ public class PaymentManager : MonoBehaviour
 
     public void DefaultSet()
     {
-        if (selectedAddcash != null)           selectedAddcash.SetActive(true);
-        if (selectedRecentTransaction != null) selectedRecentTransaction.SetActive(false);
-
-        StyleTab(selectedAddcash,           active: true);
-        StyleTab(selectedRecentTransaction, active: false);
-
-        ClickAddCashButton();
-
         if (manual_ss_img != null)
         {
             manual_ss_img.sprite = UploadScreenshort;
@@ -365,13 +365,25 @@ public class PaymentManager : MonoBehaviour
             custom.text = "";
         }
 
-        ApplyResponsiveAddCashLayout();
+        ShowMainAddCashPanel();
     }
 
     #region Add Chips
 
-    public async void ClickAddCashButton()
+    public void ClickAddCashButton()
     {
+        ShowMainAddCashPanel();
+    }
+
+    private void ShowMainAddCashPanel()
+    {
+        transform.SetAsLastSibling();
+        HidePaymentFlowPanels();
+
+        RectTransform automatic = FindDirectChild(transform, "Automatic");
+        if (automatic != null)
+            automatic.gameObject.SetActive(true);
+
         foreach (var obj in transaction_panel_obj)
         {
             if (obj != null)
@@ -387,6 +399,54 @@ public class PaymentManager : MonoBehaviour
             }
         }
 
+        if (selectedAddcash != null)
+            selectedAddcash.SetActive(true);
+        if (selectedRecentTransaction != null)
+            selectedRecentTransaction.SetActive(false);
+
+        StyleTab(selectedAddcash, active: true);
+        StyleTab(selectedRecentTransaction, active: false);
+
+        if (finalpanel != null)
+            finalpanel.SetActive(false);
+
+        ApplyResponsiveAddCashLayout();
+        BindPresetAmountButtons();
+    }
+
+    private void HidePaymentFlowPanels()
+    {
+        if (dialogue != null)
+            dialogue.SetActive(false);
+        if (manual_panel != null)
+            manual_panel.SetActive(false);
+
+        GameObject usdtAuto = ResolveUsdtAutoPanel();
+        if (usdtAuto != null)
+            usdtAuto.SetActive(false);
+
+        RectTransform usdtManual = FindDirectChild(transform, "USDT-Manual");
+        if (usdtManual != null)
+            usdtManual.gameObject.SetActive(false);
+    }
+
+    private GameObject ResolveUsdtAutoPanel()
+    {
+        RectTransform directPanel = FindDirectChild(transform, "USDT Auto");
+        if (directPanel != null)
+            return directPanel.gameObject;
+
+        return USDT_AUTO;
+    }
+
+    private void ShowPaymentOptionsPanel()
+    {
+        if (dialogue == null) return;
+
+        HidePaymentFlowPanels();
+        dialogue.SetActive(true);
+        dialogue.transform.SetAsLastSibling();
+        transform.SetAsLastSibling();
         ApplyResponsiveAddCashLayout();
     }
 
@@ -395,49 +455,732 @@ public class PaymentManager : MonoBehaviour
         RectTransform root = transform as RectTransform;
         Canvas canvas = GetComponentInParent<Canvas>();
         RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
-        Rect bounds = canvasRect != null ? canvasRect.rect : new Rect(0f, 0f, Screen.width, Screen.height);
-        bool portrait = bounds.height >= bounds.width;
+        Vector2 canvasSize = canvasRect != null && canvasRect.rect.width > 0f && canvasRect.rect.height > 0f
+            ? new Vector2(canvasRect.rect.width, canvasRect.rect.height)
+            : new Vector2(Screen.width, Screen.height);
+        bool portrait = IsPortraitLayout(canvasSize);
 
+        _lastLayoutCanvasSize = canvasSize;
+        _lastLayoutScreenSize = new Vector2(Screen.width, Screen.height);
+        _lastLayoutOrientation = Screen.orientation;
+        _lastLayoutPortrait = portrait;
+
+        // Always write the active orientation layout. Otherwise a previous
+        // landscape rect can remain on the object when the view returns portrait.
         if (root != null)
         {
+            Rect bounds = GetLayoutBounds(new Rect(0f, 0f, canvasSize.x, canvasSize.y), portrait);
+            float rootWidth = portrait
+                ? Mathf.Min(980f, bounds.width * 0.92f)
+                : Mathf.Min(1540f, bounds.width * 0.92f);
+            float rootHeight = portrait
+                ? Mathf.Min(1420f, bounds.height * 0.82f)
+                : Mathf.Min(900f, bounds.height * 0.90f);
+
             root.anchorMin = new Vector2(0.5f, 0.5f);
             root.anchorMax = new Vector2(0.5f, 0.5f);
             root.pivot = new Vector2(0.5f, 0.5f);
             root.anchoredPosition = Vector2.zero;
             root.localScale = Vector3.one;
-            root.sizeDelta = portrait ? new Vector2(980f, 1420f) : new Vector2(1540f, 900f);
+            root.sizeDelta = new Vector2(rootWidth, rootHeight);
+
+            LayoutAddCashRoot(rootWidth, rootHeight, portrait);
+            LayoutPaymentFlowPanels(rootWidth, rootHeight, portrait);
         }
 
-        if (_extrasRoot != null)
+        ApplyInputReadability(transform);
+        ApplyCustomAmountInputReadability();
+    }
+
+    private bool IsPortraitLayout(Vector2 canvasSize)
+    {
+        if (canvasSize.x > 1f && canvasSize.y > 1f && Mathf.Abs(canvasSize.y - canvasSize.x) > 1f)
+            return canvasSize.y > canvasSize.x;
+
+        if (Screen.width > 1 && Screen.height > 1 && Mathf.Abs(Screen.height - Screen.width) > 1)
+            return Screen.height > Screen.width;
+
+        Rect safeArea = Screen.safeArea;
+        if (safeArea.width > 1f && safeArea.height > 1f && Mathf.Abs(safeArea.height - safeArea.width) > 1f)
+            return safeArea.height > safeArea.width;
+
+        bool orientationLandscape = Screen.orientation == ScreenOrientation.LandscapeLeft
+            || Screen.orientation == ScreenOrientation.LandscapeRight;
+        bool orientationPortrait = Screen.orientation == ScreenOrientation.Portrait
+            || Screen.orientation == ScreenOrientation.PortraitUpsideDown;
+
+        if (orientationPortrait)
+            return true;
+        if (orientationLandscape)
+            return false;
+
+        bool devicePortrait = Input.deviceOrientation == DeviceOrientation.Portrait
+            || Input.deviceOrientation == DeviceOrientation.PortraitUpsideDown;
+        if (devicePortrait)
+            return true;
+
+        bool deviceLandscape = Input.deviceOrientation == DeviceOrientation.LandscapeLeft
+            || Input.deviceOrientation == DeviceOrientation.LandscapeRight;
+        if (deviceLandscape)
+            return false;
+
+        return true;
+    }
+
+    private static Rect GetLayoutBounds(Rect rawBounds, bool portrait)
+    {
+        float width = Mathf.Abs(rawBounds.width);
+        float height = Mathf.Abs(rawBounds.height);
+
+        if (!portrait && height > width)
         {
-            RectTransform extrasRect = _extrasRoot.transform as RectTransform;
-            if (extrasRect != null)
-            {
-                extrasRect.anchorMin = portrait ? new Vector2(0.04f, 0.05f) : new Vector2(0.02f, 0.04f);
-                extrasRect.anchorMax = portrait ? new Vector2(0.96f, 0.82f) : new Vector2(0.98f, 0.82f);
-                extrasRect.offsetMin = Vector2.zero;
-                extrasRect.offsetMax = Vector2.zero;
-            }
-
-            VerticalLayoutGroup extrasLayout = _extrasRoot.GetComponent<VerticalLayoutGroup>();
-            if (extrasLayout != null)
-            {
-                extrasLayout.spacing = portrait ? 18f : 14f;
-                extrasLayout.padding = portrait ? new RectOffset(18, 18, 18, 18) : new RectOffset(12, 12, 12, 12);
-            }
+            float temp = width;
+            width = height;
+            height = temp;
         }
 
-        ApplyAddCashInnerPanelLayout(portrait);
-        StylePopupTexts(transform, portrait ? 32 : 26, portrait ? 36 : 30);
-        StylePopupInputs(transform, portrait ? 42 : 34, portrait ? 108f : 82f);
-        StylePopupButtons(transform, portrait ? 34 : 28, portrait ? 92f : 72f);
-        StylePopupScrollRects(transform, portrait ? 920f : 1280f);
-
-        if (root != null)
+        if (portrait && width > height)
         {
-            Canvas.ForceUpdateCanvases();
-            LayoutRebuilder.ForceRebuildLayoutImmediate(root);
+            float temp = width;
+            width = height;
+            height = temp;
         }
+
+        return new Rect(0f, 0f, width, height);
+    }
+
+    private void LayoutAddCashRoot(float rootWidth, float rootHeight, bool portrait)
+    {
+        RectTransform panelBg = FindDirectChild(transform, "panel-bg");
+        StretchToParent(panelBg);
+
+        RectTransform automatic = FindDirectChild(transform, "Automatic");
+        StretchToParent(automatic);
+
+        RectTransform close = FindDeepChild(transform, "close") as RectTransform;
+        SetTopRight(close, new Vector2(portrait ? 58f : 64f, portrait ? 58f : 64f), new Vector2(36f, -36f));
+
+        RectTransform title = FindDirectTextChild(automatic, "Add Cash");
+        SetTopCenter(title, new Vector2(rootWidth * 0.55f, portrait ? 58f : 62f), new Vector2(0f, portrait ? -58f : -52f));
+        ConfigureAnyText(title, portrait ? 34f : 38f, Color.white, true);
+
+        RectTransform tabs = FindDirectChild(automatic, "bbtn");
+        float tabWidth = portrait ? Mathf.Clamp(rootWidth * 0.2f, 145f, 180f) : Mathf.Clamp(rootWidth * 0.18f, 170f, 230f);
+        float tabTop = portrait ? -135f : -145f;
+        SetLeftStretch(tabs, tabWidth, new Vector2(24f, tabTop), rootHeight - 190f);
+        LayoutAddCashTabs(tabs, tabWidth, portrait);
+
+        float sideMargin = portrait ? 28f : 34f;
+        float gutter = portrait ? 18f : 26f;
+        float contentX = sideMargin + tabWidth + gutter;
+        float contentWidth = rootWidth - sideMargin * 2f - tabWidth - gutter;
+        float contentHeight = rootHeight - (portrait ? 175f : 155f);
+
+        RectTransform details = FindDeepChild(automatic, "AddCashDetails") as RectTransform;
+        SetTopLeft(details, new Vector2(contentWidth, contentHeight), new Vector2(contentX, portrait ? -128f : -120f));
+        LayoutAutomaticAddCashDetails(details, contentWidth, contentHeight, portrait);
+
+        RectTransform recent = FindDeepChild(automatic, "Recent Transaction") as RectTransform;
+        SetTopLeft(recent, new Vector2(contentWidth, contentHeight), new Vector2(contentX, portrait ? -128f : -120f));
+    }
+
+    private void LayoutPaymentFlowPanels(float rootWidth, float rootHeight, bool portrait)
+    {
+        LayoutPaymentOptionDialog(rootWidth, rootHeight, portrait);
+        LayoutManualPaymentPanel("Manual", rootWidth, rootHeight, portrait);
+        LayoutManualPaymentPanel("USDT Auto", rootWidth, rootHeight, portrait);
+        LayoutManualPaymentPanel("USDT-Manual", rootWidth, rootHeight, portrait);
+    }
+
+    private void LayoutPaymentOptionDialog(float rootWidth, float rootHeight, bool portrait)
+    {
+        RectTransform dialog = FindDirectChild(transform, "Dialogue");
+        if (dialog == null) return;
+
+        StretchToParent(dialog);
+        Image dialogImage = dialog.GetComponent<Image>();
+        if (dialogImage != null)
+            dialogImage.color = Color.clear;
+
+        RectTransform table = FindDirectChild(dialog, "Table-Bg");
+        StretchToParent(table);
+        ApplyPopupBackground(table);
+
+        RectTransform close = FindDirectChild(table, "close");
+        SetTopRight(close, new Vector2(portrait ? 58f : 64f, portrait ? 58f : 64f), new Vector2(28f, -28f));
+
+        RectTransform title = FindDirectChild(table, "Text (TMP)");
+        SetTopCenter(title, new Vector2(rootWidth * 0.75f, portrait ? 62f : 70f), new Vector2(0f, portrait ? -42f : -34f));
+        ConfigureAnyText(title, portrait ? 34f : 38f, Color.white, true);
+
+        float buttonWidth = Mathf.Min(rootWidth * (portrait ? 0.72f : 0.46f), portrait ? 560f : 620f);
+        float buttonHeight = portrait ? 86f : 82f;
+        float spacing = portrait ? 18f : 14f;
+        float totalHeight = buttonHeight * 4f + spacing * 3f;
+        float firstY = totalHeight * 0.5f - buttonHeight * 0.5f;
+        int index = 0;
+
+        for (int i = 0; i < table.childCount; i++)
+        {
+            RectTransform option = table.GetChild(i) as RectTransform;
+            if (option == null || option.name != "unselected") continue;
+
+            SetCentered(option, new Vector2(buttonWidth, buttonHeight), new Vector2(0f, firstY - index * (buttonHeight + spacing)));
+            ApplyButtonBackground(option);
+            ConfigureAnyText(option, portrait ? 25f : 30f, Color.white, true);
+            index++;
+        }
+    }
+
+    private void LayoutManualPaymentPanel(string panelName, float rootWidth, float rootHeight, bool portrait)
+    {
+        RectTransform panel = FindDirectChild(transform, panelName);
+        if (panel == null) return;
+
+        StretchToParent(panel);
+        Image panelImage = panel.GetComponent<Image>();
+        if (panelImage != null)
+        {
+            Color color = panelImage.color;
+            color.a = 0f;
+            panelImage.color = color;
+        }
+
+        RectTransform bg = FindDirectChild(panel, "Table-Bg");
+        if (bg == null)
+            bg = FindDirectChild(panel, "BG");
+        if (bg == null) return;
+
+        StretchToParent(bg);
+        ApplyPopupBackground(bg);
+
+        RectTransform close = FindDirectChild(bg, "close") ?? FindDirectChild(bg, "Cancel");
+        SetTopRight(close, new Vector2(portrait ? 58f : 64f, portrait ? 58f : 64f), new Vector2(28f, -28f));
+
+        RectTransform heading = FindDirectChild(bg, "History");
+        SetTopCenter(heading, new Vector2(rootWidth * 0.72f, portrait ? 62f : 70f), new Vector2(0f, portrait ? -42f : -34f));
+        ConfigureAnyText(heading, portrait ? 32f : 38f, Color.white, true);
+
+        RectTransform title = FindDirectChild(bg, "Title");
+        SetTopCenter(title, new Vector2(rootWidth * 0.82f, 52f), new Vector2(0f, portrait ? -132f : -112f));
+        ConfigureAnyText(title, portrait ? 24f : 30f, new Color32(255, 180, 40, 255), false);
+
+        bool usdtAuto = panelName == "USDT Auto";
+        bool usdtManual = panelName == "USDT-Manual";
+        float inputWidth = portrait ? rootWidth * 0.72f : rootWidth * 0.42f;
+        float inputHeight = portrait ? 78f : 76f;
+        float leftX = portrait ? 0f : -rootWidth * 0.2f;
+        float inputY = portrait ? -205f : -185f;
+
+        RectTransform amountInput = FindDirectChild(bg, "Enter Amount");
+        SetTopCenter(amountInput, new Vector2(inputWidth, inputHeight), new Vector2(leftX, inputY));
+        ConfigureInput(amountInput, portrait ? 26f : 30f);
+
+        RectTransform utrInput = FindDirectChild(bg, "homepage-input-field") ?? FindDirectChild(bg, "Enter UTR");
+        SetTopCenter(utrInput, new Vector2(inputWidth, inputHeight), new Vector2(leftX, inputY - (portrait ? 96f : 90f)));
+        ConfigureInput(utrInput, portrait ? 26f : 30f);
+
+        RectTransform submit = FindDirectChild(bg, "submit") ?? FindDirectChild(bg, "Submit Button") ?? FindDirectChild(bg, "UPI");
+        SetTopCenter(submit, new Vector2(portrait ? 280f : 330f, portrait ? 82f : 86f), new Vector2(leftX, inputY - (portrait ? 204f : 188f)));
+        ApplyButtonBackground(submit);
+        ConfigureAnyText(submit, portrait ? 26f : 30f, Color.white, true);
+
+        RectTransform scanner = FindDirectChild(bg, "Scanner");
+        float scannerEdge = portrait ? Mathf.Clamp(rootWidth * 0.3f, 150f, 260f) : Mathf.Clamp(rootHeight * 0.34f, 170f, 260f);
+        Vector2 scannerSize = new Vector2(scannerEdge, scannerEdge);
+        Vector2 scannerPos = portrait
+            ? new Vector2(-rootWidth * 0.16f, inputY - 265f)
+            : new Vector2(rootWidth * 0.25f, -rootHeight * 0.08f);
+        SetTopCenter(scanner, scannerSize, scannerPos);
+        LayoutScannerChildren(scanner, portrait);
+
+        RectTransform upload = FindDirectChild(bg, "upload-ss") ?? FindDirectChild(bg, "SS_Image");
+        if (upload != null)
+        {
+            float uploadEdge = portrait ? Mathf.Clamp(rootWidth * 0.25f, 135f, 230f) : Mathf.Clamp(rootHeight * 0.26f, 150f, 230f);
+            Vector2 uploadSize = new Vector2(uploadEdge, uploadEdge);
+            Vector2 uploadPos = portrait
+                ? new Vector2(rootWidth * 0.18f, inputY - 265f)
+                : new Vector2(-rootWidth * 0.25f, -rootHeight * 0.08f);
+            SetTopCenter(upload, uploadSize, uploadPos);
+            ConfigureAnyText(upload, portrait ? 20f : 24f, Color.white, false);
+
+            RectTransform uploadLogo = FindDirectChild(upload, "logo") ?? FindDirectChild(upload, "Image");
+            SetCentered(uploadLogo, uploadSize * 0.45f, Vector2.zero);
+        }
+
+        if (usdtAuto || usdtManual)
+        {
+            RectTransform amount = FindDirectChild(bg, "Enter Amount");
+            if (amount != null && amount.gameObject.activeSelf)
+                ConfigureInput(amount, portrait ? 26f : 30f);
+        }
+    }
+
+    private void LayoutScannerChildren(RectTransform scanner, bool portrait)
+    {
+        if (scanner == null) return;
+
+        RectTransform qrImage = FindDirectChild(scanner, "QR_Code_Image");
+        if (qrImage != null)
+        {
+            qrImage.anchorMin = Vector2.zero;
+            qrImage.anchorMax = Vector2.one;
+            qrImage.offsetMin = new Vector2(10f, 10f);
+            qrImage.offsetMax = new Vector2(-10f, -10f);
+        }
+
+        RectTransform payHere = FindDirectChild(scanner, "PayHere");
+        if (payHere != null)
+        {
+            SetTopCenter(payHere, new Vector2(scanner.rect.width * 1.5f, portrait ? 90f : 76f), new Vector2(0f, -scanner.rect.height - 14f));
+            ConfigureAnyText(payHere, portrait ? 20f : 24f, Color.white, false);
+        }
+    }
+
+    private void LayoutAddCashTabs(RectTransform tabs, float tabWidth, bool portrait)
+    {
+        if (tabs == null) return;
+
+        float tabHeight = portrait ? 84f : 92f;
+        float fontSize = portrait ? 24f : 30f;
+        int visibleIndex = 0;
+
+        for (int i = 0; i < tabs.childCount; i++)
+        {
+            RectTransform tab = tabs.GetChild(i) as RectTransform;
+            if (tab == null || !tab.gameObject.activeSelf) continue;
+
+            SetTopLeft(tab, new Vector2(tabWidth, tabHeight), new Vector2(0f, -visibleIndex * tabHeight));
+            ConfigureAnyText(tab, fontSize, Color.white, true);
+            visibleIndex++;
+        }
+    }
+
+    private void LayoutAutomaticAddCashDetails(RectTransform details, float width, float height, bool portrait)
+    {
+        if (details == null) return;
+
+        float rowWidth = width;
+        float chipTop = portrait ? -105f : -100f;
+        float inputTop = portrait ? -300f : -285f;
+        float inputHeight = portrait ? 78f : 82f;
+        float finalHeight = portrait ? 220f : 205f;
+
+        RectTransform selectLabel = FindDeepChild(details, "Add_Money") as RectTransform;
+        SetTopCenter(selectLabel, new Vector2(rowWidth, portrait ? 56f : 64f), new Vector2(0f, portrait ? -20f : -18f));
+        ConfigureAnyText(selectLabel, portrait ? 28f : 34f, Color.white, false);
+
+        RectTransform scrollView = FindDirectChild(details, "Scroll View");
+        SetTopCenter(scrollView, new Vector2(rowWidth, portrait ? 105f : 110f), new Vector2(0f, chipTop));
+        ConfigureAmountScroll(scrollView, rowWidth, portrait);
+
+        RectTransform customLabel = FindDirectChild(details, "Custom");
+        SetTopCenter(customLabel, new Vector2(rowWidth, 48f), new Vector2(0f, inputTop + 62f));
+        ConfigureAnyText(customLabel, portrait ? 25f : 30f, new Color32(235, 120, 135, 255), true);
+
+        RectTransform input = FindDirectChild(details, "homepage-input-field");
+        float addButtonWidth = portrait ? Mathf.Clamp(width * 0.23f, 150f, 190f) : Mathf.Clamp(width * 0.18f, 160f, 210f);
+        float inputWidth = width - addButtonWidth - 12f;
+        SetTopLeft(input, new Vector2(inputWidth, inputHeight), new Vector2(0f, inputTop));
+        ConfigureInput(input, portrait ? 28f : 34f);
+
+        RectTransform addButton = FindDirectChild(details, "add-button");
+        SetTopLeft(addButton, new Vector2(addButtonWidth, inputHeight), new Vector2(inputWidth + 12f, inputTop));
+        ConfigureAnyText(addButton, portrait ? 27f : 32f, Color.white, true);
+
+        RectTransform panel = finalpanel != null ? finalpanel.transform as RectTransform : FindDirectChild(details, "Panel");
+        SetBottomStretch(panel, width, finalHeight, Vector2.zero);
+        LayoutConfirmationPanel(panel, width, finalHeight, portrait);
+    }
+
+    private void ConfigureAmountScroll(RectTransform scrollView, float width, bool portrait)
+    {
+        if (scrollView == null) return;
+
+        ScrollRect scroll = scrollView.GetComponent<ScrollRect>();
+        if (scroll != null)
+        {
+            scroll.horizontal = true;
+            scroll.vertical = false;
+            scroll.movementType = ScrollRect.MovementType.Clamped;
+            scroll.scrollSensitivity = 55f;
+        }
+
+        RectTransform viewport = FindDirectChild(scrollView, "Viewport");
+        if (viewport != null)
+        {
+            viewport.anchorMin = Vector2.zero;
+            viewport.anchorMax = Vector2.one;
+            viewport.offsetMin = Vector2.zero;
+            viewport.offsetMax = Vector2.zero;
+        }
+
+        LayoutChipList(width, portrait);
+    }
+
+    private static void StretchToParent(RectTransform rect)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.one;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetTopRight(RectTransform rect, Vector2 size, Vector2 offset)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(1f, 1f);
+        rect.anchorMax = new Vector2(1f, 1f);
+        rect.pivot = new Vector2(1f, 1f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = size;
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetTopCenter(RectTransform rect, Vector2 size, Vector2 offset)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = size;
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetTopLeft(RectTransform rect, Vector2 size, Vector2 offset)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = size;
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetCentered(RectTransform rect, Vector2 size, Vector2 offset)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = size;
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetLeftStretch(RectTransform rect, float width, Vector2 offset, float height)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0f, 1f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = new Vector2(width, height);
+        rect.localScale = Vector3.one;
+    }
+
+    private static void SetBottomStretch(RectTransform rect, float width, float height, Vector2 offset)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0.5f, 0f);
+        rect.anchorMax = new Vector2(0.5f, 0f);
+        rect.pivot = new Vector2(0.5f, 0f);
+        rect.anchoredPosition = offset;
+        rect.sizeDelta = new Vector2(width, height);
+        rect.localScale = Vector3.one;
+    }
+
+    private static void ConfigureAnyText(RectTransform root, float fontSize, Color color, bool noWrap)
+    {
+        if (root == null) return;
+
+        foreach (Text text in root.GetComponentsInChildren<Text>(true))
+        {
+            if (text == null) continue;
+            text.fontSize = Mathf.RoundToInt(fontSize);
+            text.color = color;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.horizontalOverflow = noWrap ? HorizontalWrapMode.Overflow : HorizontalWrapMode.Wrap;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.resizeTextForBestFit = false;
+        }
+
+        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
+        {
+            if (text == null) continue;
+            text.enableAutoSizing = false;
+            text.fontSize = fontSize;
+            text.color = color;
+            text.alignment = TextAlignmentOptions.Center;
+            text.textWrappingMode = noWrap ? TextWrappingModes.NoWrap : TextWrappingModes.Normal;
+            text.overflowMode = TextOverflowModes.Overflow;
+        }
+    }
+
+    private static void ConfigureInput(RectTransform inputRect, float fontSize)
+    {
+        if (inputRect == null) return;
+
+        TMP_InputField input = inputRect.GetComponent<TMP_InputField>();
+        if (input == null) return;
+
+        bool lightBackground = IsLightInputBackground(inputRect);
+        Color textColor = lightBackground ? Color.black : Color.white;
+        Color placeholderColor = lightBackground
+            ? new Color32(80, 35, 45, 190)
+            : new Color32(230, 150, 160, 190);
+
+        if (input.textComponent != null)
+        {
+            input.textComponent.enableAutoSizing = false;
+            input.textComponent.fontSize = fontSize;
+            input.textComponent.color = textColor;
+            input.textComponent.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+
+        input.caretColor = textColor;
+        input.selectionColor = lightBackground
+            ? new Color32(40, 40, 40, 90)
+            : new Color32(255, 255, 255, 90);
+
+        TMP_Text placeholder = input.placeholder as TMP_Text;
+        if (placeholder != null)
+        {
+            placeholder.enableAutoSizing = false;
+            placeholder.fontSize = Mathf.Max(20f, fontSize - 3f);
+            placeholder.color = placeholderColor;
+            placeholder.alignment = TextAlignmentOptions.MidlineLeft;
+        }
+    }
+
+    private static void ApplyInputReadability(Transform root)
+    {
+        if (root == null) return;
+
+        foreach (TMP_InputField input in root.GetComponentsInChildren<TMP_InputField>(true))
+        {
+            RectTransform inputRect = input.transform as RectTransform;
+            bool lightBackground = IsLightInputBackground(inputRect);
+            Color textColor = lightBackground ? Color.black : Color.white;
+
+            if (input.textComponent != null)
+                input.textComponent.color = textColor;
+
+            input.caretColor = textColor;
+            input.selectionColor = lightBackground
+                ? new Color32(40, 40, 40, 90)
+                : new Color32(255, 255, 255, 90);
+
+            TMP_Text placeholder = input.placeholder as TMP_Text;
+            if (placeholder != null)
+            {
+                placeholder.color = lightBackground
+                    ? new Color32(80, 35, 45, 190)
+                    : new Color32(230, 150, 160, 190);
+            }
+        }
+    }
+
+    private static bool IsLightInputBackground(RectTransform inputRect)
+    {
+        Image image = inputRect.GetComponent<Image>();
+        if (image == null)
+            return false;
+
+        Color color = image.color;
+        float brightness = (color.r * 0.299f) + (color.g * 0.587f) + (color.b * 0.114f);
+        return color.a > 0.2f && brightness > 0.65f;
+    }
+
+    private void ApplyCustomAmountInputReadability()
+    {
+        if (custom == null) return;
+
+        if (custom.textComponent != null)
+            custom.textComponent.color = Color.white;
+
+        custom.caretColor = Color.white;
+        custom.selectionColor = new Color32(255, 255, 255, 90);
+
+        TMP_Text placeholder = custom.placeholder as TMP_Text;
+        if (placeholder != null)
+            placeholder.color = new Color32(230, 150, 160, 190);
+    }
+
+    private void BindPresetAmountButtons()
+    {
+        Transform searchRoot = content != null ? content : transform;
+        foreach (Button button in searchRoot.GetComponentsInChildren<Button>(true))
+        {
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label == null) continue;
+
+            string amount = label.text.Trim();
+            int parsedAmount;
+            if (!int.TryParse(amount, out parsedAmount))
+                continue;
+
+            button.onClick.RemoveAllListeners();
+            string capturedAmount = amount;
+            button.onClick.AddListener(() => SelectPresetAmount(capturedAmount, capturedAmount, capturedAmount));
+        }
+    }
+
+    private void SelectPresetAmount(string id, string amount, string coin)
+    {
+        if (custom != null)
+            custom.text = amount;
+
+        PlaceOrder(id, amount, coin);
+        ApplyCustomAmountInputReadability();
+    }
+
+    private void ApplyPopupBackground(RectTransform rect)
+    {
+        if (rect == null) return;
+
+        Image image = rect.GetComponent<Image>();
+        if (image == null) return;
+
+        bool hasAuthoredSprite = image.sprite != null;
+        Sprite popupSprite = !hasAuthoredSprite ? ResolvePopupSprite() : null;
+        if (!hasAuthoredSprite && popupSprite != null)
+        {
+            image.sprite = popupSprite;
+            image.color = Color.white;
+        }
+
+        image.type = Image.Type.Sliced;
+    }
+
+    private void ApplyButtonBackground(RectTransform rect)
+    {
+        if (rect == null) return;
+
+        Image image = rect.GetComponent<Image>();
+        if (image != null)
+        {
+            Sprite buttonSprite = ResolveButtonSprite();
+            if (buttonSprite != null)
+                image.sprite = buttonSprite;
+            image.type = Image.Type.Sliced;
+            image.color = Color.white;
+        }
+    }
+
+    private Sprite ResolveButtonSprite()
+    {
+        if (amountBtnSprite != null)
+            return amountBtnSprite;
+
+        RectTransform addButton = FindDeepChild(transform, "add-button") as RectTransform;
+        Image image = addButton != null ? addButton.GetComponent<Image>() : null;
+        return image != null ? image.sprite : null;
+    }
+
+    private Sprite ResolvePopupSprite()
+    {
+        if (popupBgSprite != null)
+            return popupBgSprite;
+
+        RectTransform panelBg = FindDirectChild(transform, "panel-bg");
+        Image image = panelBg != null ? panelBg.GetComponent<Image>() : null;
+        return image != null ? image.sprite : null;
+    }
+
+    private void LayoutChipList(float visibleWidth, bool portrait)
+    {
+        RectTransform contentRect = content as RectTransform;
+        if (contentRect == null) return;
+
+        float buttonWidth = portrait ? Mathf.Clamp((visibleWidth - 32f) / 3f, 142f, 190f) : 160f;
+        float buttonHeight = portrait ? 70f : 78f;
+        float gap = portrait ? 12f : 16f;
+        float x = buttonWidth * 0.5f;
+
+        contentRect.anchorMin = new Vector2(0f, 0.5f);
+        contentRect.anchorMax = new Vector2(0f, 0.5f);
+        contentRect.pivot = new Vector2(0f, 0.5f);
+        contentRect.anchoredPosition = Vector2.zero;
+        contentRect.sizeDelta = new Vector2(Mathf.Max(visibleWidth, content.childCount * (buttonWidth + gap)), buttonHeight);
+
+        HorizontalLayoutGroup horizontal = contentRect.GetComponent<HorizontalLayoutGroup>();
+        if (horizontal != null)
+        {
+            horizontal.enabled = false;
+        }
+
+        for (int i = 0; i < content.childCount; i++)
+        {
+            RectTransform child = content.GetChild(i) as RectTransform;
+            if (child == null) continue;
+
+            child.anchorMin = new Vector2(0f, 0.5f);
+            child.anchorMax = new Vector2(0f, 0.5f);
+            child.pivot = new Vector2(0.5f, 0.5f);
+            child.anchoredPosition = new Vector2(x + i * (buttonWidth + gap), 0f);
+            child.sizeDelta = new Vector2(buttonWidth, buttonHeight);
+            child.localScale = Vector3.one;
+
+            ChipUI chipUI = child.GetComponent<ChipUI>();
+            ConfigureChipButton(chipUI, portrait ? 30f : 32f);
+        }
+    }
+
+    private void LayoutConfirmationPanel(RectTransform panel, float width, float height, bool portrait)
+    {
+        if (panel == null) return;
+
+        RectTransform final = FindDirectChild(panel, "Final");
+        StretchToParent(final);
+
+        float labelFont = portrait ? 23f : 26f;
+        float valueFont = portrait ? 28f : 30f;
+        float buttonFont = portrait ? 27f : 30f;
+        float topY = -16f;
+        float valueY = -58f;
+        float buttonY = -132f;
+
+        SetTopLeft(FindDirectChild(final, "Text (TMP) (1)"), new Vector2(width * 0.25f, 38f), new Vector2(0f, topY));
+        SetTopLeft(FindDirectChild(final, "Text (TMP) (2)"), new Vector2(width * 0.18f, 38f), new Vector2(width * 0.25f, topY));
+        SetTopLeft(FindDirectChild(final, "Text (TMP) (3)"), new Vector2(width * 0.07f, 38f), new Vector2(width * 0.43f, valueY));
+        SetTopLeft(FindDirectChild(final, "Text (TMP) (4)"), new Vector2(width * 0.25f, 38f), new Vector2(width * 0.5f, topY));
+        ConfigureAnyText(final, labelFont, new Color32(210, 170, 20, 255), true);
+
+        RectTransform principalBox = FindDirectChild(final, "Principal");
+        SetTopLeft(principalBox, new Vector2(width * 0.43f, 62f), new Vector2(0f, valueY));
+
+        RectTransform newBox = FindDirectChild(final, "New");
+        SetTopLeft(newBox, new Vector2(width * 0.25f, 62f), new Vector2(width * 0.5f, valueY));
+
+        SetTopLeft(principal != null ? principal.transform as RectTransform : null, new Vector2(width * 0.17f, 62f), new Vector2(width * 0.03f, 0f));
+        SetTopLeft(bonus != null ? bonus.transform as RectTransform : null, new Vector2(width * 0.17f, 62f), new Vector2(width * 0.25f, 0f));
+        SetTopLeft(FindDirectChild(principalBox, "Text (TMP) (1)"), new Vector2(width * 0.06f, 62f), new Vector2(width * 0.2f, 0f));
+        SetTopLeft(newamount != null ? newamount.transform as RectTransform : null, new Vector2(width * 0.25f, 62f), Vector2.zero);
+
+        ConfigureValueText(principal, valueFont);
+        ConfigureValueText(bonus, valueFont);
+        ConfigureValueText(newamount, valueFont);
+        ConfigureAnyText(FindDirectChild(principalBox, "Text (TMP) (1)"), valueFont, new Color32(210, 170, 20, 255), true);
+
+        RectTransform addButton = FindDirectChild(final, "Add Cash");
+        SetTopCenter(addButton, new Vector2(portrait ? 220f : 250f, 70f), new Vector2(0f, buttonY));
+        ConfigureAnyText(addButton, buttonFont, Color.white, true);
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(panel);
     }
 
     private void ApplyAddCashInnerPanelLayout(bool portrait)
@@ -733,10 +1476,53 @@ public class PaymentManager : MonoBehaviour
 
         ChipUI chipUI = go.GetComponent<ChipUI>();
         chipUI.coinText.text = coin.price;
+        ConfigureChipButton(chipUI);
         buttonsobjs.Add(chipUI.chipButton.gameObject);
         spawned_objects[coin.coin] = go;
 
         return go;
+    }
+
+    private static void ConfigureChipButton(ChipUI chipUI)
+    {
+        ConfigureChipButton(chipUI, 36f);
+    }
+
+    private static void ConfigureChipButton(ChipUI chipUI, float fontSize)
+    {
+        if (chipUI == null) return;
+
+        if (chipUI.coinText != null)
+        {
+            chipUI.coinText.enableAutoSizing = false;
+            chipUI.coinText.fontSize = fontSize;
+            chipUI.coinText.textWrappingMode = TextWrappingModes.NoWrap;
+            chipUI.coinText.overflowMode = TextOverflowModes.Overflow;
+            chipUI.coinText.alignment = TextAlignmentOptions.Center;
+            chipUI.coinText.margin = Vector4.zero;
+        }
+
+        if (chipUI.percentage != null)
+        {
+            chipUI.percentage.text = string.Empty;
+            chipUI.percentage.gameObject.SetActive(false);
+        }
+
+        if (chipUI.percentageobj != null)
+        {
+            chipUI.percentageobj.SetActive(false);
+        }
+    }
+
+    private static void RemoveGeneratedObject(GameObject obj)
+    {
+        if (obj == null) return;
+
+        obj.SetActive(false);
+        if (Application.isPlaying)
+            Destroy(obj);
+        else
+            DestroyImmediate(obj);
     }
 
     public void ShowChips(PlanDetailsWrapper details)
@@ -760,36 +1546,78 @@ public class PaymentManager : MonoBehaviour
             })
             .ToList();
 
+        spawned_objects.Clear();
+        buttonsobjs.Clear();
+
+        if (content == null)
+            return;
+
+        int childIndex = 0;
         foreach (var detail in sortedPlanDetails)
         {
-            GameObject go = spawned_objects.TryGetValue(detail.coin, out GameObject existingObject)
-                ? existingObject
-                : CreateNewChip(detail);
+            ChipUI chipUI = null;
+            while (childIndex < content.childCount && chipUI == null)
+            {
+                chipUI = content.GetChild(childIndex).GetComponent<ChipUI>();
+                childIndex++;
+            }
 
+            if (chipUI == null)
+            {
+                CommonUtil.CheckLog("Add Cash hierarchy has fewer chip buttons than API plans. Runtime creation is disabled.");
+                break;
+            }
+
+            GameObject go = chipUI.gameObject;
             go.SetActive(true);
-            ChipUI chipUI = go.GetComponent<ChipUI>();
-
             chipUI.coinText.text = detail.price;
-
-            if (detail.coin == detail.price)
-            {
-                chipUI.percentageobj.SetActive(false);
-            }
-            else
-            {
-                chipUI.percentageobj.SetActive(true);
-                float value = CalculatePercentage(int.Parse(detail.coin), int.Parse(detail.price));
-                chipUI.percentage.text = value + "%";
-            }
+            ConfigureChipButton(chipUI);
 
             chipUI.chipButton.onClick.RemoveAllListeners();
 
+            string capturedId = detail.id;
+            string capturedPrice = detail.price;
+            string capturedCoin = detail.coin;
             chipUI.chipButton.onClick.AddListener(
-                () => PlaceOrder(detail.id, detail.price, detail.coin)
+                () => SelectPresetAmount(capturedId, capturedPrice, capturedCoin)
             );
 
             chipUI.chipButton.onClick.AddListener(() => changebuttonui(chipUI.chipButton));
         }
+
+        for (int i = childIndex; i < content.childCount; i++)
+        {
+            content.GetChild(i).gameObject.SetActive(false);
+        }
+
+        if (content is RectTransform contentRect)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+        }
+
+        ApplyResponsiveAddCashLayout();
+        BindPresetAmountButtons();
+    }
+
+    private static List<PlanDetailchip> BuildFallbackPlanDetails()
+    {
+        int[] fallbackAmounts = { 100, 500, 2500, 5000, 10000 };
+        List<PlanDetailchip> fallbackPlans = new List<PlanDetailchip>(fallbackAmounts.Length);
+
+        foreach (int amount in fallbackAmounts)
+        {
+            string amountText = amount.ToString();
+            fallbackPlans.Add(new PlanDetailchip
+            {
+                id = "",
+                coin = amountText,
+                price = amountText,
+                title = amountText,
+                isDeleted = "0",
+            });
+        }
+
+        return fallbackPlans;
     }
 
     public static float CalculatePercentage(int coin, int price)
@@ -803,26 +1631,8 @@ public class PaymentManager : MonoBehaviour
 
     public void changebuttonui(Button btn)
     {
-        for (int i = 0; i < buttonsobjs.Count; i++)
-        {
-            if (buttonsobjs[i] == btn.gameObject)
-            {
-                Debug.Log("buttonobj " + buttonsobjs[i].gameObject);
-                buttonsobjs[i].GetComponent<Image>().color = HexToColor("#5A5A5AFF");
-            }
-            else
-            {
-                buttonsobjs[i].GetComponent<Image>().color = HexToColor("#FFFFFFFF");
-            }
-        }
-        if (!buttonsobjs.Contains(btn.gameObject))
-        {
-            Debug.LogError("The button is NOT in the list!");
-        }
-        else
-        {
-            Debug.Log("The button IS in the list.");
-        }
+        // Keep the prefab/scene-authored button visuals. The old code changed
+        // selected chips to gray and every other chip to white, breaking design.
     }
 
     private Color HexToColor(string hex)
@@ -842,6 +1652,8 @@ public class PaymentManager : MonoBehaviour
         automatic_amount = int.Parse(amount);
         manual_amount = int.Parse(amount);
         uSDTManual.amount = int.Parse(amount);
+        if (custom != null)
+            custom.text = amount;
         ShowNewUI(id, amount, coin);
         //popup.buttonclick(dialogue);
         //PopUpUtil.ButtonClick(dialogue);
@@ -856,14 +1668,97 @@ public class PaymentManager : MonoBehaviour
         else
             bonus.text = "0";
         newamount.text = coin;
+        ApplyAddCashConfirmationLayout();
 
         // automatic_button.onClick.RemoveAllListeners();
         // automatic_button.onClick.AddListener(async () => await PlaceOrderAPI(id, coin));
     }
 
+    private void ApplyAddCashConfirmationLayout()
+    {
+        if (finalpanel == null) return;
+
+        RectTransform panel = finalpanel.transform as RectTransform;
+        RectTransform details = panel != null ? panel.parent as RectTransform : null;
+        float width = details != null && details.rect.width > 0f ? details.rect.width : 720f;
+        Canvas canvas = GetComponentInParent<Canvas>();
+        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
+        bool portrait = canvasRect == null || canvasRect.rect.height >= canvasRect.rect.width;
+        float height = portrait ? 220f : 205f;
+
+        SetBottomStretch(panel, width, height, Vector2.zero);
+        LayoutConfirmationPanel(panel, width, height, portrait);
+    }
+
+    private void SetTmpLayout(string relativePath, Vector2 position, Vector2 size, float fontSize)
+    {
+        RectTransform rect = finalpanel.transform.Find(relativePath) as RectTransform;
+        if (rect == null) return;
+
+        rect.anchorMin = new Vector2(0f, 1f);
+        rect.anchorMax = new Vector2(0f, 1f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+
+        TextMeshProUGUI text = rect.GetComponent<TextMeshProUGUI>();
+        if (text == null) return;
+
+        text.enableAutoSizing = false;
+        text.fontSize = fontSize;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.alignment = TextAlignmentOptions.Center;
+    }
+
+    private void SetTmpChildLayout(string relativePath, Vector2 position, Vector2 size, float fontSize)
+    {
+        RectTransform rect = finalpanel.transform.Find(relativePath) as RectTransform;
+        if (rect == null) return;
+
+        SetBottomAnchored(rect, position, size);
+
+        TextMeshProUGUI text = rect.GetComponent<TextMeshProUGUI>();
+        if (text == null) return;
+
+        text.enableAutoSizing = false;
+        text.fontSize = fontSize;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.alignment = TextAlignmentOptions.Center;
+    }
+
+    private static void SetBottomAnchored(RectTransform rect, Vector2 position, Vector2 size)
+    {
+        if (rect == null) return;
+
+        rect.anchorMin = Vector2.zero;
+        rect.anchorMax = Vector2.zero;
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = position;
+        rect.sizeDelta = size;
+    }
+
+    private static void ConfigureValueText(TextMeshProUGUI text)
+    {
+        ConfigureValueText(text, 34f);
+    }
+
+    private static void ConfigureValueText(TextMeshProUGUI text, float fontSize)
+    {
+        if (text == null) return;
+
+        text.enableAutoSizing = false;
+        text.fontSize = fontSize;
+        text.textWrappingMode = TextWrappingModes.NoWrap;
+        text.overflowMode = TextOverflowModes.Overflow;
+        text.alignment = TextAlignmentOptions.Center;
+        text.color = Color.white;
+    }
+
     public void OpenPopUP()
     {
-        PopUpUtil.ButtonClick(dialogue);
+        ShowPaymentOptionsPanel();
     }
 
     #endregion
@@ -950,7 +1845,8 @@ public class PaymentManager : MonoBehaviour
                 );
                 manual_amount = int.Parse(custom.text);
                 automatic_amount = int.Parse(custom.text);
-                PopUpUtil.ButtonClick(dialogue);
+                ShowNewUI("", custom.text, custom.text);
+                ShowPaymentOptionsPanel();
             }
         }
         else
@@ -963,8 +1859,17 @@ public class PaymentManager : MonoBehaviour
 
     public async void OpenManual()
     {
+        HidePaymentFlowPanels();
+
+        if (manual_panel != null)
+        {
+            manual_panel.SetActive(true);
+            manual_panel.transform.SetAsLastSibling();
+        }
+        transform.SetAsLastSibling();
+        ApplyResponsiveAddCashLayout();
         await QR_API();
-        manual_panel.SetActive(true);
+        ApplyResponsiveAddCashLayout();
     }
 
     // public async void StartDownloadQR(string qr_imag_url)
@@ -973,8 +1878,15 @@ public class PaymentManager : MonoBehaviour
     // }
     public IEnumerator DownloadQR(string qrImageUrl)
     {
+        if (!TryGetValidQrUrl(qrImageUrl, out string resolvedUrl))
+        {
+            Debug.LogWarning("QR image skipped because backend returned an invalid URL: " + qrImageUrl);
+            SafeShowToast("QR image is not available. Please try another payment option.");
+            yield break;
+        }
+
         // Send a web request to download the image
-        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(qrImageUrl))
+        using (UnityWebRequest request = UnityWebRequestTexture.GetTexture(resolvedUrl))
         {
             yield return request.SendWebRequest();
 
@@ -982,6 +1894,7 @@ public class PaymentManager : MonoBehaviour
             if (request.result != UnityWebRequest.Result.Success)
             {
                 Debug.LogError("Error downloading QR image: " + request.error);
+                SafeShowToast("QR image could not be loaded. Please try again.");
                 yield break;
             }
 
@@ -999,6 +1912,47 @@ public class PaymentManager : MonoBehaviour
             qr_code_image.sprite = sprite;
             Debug.Log("QR code updated successfully.");
         }
+    }
+
+    private bool TryGetValidQrUrl(string qrImageUrl, out string resolvedUrl)
+    {
+        resolvedUrl = null;
+        if (string.IsNullOrWhiteSpace(qrImageUrl))
+            return false;
+
+        string trimmed = qrImageUrl.Trim();
+        if (trimmed.IndexOf("access denied", StringComparison.OrdinalIgnoreCase) >= 0)
+            return false;
+
+        if (trimmed.StartsWith("//", StringComparison.Ordinal))
+            trimmed = "https:" + trimmed;
+
+        Uri absoluteUri;
+        if (Uri.TryCreate(trimmed, UriKind.Absolute, out absoluteUri)
+            && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+        {
+            resolvedUrl = absoluteUri.AbsoluteUri;
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(Configuration.BaseUrl)
+            && Uri.TryCreate(Configuration.BaseUrl, UriKind.Absolute, out Uri baseUri)
+            && Uri.TryCreate(baseUri, trimmed, out absoluteUri)
+            && (absoluteUri.Scheme == Uri.UriSchemeHttp || absoluteUri.Scheme == Uri.UriSchemeHttps))
+        {
+            resolvedUrl = absoluteUri.AbsoluteUri;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void SafeShowToast(string message)
+    {
+        if (LoaderUtil.instance != null)
+            LoaderUtil.instance.ShowToast(message);
+        else
+            CommonUtil.ShowToast(message);
     }
 
     // public async Task DownloadQRAsync(string qrImageUrl)
@@ -1202,6 +2156,12 @@ public class PaymentManager : MonoBehaviour
         GetQRApiResponse response = new GetQRApiResponse();
         response = await APIManager.Instance.Post<GetQRApiResponse>(Url, formData);
 
+        if (response == null)
+        {
+            SafeShowToast("QR details are not available right now.");
+            return;
+        }
+
         Debug.Log(response.message);
         Debug.Log(response.qr_image);
         //StartDownloadQR(response.qr_image);
@@ -1225,7 +2185,7 @@ public class PaymentManager : MonoBehaviour
         UPISuccessResponse response = new UPISuccessResponse();
         response = await APIManager.Instance.Post<UPISuccessResponse>(Url, formData);
 
-        LoaderUtil.instance.ShowToast(response.message);
+        SafeShowToast(response.message);
         manual_panel.SetActive(false);
 
         if (response.code == 200)

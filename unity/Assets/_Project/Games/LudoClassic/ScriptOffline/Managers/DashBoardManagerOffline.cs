@@ -453,6 +453,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         public void ClickOnGameModeButton(string gameMode)
         {
             //ADManagerOffline.instance.HideBanner(true);
+            SetLobbyUiBlocking(true);
             switch (gameMode)
             {
                 case "CLASSIC":
@@ -954,6 +955,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             HideClassicLobbyFeeCards(twoPlayerLobby);
             HideClassicLobbyFeeCards(fourPlayerLobby);
+            WirePassNPlayLobbyCardButtons(twoPlayerLobby);
+            WirePassNPlayLobbyCardButtons(fourPlayerLobby);
         }
 
         private void RefreshClassicLobbyVisibilityFromAdmin()
@@ -1091,6 +1094,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 if (CardContainsText(card.transform, "Pass N Play"))
                 {
                     card.SetActive(true);
+                    WirePassNPlayLobbyCardButtons(card);
                     continue;
                 }
 
@@ -1105,6 +1109,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
 
             ApplyClassicLobbyResponsiveLayout(lobbyRoot);
+            WirePassNPlayLobbyCardButtons(lobbyRoot);
         }
 
         private void HideClassicLobbyFeeCards(GameObject lobbyRoot)
@@ -1124,6 +1129,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 if (CardContainsText(card.transform, "Pass N Play"))
                 {
                     card.SetActive(true);
+                    WirePassNPlayLobbyCardButtons(card);
                     continue;
                 }
 
@@ -1131,6 +1137,37 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
 
             ApplyClassicLobbyResponsiveLayout(lobbyRoot);
+            WirePassNPlayLobbyCardButtons(lobbyRoot);
+        }
+
+        private void WirePassNPlayLobbyCardButtons(GameObject lobbyRoot)
+        {
+            if (lobbyRoot == null)
+            {
+                return;
+            }
+
+            foreach (GameObject card in ResolveClassicLobbyCards(lobbyRoot))
+            {
+                if (card == null || !CardContainsText(card.transform, "Pass N Play"))
+                {
+                    continue;
+                }
+
+                Button[] buttons = card.GetComponentsInChildren<Button>(true);
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    Button button = buttons[i];
+                    if (button == null)
+                    {
+                        continue;
+                    }
+
+                    button.interactable = true;
+                    button.onClick.RemoveListener(CLickOnPassNPlayButton);
+                    button.onClick.AddListener(CLickOnPassNPlayButton);
+                }
+            }
         }
 
         private void ApplyClassicLobbyResponsiveLayout(GameObject lobbyRoot)
@@ -1372,15 +1409,15 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void ClickOnPLayButton(int value)
         {
-            backButton.SetActive(false);
-            lobbySelectPanal.SetActive(false);
             int chips = PlayerPrefs.GetInt("Totalchips");
             if (value <= chips)
             {
+                backButton.SetActive(false);
+                lobbySelectPanal.SetActive(false);
+                string currentGameMode = GetCurrentLobbyGameModeName();
+
                 if (
-                    MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                        "CLASSIC"
-                    )
+                    string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase)
                     && classicFTUE == "true"
                 )
                 {
@@ -1390,9 +1427,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     FTUEManagerOffline.Instance.value = value;
                 }
                 else if (
-                    MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                        "NUMBER"
-                    )
+                    string.Equals(currentGameMode, "NUMBER", StringComparison.OrdinalIgnoreCase)
                     && numberFTUE == "true"
                 )
                 {
@@ -1402,9 +1437,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     FTUEManagerOffline.Instance.value = value;
                 }
                 else if (
-                    MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                        "DICE"
-                    )
+                    string.Equals(currentGameMode, "DICE", StringComparison.OrdinalIgnoreCase)
                     && diceFTUE == "true"
                 )
                 {
@@ -1417,6 +1450,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 {
                     if (Configuration.IsLudoV2Enabled() && ResolveLudoV2Bridge().TryStartMatchmaking(value, ResolveSelectedPlayerCount()))
                     {
+                        SetLobbyUiBlocking(false);
                         return;
                     }
 
@@ -1432,12 +1466,15 @@ public class DashBoardManagerOffline : MonoBehaviour
                     UpdateChips(chips);
 
                     dashBordPanal.SetActive(false);
+                    SetLobbyUiBlocking(false);
 
                     ChangeLobbyId();
                     //SocketConnectionOffline.CreateSocket();
                     if (
-                        !MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                            "CLASSIC"
+                        !string.Equals(
+                            GetCurrentLobbyGameModeName(),
+                            "CLASSIC",
+                            StringComparison.OrdinalIgnoreCase
                         )
                     )
                     {
@@ -1739,6 +1776,15 @@ public class DashBoardManagerOffline : MonoBehaviour
             UpdateClassicModeTabSelection(4);
         }
 
+        public void SetLobbyUiBlocking(bool enabled)
+        {
+            GraphicRaycaster homeRaycaster = GetComponent<GraphicRaycaster>();
+            if (homeRaycaster != null)
+            {
+                homeRaycaster.enabled = enabled;
+            }
+        }
+
         private void BindOrCreateTournamentClassicTab()
         {
             Transform parent = player4 != null ? player4.parent : null;
@@ -1989,10 +2035,10 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             backButton.SetActive(false);
             lobbySelectPanal.SetActive(false);
+            string currentGameMode = GetCurrentLobbyGameModeName();
+
             if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                    "CLASSIC"
-                )
+                string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase)
                 && classicFTUE == "true"
             )
             {
@@ -2002,9 +2048,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 FTUEManagerOffline.Instance.isFromPassNPlay = true;
             }
             else if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                    "NUMBER"
-                )
+                string.Equals(currentGameMode, "NUMBER", StringComparison.OrdinalIgnoreCase)
                 && numberFTUE == "true"
             )
             {
@@ -2014,7 +2058,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 FTUEManagerOffline.Instance.isFromPassNPlay = true;
             }
             else if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("DICE")
+                string.Equals(currentGameMode, "DICE", StringComparison.OrdinalIgnoreCase)
                 && diceFTUE == "true"
             )
             {
@@ -2029,13 +2073,10 @@ public class DashBoardManagerOffline : MonoBehaviour
                 fTUEManager.SetActive(false);
                 IsPassAndPlay = true;
                 dashBordPanal.SetActive(false);
+                SetLobbyUiBlocking(false);
                 ChangeLobbyId();
                 //SocketConnectionOffline.CreateSocket();
-                if (
-                    !MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                        "CLASSIC"
-                    )
-                )
+                if (!string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase))
                 {
                     SetCookiePosition();
                 }
@@ -2055,13 +2096,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             EnsurePassNPlayPlayerCountPopup();
             if (passNPlayPlayerCountPopup != null)
             {
-                passNPlayPlayerCountPopup.transform.SetAsLastSibling();
-                Canvas popupCanvas = passNPlayPlayerCountPopup.GetComponent<Canvas>();
-                if (popupCanvas != null)
-                {
-                    popupCanvas.overrideSorting = true;
-                    popupCanvas.sortingOrder = 32760;
-                }
+                AttachPassNPlayPopupToActiveCanvas();
+                WirePassNPlayPlayerCountPopupButtons();
                 passNPlayPlayerCountPopup.SetActive(true);
             }
         }
@@ -2074,15 +2110,37 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
         }
 
+        private string GetCurrentLobbyGameModeName()
+        {
+            try
+            {
+                string gameModeName = MGPSDK.MGPGameManager.instance
+                    ?.sdkConfig
+                    ?.data
+                    ?.lobbyData
+                    ?.gameModeName;
+
+                return string.IsNullOrWhiteSpace(gameModeName) ? "CLASSIC" : gameModeName;
+            }
+            catch (Exception)
+            {
+                return "CLASSIC";
+            }
+        }
+
         private void EnsurePassNPlayPlayerCountPopup()
         {
             if (passNPlayPlayerCountPopup != null)
             {
+                AttachPassNPlayPopupToActiveCanvas();
+                WirePassNPlayPlayerCountPopupButtons();
                 return;
             }
 
             if (TryBindExistingPassNPlayPlayerCountPopup())
             {
+                AttachPassNPlayPopupToActiveCanvas();
+                WirePassNPlayPlayerCountPopupButtons();
                 return;
             }
 
@@ -2290,6 +2348,84 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             WirePassNPlayPlayerCountPopupButtons();
             passNPlayPlayerCountPopup.SetActive(false);
+        }
+
+        private void AttachPassNPlayPopupToActiveCanvas()
+        {
+            if (passNPlayPlayerCountPopup == null)
+            {
+                return;
+            }
+
+            Canvas rootCanvas = ResolvePassNPlayRootCanvas();
+            if (rootCanvas != null && passNPlayPlayerCountPopup.transform.parent != rootCanvas.transform)
+            {
+                passNPlayPlayerCountPopup.transform.SetParent(rootCanvas.transform, false);
+            }
+
+            passNPlayPlayerCountPopup.transform.SetAsLastSibling();
+
+            RectTransform overlayRect = passNPlayPlayerCountPopup.GetComponent<RectTransform>();
+            if (overlayRect != null)
+            {
+                overlayRect.anchorMin = Vector2.zero;
+                overlayRect.anchorMax = Vector2.one;
+                overlayRect.offsetMin = Vector2.zero;
+                overlayRect.offsetMax = Vector2.zero;
+            }
+
+            Canvas popupCanvas = passNPlayPlayerCountPopup.GetComponent<Canvas>();
+            if (popupCanvas == null)
+            {
+                popupCanvas = passNPlayPlayerCountPopup.AddComponent<Canvas>();
+            }
+            popupCanvas.overrideSorting = true;
+            if (rootCanvas != null)
+            {
+                popupCanvas.sortingLayerID = rootCanvas.sortingLayerID;
+            }
+            popupCanvas.sortingOrder = 32760;
+
+            if (passNPlayPlayerCountPopup.GetComponent<GraphicRaycaster>() == null)
+            {
+                passNPlayPlayerCountPopup.AddComponent<GraphicRaycaster>();
+            }
+        }
+
+        private Canvas ResolvePassNPlayRootCanvas()
+        {
+            Canvas rootCanvas =
+                dashBordPanal != null
+                    ? dashBordPanal.GetComponentInParent<Canvas>(true)
+                    : GetComponentInParent<Canvas>(true);
+
+            if (rootCanvas != null && rootCanvas.rootCanvas != null)
+            {
+                rootCanvas = rootCanvas.rootCanvas;
+            }
+
+            if (rootCanvas != null && rootCanvas.gameObject.activeInHierarchy)
+            {
+                return rootCanvas;
+            }
+
+            Canvas activeCanvas = FindObjectOfType<Canvas>();
+            if (activeCanvas != null)
+            {
+                return activeCanvas.rootCanvas != null ? activeCanvas.rootCanvas : activeCanvas;
+            }
+
+            if (rootCanvas == null)
+            {
+                rootCanvas = GetComponentInParent<Canvas>(true);
+            }
+
+            if (rootCanvas == null)
+            {
+                rootCanvas = FindObjectOfType<Canvas>();
+            }
+
+            return rootCanvas;
         }
 
         private bool TryBindExistingPassNPlayPlayerCountPopup()
@@ -2500,26 +2636,28 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         private void ChangeLobbyId()
         {
-            if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
-                    "CLASSIC"
-                )
-            )
+            var lobbyData = MGPSDK.MGPGameManager.instance
+                ?.sdkConfig
+                ?.data
+                ?.lobbyData;
+
+            if (lobbyData == null)
             {
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData._id =
-                    "6489c74c9573bc98a2ab5d13";
+                return;
             }
-            else if (
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("DICE")
-            )
+
+            string currentGameMode = GetCurrentLobbyGameModeName();
+            if (string.Equals(currentGameMode, "CLASSIC", StringComparison.OrdinalIgnoreCase))
             {
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData._id =
-                    "6489c76f9573bc98a2ab5dab";
+                lobbyData._id = "6489c74c9573bc98a2ab5d13";
+            }
+            else if (string.Equals(currentGameMode, "DICE", StringComparison.OrdinalIgnoreCase))
+            {
+                lobbyData._id = "6489c76f9573bc98a2ab5dab";
             }
             else
             {
-                MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData._id =
-                    "6489c8919573bc98a2ab60f9";
+                lobbyData._id = "6489c8919573bc98a2ab60f9";
             }
         }
 
@@ -2785,6 +2923,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             lobbySelectPanal.SetActive(false);
             dashBordPanal.SetActive(true);
             dashBordPanal.GetComponent<Canvas>().enabled = true;
+            SetLobbyUiBlocking(true);
         }
         #endregion
     }

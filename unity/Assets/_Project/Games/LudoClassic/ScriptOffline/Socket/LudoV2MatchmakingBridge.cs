@@ -13,6 +13,9 @@ namespace LudoClassicOffline
     {
         private void LateUpdate()
         {
+#if UNITY_EDITOR
+            TickLocalMatchmakingPreview();
+#endif
         }
         public static LudoV2MatchmakingBridge Instance { get; private set; }
 
@@ -36,6 +39,15 @@ namespace LudoClassicOffline
         private int lastAnnouncedSeatCount;
         private LudoRoomChatController roomChatController;
         private LudoFriendPanelController friendPanelController;
+        private const string DefaultSeatAvatarUrl =
+            "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
+        private const float LocalPreviewBotJoinDelaySeconds = 8f;
+#if UNITY_EDITOR
+        private bool localPreviewActive;
+        private int localPreviewMaxPlayers;
+        private float localPreviewNextBotAt;
+        private LudoV2RoomSnapshot localPreviewSnapshot;
+#endif
 
         public static event Action<LudoV2ChatMessagePayload> OnChatMessageReceived;
         public static event Action<List<LudoV2ChatMessagePayload>> OnChatHistoryReceived;
@@ -124,6 +136,15 @@ namespace LudoClassicOffline
             latestSnapshot = null;
             dashBoardManager.backButton.SetActive(false);
             dashBoardManager.lobbySelectPanal.SetActive(false);
+            dashBoardManager.SetLobbyUiBlocking(false);
+
+#if UNITY_EDITOR
+            if (ShouldUseLocalMatchmakingPreview())
+            {
+                StartLocalMatchmakingPreview(entryFee, maxPlayers);
+                return true;
+            }
+#endif
 
             QueueAndConnectAsync(entryFee, maxPlayers);
             return true;
@@ -182,6 +203,8 @@ namespace LudoClassicOffline
             string gameMode = ResolveGameMode();
 
             var request = HTTPRequest.CreatePost(Configuration.LudoV2QueueJoinUrl);
+            request.TimeoutSettings.ConnectTimeout = TimeSpan.FromSeconds(8);
+            request.TimeoutSettings.Timeout = TimeSpan.FromSeconds(12);
             request.SetHeader("Authorization", "Bearer " + Configuration.GetToken());
             request.SetHeader("Accept", "application/json");
             request.SetHeader("Content-Type", "application/json");
@@ -391,6 +414,7 @@ namespace LudoClassicOffline
             dashBoardManager.lobbySelectPanal.SetActive(false);
             dashBoardManager.onlineLobbySelectionPanel.SetActive(false);
             dashBoardManager.backButton.SetActive(false);
+            dashBoardManager.SetLobbyUiBlocking(false);
             Canvas dashboardCanvas = dashBoardManager.dashBordPanal != null
                 ? dashBoardManager.dashBordPanal.GetComponent<Canvas>()
                 : null;
@@ -443,7 +467,7 @@ namespace LudoClassicOffline
                         seat.displayName ?? ("Seat " + seat.seatNo),
                         Mathf.Max(0, seat.seatNo - 1)
                     ),
-                    userProfile = string.Empty,
+                    userProfile = DefaultSeatAvatarUrl,
                 });
             }
 
@@ -486,7 +510,7 @@ namespace LudoClassicOffline
                         seat.displayName ?? ("Seat " + seat.seatNo),
                         Mathf.Max(0, seat.seatNo - 1)
                     ),
-                    avatar = string.Empty,
+                    avatar = DefaultSeatAvatarUrl,
                     tokenDetails = new List<int> { 0, 0, 0, 0 },
                     score = 0,
                     missedTurnCount = 0,
@@ -802,6 +826,123 @@ namespace LudoClassicOffline
             }
         }
 
+#if UNITY_EDITOR
+        private bool ShouldUseLocalMatchmakingPreview()
+        {
+            return Application.isEditor && PlayerPrefs.GetInt("ludo_v2_live_in_editor", 0) != 1;
+        }
+
+        private void StartLocalMatchmakingPreview(int entryFee, int maxPlayers)
+        {
+            string roomId = "editor-local-" + DateTime.UtcNow.Ticks;
+            queuedRoom = new LudoV2QueueJoinEnvelope
+            {
+                success = true,
+                data = new LudoV2QueueRoomData
+                {
+                    room_uuid = roomId,
+                    status = "waiting",
+                    max_players = maxPlayers,
+                    current_players = 1,
+                    current_real_players = 1,
+                    current_bot_players = 0,
+                },
+            };
+
+            socketNumberEventReceiver.entryFee = entryFee;
+            socketNumberEventReceiver.winAmt = entryFee * Mathf.Max(2, maxPlayers);
+
+            LudoV2RoomSnapshot snapshot = CreateLocalSnapshot(roomId, maxPlayers);
+            latestSnapshot = snapshot;
+            localPreviewSnapshot = snapshot;
+            localPreviewMaxPlayers = maxPlayers;
+            localPreviewNextBotAt = Time.realtimeSinceStartup + LocalPreviewBotJoinDelaySeconds;
+            localPreviewActive = true;
+
+            EnsureWaitingBoardVisible(snapshot);
+            RenderSeatsFromSnapshot(snapshot);
+            UpdateWaitingBoardMessage(snapshot);
+        }
+
+        private void TickLocalMatchmakingPreview()
+        {
+            if (!localPreviewActive || localPreviewSnapshot == null || Time.realtimeSinceStartup < localPreviewNextBotAt)
+            {
+                return;
+            }
+
+            if (!isQueueing || hasStartedMatch)
+            {
+                localPreviewActive = false;
+                return;
+            }
+
+            if (localPreviewSnapshot.seats.Count < localPreviewMaxPlayers)
+            {
+                int nextSeatNo = localPreviewSnapshot.seats.Count + 1;
+                localPreviewSnapshot.seats.Add(CreateLocalBotSeat(nextSeatNo));
+                localPreviewSnapshot.current_players = localPreviewSnapshot.seats.Count;
+                localPreviewSnapshot.bot_players = localPreviewSnapshot.seats.FindAll(seat => seat != null && seat.playerType == "bot").Count;
+                localPreviewSnapshot.real_players = localPreviewSnapshot.seats.Count - localPreviewSnapshot.bot_players;
+                latestSnapshot = localPreviewSnapshot;
+                RenderSeatsFromSnapshot(localPreviewSnapshot);
+                UpdateWaitingBoardMessage(localPreviewSnapshot);
+                localPreviewNextBotAt = Time.realtimeSinceStartup + LocalPreviewBotJoinDelaySeconds;
+                return;
+            }
+
+            localPreviewActive = false;
+            OnRoomStarting(new LudoV2RoomStarting
+            {
+                room_id = localPreviewSnapshot.room_id,
+                started_with_bots = localPreviewSnapshot.bot_players > 0,
+                seats = localPreviewSnapshot.seats,
+            });
+        }
+
+        private LudoV2RoomSnapshot CreateLocalSnapshot(string roomId, int maxPlayers)
+        {
+            int localUserId = 0;
+            int.TryParse(Configuration.GetId(), out localUserId);
+
+            return new LudoV2RoomSnapshot
+            {
+                room_id = roomId,
+                state = "waiting",
+                max_players = maxPlayers,
+                current_players = 1,
+                real_players = 1,
+                bot_players = 0,
+                seats = new List<LudoV2SeatData>
+                {
+                    new LudoV2SeatData
+                    {
+                        seatNo = 1,
+                        userId = localUserId,
+                        playerType = "human",
+                        displayName = LudoDisplayNameUtility.LocalPlayerLabel(),
+                        isConnected = true,
+                        isReady = true,
+                    },
+                },
+            };
+        }
+
+        private LudoV2SeatData CreateLocalBotSeat(int seatNo)
+        {
+            return new LudoV2SeatData
+            {
+                seatNo = seatNo,
+                userId = null,
+                playerType = "bot",
+                displayName = LudoDisplayNameUtility.NeutralSeatLabel(seatNo - 1),
+                botCode = "BOT-" + seatNo,
+                isConnected = true,
+                isReady = true,
+            };
+        }
+#endif
+
         private void FailMatchmaking(string message)
         {
             Debug.LogWarning("Ludo v2 matchmaking failed: " + message);
@@ -817,6 +958,7 @@ namespace LudoClassicOffline
             {
                 dashboardCanvas.enabled = true;
             }
+            dashBoardManager.SetLobbyUiBlocking(true);
             dashBoardManager.lobbySelectPanal.SetActive(true);
             dashBoardManager.backButton.SetActive(true);
             roomChatController?.SetChatAvailability(false);
