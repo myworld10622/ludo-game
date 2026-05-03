@@ -58,20 +58,111 @@ namespace LudoClassicOffline
         private InputField inviteCodeField;
         private InputField invitePasswordField;
         private Text privateStatusText;
-        private GameObject detailPopup;
-        private Text detailTitleText;
-        private Text detailMetaText;
-        private Text detailStatsText;
-        private Text detailPrizeText;
-        private Text detailWalletText;
-        private Text detailHintText;
-        private Button detailPrimaryButton;
-        private Text detailPrimaryButtonText;
-        private Button detailCloseButton;
+        public GameObject detailPopup;
+        public Text detailTitleText;
+        public Text detailMetaText;
+        public Text detailStatsText;
+        public Text detailPrizeText;
+        public Text detailWalletText;
+        public Text detailHintText;
+        public Button detailPrimaryButton;
+        public Text detailPrimaryButtonText;
+        public Button detailCloseButton;
         private LudoTournamentListItem selectedTournament;
+        public List<LudoTournamentListItem> manualTournaments = new List<LudoTournamentListItem>();
+        public List<GameObject> manualRowObjects = new List<GameObject>();
+        private List<LudoTournamentListItem> lastResponseData = new List<LudoTournamentListItem>();
         private const string TournamentPanelName = "TournamentPanel";
         private const string TournamentDetailPopupName = "TournamentDetailPopup";
         private const string PrivateJoinPopupName = "PrivateJoinPopup";
+
+        private void Awake()
+        {
+            // If no data was provided, try to read it from the UI components of the manualRowObjects
+            if (manualTournaments.Count == 0 && manualRowObjects.Count > 0)
+            {
+                // Fallback: Default data matching your image if scraping is needed
+                string[] defaultTitles = { "Rox turnament", "Ludhiyana Ludo", "Sunday", "Ludo King Championship" };
+                int[] defaultFees = { 200, 100, 100, 50 };
+                float[] defaultPrizes = { 1280, 320, 640, 320 };
+                string[] defaultStatus = { "registration_open", "registration_open", "registration_closed", "in_progress" };
+                int[] defaultJoined = { 1, 1, 0, 4 };
+                int[] defaultMax = { 8, 4, 8, 8 };
+
+                for (int i = 0; i < manualRowObjects.Count; i++)
+                {
+                    GameObject row = manualRowObjects[i];
+                    if (row == null) continue;
+
+                    LudoTournamentListItem scraped = new LudoTournamentListItem();
+                    Text[] labels = row.GetComponentsInChildren<Text>(true);
+                    
+                    // Try to scrape first
+                    if (labels.Length > 0) scraped.Title = labels[0].text;
+                    if (labels.Length > 2) scraped.Status = labels[2].text.ToLower().Replace(" ", "_");
+                    
+                    // Parse Player Count (e.g., "1 / 8 PLAYERS")
+                    if (labels.Length > 3)
+                    {
+                        string pText = labels[3].text.ToUpper().Replace("PLAYERS", "").Trim();
+                        string[] parts = pText.Split('/');
+                        if (parts.Length == 2)
+                        {
+                            int.TryParse(parts[0].Trim(), out scraped.JoinedPlayers);
+                            int.TryParse(parts[1].Trim(), out scraped.MaxPlayers);
+                        }
+                    }
+
+                    if (labels.Length > 5) 
+                    {
+                        string feeStr = labels[5].text.Replace("₹", "").Replace("FREE", "0");
+                        int.TryParse(feeStr, out scraped.EntryFee);
+                    }
+                    if (labels.Length > 7)
+                    {
+                        string prizeStr = labels[7].text.Replace("₹", "").Replace("TBA", "0");
+                        float.TryParse(prizeStr, out scraped.PrizePool);
+                    }
+
+                    // If scraping failed to get a title, use the default from your image
+                    if (string.IsNullOrEmpty(scraped.Title) && i < defaultTitles.Length)
+                    {
+                        scraped.Title = defaultTitles[i];
+                        scraped.EntryFee = defaultFees[i];
+                        scraped.PrizePool = defaultPrizes[i];
+                        scraped.Status = defaultStatus[i];
+                        scraped.JoinedPlayers = defaultJoined[i];
+                        scraped.MaxPlayers = defaultMax[i];
+                    }
+                    
+                    manualTournaments.Add(scraped);
+                }
+            }
+
+            if (manualTournaments != null && manualTournaments.Count > 0)
+            {
+                lastResponseData.Clear();
+                lastResponseData.AddRange(manualTournaments);
+                
+                // Automatically link buttons in manual GameObjects
+                for (int i = 0; i < manualRowObjects.Count; i++)
+                {
+                    if (i >= manualTournaments.Count) break;
+                    
+                    GameObject row = manualRowObjects[i];
+                    if (row == null) continue;
+                    
+                    // Look for a button in the row (checks children too)
+                    Button btn = row.GetComponentInChildren<Button>();
+                    if (btn != null)
+                    {
+                        int index = i; // capture index for closure
+                        btn.onClick.RemoveAllListeners();
+                        btn.onClick.AddListener(() => OpenTournamentDetailsByIndex(index));
+                    }
+                }
+            }
+        }
 
         public void Initialize(DashBoardManagerOffline owner)
         {
@@ -669,6 +760,7 @@ namespace LudoClassicOffline
         private void RenderTournamentList(string json)
         {
             ClearRows();
+            lastResponseData.Clear();
 
             // Debug: log first 600 chars of response so we can see actual field names
             Debug.Log("[Tournament] Response (first 600): " + (json?.Length > 600 ? json.Substring(0, 600) : json));
@@ -704,6 +796,7 @@ namespace LudoClassicOffline
                     try
                     {
                         var t = ParseTournament(item);
+                        lastResponseData.Add(t);
                         Debug.Log($"[Tournament] Parsed uuid={t.TournamentUuid} title={t.Title} status={t.Status}");
                         if (string.IsNullOrWhiteSpace(t.TournamentUuid))
                         {
@@ -1137,10 +1230,17 @@ namespace LudoClassicOffline
                 return;
             }
 
-            if (panelRoot    != null) { Destroy(panelRoot);             panelRoot    = null; }
-            if (openButton   != null) { Destroy(openButton.gameObject); openButton   = null; }
-            if (privatePopup != null) { Destroy(privatePopup);          privatePopup = null; }
-            if (detailPopup  != null) { Destroy(detailPopup);           detailPopup  = null; }
+            // Only destroy if they weren't assigned in the Inspector
+            if (panelRoot    != null && string.IsNullOrEmpty(panelRoot.scene.name)) { Destroy(panelRoot);             panelRoot    = null; }
+            if (openButton   != null && string.IsNullOrEmpty(openButton.gameObject.scene.name)) { Destroy(openButton.gameObject); openButton   = null; }
+            if (privatePopup != null && string.IsNullOrEmpty(privatePopup.scene.name)) { Destroy(privatePopup);          privatePopup = null; }
+            
+            // If detailPopup was assigned in Inspector, DO NOT destroy it
+            if (detailPopup  != null && string.IsNullOrEmpty(detailPopup.scene.name)) 
+            { 
+                Destroy(detailPopup);           
+                detailPopup  = null; 
+            }
             listContent = null; titleText = null; statusText = null;
             closeButton = null; refreshButton = null; joinPrivateBtn = null;
             tournamentScroll = null; _popupLayer = null; _privatePopupLayer = null;
@@ -1400,7 +1500,22 @@ namespace LudoClassicOffline
 
         private void EnsureDetailPopup()
         {
-            if (detailPopup != null) return;
+            // If already assigned in Inspector or already built, stop here
+            if (detailPopup != null) 
+            {
+                // Ensure listeners are wired even if assigned in Inspector
+                if (detailCloseButton != null)
+                {
+                    detailCloseButton.onClick.RemoveAllListeners();
+                    detailCloseButton.onClick.AddListener(() => detailPopup.SetActive(false));
+                }
+                if (detailPrimaryButton != null)
+                {
+                    detailPrimaryButton.onClick.RemoveAllListeners();
+                    detailPrimaryButton.onClick.AddListener(OnDetailPrimaryButtonPressed);
+                }
+                return;
+            }
 
             if (TryBindExistingDetailPopup())
             {
@@ -1585,7 +1700,7 @@ namespace LudoClassicOffline
             detailPopup.SetActive(false);
         }
 
-        private void OpenTournamentDetails(LudoTournamentListItem tournament)
+        public void OpenTournamentDetails(LudoTournamentListItem tournament)
         {
             if (tournament == null) return;
             try
@@ -1601,6 +1716,17 @@ namespace LudoClassicOffline
             {
                 Debug.LogError("[Tournament] OpenTournamentDetails error: " + ex);
             }
+        }
+
+        public void OpenTournamentDetailsByIndex(int index)
+        {
+            if (lastResponseData == null || index < 0 || index >= lastResponseData.Count)
+            {
+                Debug.LogWarning($"[Tournament] Cannot open details: index {index} out of range (count={lastResponseData?.Count ?? 0})");
+                return;
+            }
+
+            OpenTournamentDetails(lastResponseData[index]);
         }
 
         private void RefreshDetailPopupState()
@@ -2830,7 +2956,8 @@ namespace LudoClassicOffline
             return $"GMT{sign}{offset.Hours:00}:{offset.Minutes:00}";
         }
 
-        private sealed class LudoTournamentListItem
+        [System.Serializable]
+        public sealed class LudoTournamentListItem
         {
             public string TournamentUuid;
             public string EntryUuid;

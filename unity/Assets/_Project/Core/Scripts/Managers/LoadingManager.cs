@@ -16,7 +16,7 @@ using UnityEngine.UI;
 
 public class LoadingManager : MonoBehaviour
 {
-    public Slider slider;
+    public Image slider;
     public float duration = 2f;
 
     private float startTime;
@@ -26,15 +26,15 @@ public class LoadingManager : MonoBehaviour
     void Awake()
     {
 #if UNITY_ANDROID
-        Screen.orientation = ScreenOrientation.LandscapeLeft;
+        Screen.orientation = ScreenOrientation.Portrait;
 #endif
     }
 
     void Start()
     {
         startTime = Time.time;
-        startValue = slider.minValue;
-        targetValue = slider.maxValue;
+        startValue = 0;
+        targetValue = 1;
         StartCoroutine(TransitionAfterDelay());
     }
 
@@ -49,13 +49,13 @@ public class LoadingManager : MonoBehaviour
             float currentValue = Mathf.Lerp(startValue, targetValue, progress);
 
             // Set the slider value
-            slider.value = currentValue;
+            slider.fillAmount = currentValue;
 
             // Wait for the next frame
             yield return null;
         }
 
-        slider.value = targetValue;
+        slider.fillAmount = targetValue;
 
         string id = Configuration.GetId();
         string token = Configuration.GetToken();

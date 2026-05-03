@@ -29,26 +29,27 @@ namespace LudoClassicOffline
 
         private readonly Dictionary<GameObject, string> boundSlotUsers = new Dictionary<GameObject, string>();
 
-        private Canvas rootCanvas;
-        private RectTransform rootPanel;
-        private RectTransform roomPopup;
-        private RectTransform requestsContent;
-        private Button toggleButton;
-        private Button addByIdButton;
-        private Button requestsTabButton;
-        private Button friendsTabButton;
-        private Button roomAddFriendButton;
-        private TMP_InputField playerIdInput;
-        private TextMeshProUGUI resultTitleText;
-        private TextMeshProUGUI resultSubtitleText;
-        private TextMeshProUGUI listSectionTitleText;
-        private TextMeshProUGUI roomPopupTitleText;
-        private TextMeshProUGUI requestsStateText;
-        private TextMeshProUGUI requestBadgeText;
-        private TextMeshProUGUI toggleCaptionText;
-        private GameObject requestBadgeObject;
-        private GameObject sceneShortcutBadgeObject;
-        private Text sceneShortcutBadgeText;
+        [Header("UI References")]
+        public Canvas rootCanvas;
+        public RectTransform rootPanel;
+        public RectTransform roomPopup;
+        public RectTransform requestsContent;
+        public Button toggleButton;
+        public Button addByIdButton;
+        public Button requestsTabButton;
+        public Button friendsTabButton;
+        public Button roomAddFriendButton;
+        public TMP_InputField playerIdInput;
+        public TextMeshProUGUI resultTitleText;
+        public TextMeshProUGUI resultSubtitleText;
+        public TextMeshProUGUI listSectionTitleText;
+        public TextMeshProUGUI roomPopupTitleText;
+        public TextMeshProUGUI requestsStateText;
+        public TextMeshProUGUI requestBadgeText;
+        public TextMeshProUGUI toggleCaptionText;
+        public GameObject requestBadgeObject;
+        public GameObject sceneShortcutBadgeObject;
+        public Text sceneShortcutBadgeText;
         private bool uiReady;
         private bool roomActionsAvailable;
         private bool homeShortcutAvailable;
@@ -184,6 +185,12 @@ namespace LudoClassicOffline
                 uiReady = true;
                 EnsureApiService();
                 ApplyResponsiveHomePanelLayout();
+                return;
+            }
+
+            if (rootCanvas != null && rootPanel != null)
+            {
+                uiReady = true;
                 return;
             }
 
@@ -452,26 +459,27 @@ namespace LudoClassicOffline
                 return false;
             }
 
-            rootCanvas = existingCanvasObject.GetComponent<Canvas>();
-            rootPanel = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel");
-            roomPopup = FindRectTransform(existingCanvasObject.transform, "LudoFriendRoomPopup");
-            requestsContent = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent");
-            toggleButton = FindButton(existingCanvasObject.transform, "LudoFriendToggle");
-            addByIdButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/SENDREQUESTButton");
-            requestsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/REQUESTSButton");
-            friendsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/FRIENDSButton");
-            roomAddFriendButton = FindButton(existingCanvasObject.transform, "LudoFriendRoomPopup/ADDFRIENDButton");
-            playerIdInput = FindComponent<TMP_InputField>(existingCanvasObject.transform, "LudoFriendPanel/InputRow/PlayerIdInput");
+            if (rootCanvas == null) rootCanvas = existingCanvasObject.GetComponent<Canvas>();
+            if (rootPanel == null) rootPanel = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel");
+            if (roomPopup == null) roomPopup = FindRectTransform(existingCanvasObject.transform, "LudoFriendRoomPopup");
+            if (requestsContent == null) requestsContent = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent");
+            if (toggleButton == null) toggleButton = FindButton(existingCanvasObject.transform, "LudoFriendToggle");
+            if (addByIdButton == null) addByIdButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/SENDREQUESTButton");
+            if (requestsTabButton == null) requestsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/REQUESTSButton");
+            if (friendsTabButton == null) friendsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/FRIENDSButton");
+            if (roomAddFriendButton == null) roomAddFriendButton = FindButton(existingCanvasObject.transform, "LudoFriendRoomPopup/ADDFRIENDButton");
+            if (playerIdInput == null) playerIdInput = FindComponent<TMP_InputField>(existingCanvasObject.transform, "LudoFriendPanel/InputRow/PlayerIdInput");
+
             Transform resultCard = FindByPath(existingCanvasObject.transform, "LudoFriendPanel/ResultCard");
             TextMeshProUGUI[] resultLabels = resultCard != null ? resultCard.GetComponentsInChildren<TextMeshProUGUI>(true) : new TextMeshProUGUI[0];
-            resultTitleText = resultLabels.Length > 0 ? resultLabels[0] : null;
-            resultSubtitleText = resultLabels.Length > 1 ? resultLabels[1] : null;
-            listSectionTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsHeader/TMPLabel");
-            roomPopupTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendRoomPopup/TMPLabel");
-            requestsStateText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent/TMPLabel");
-            requestBadgeObject = FindByPath(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge")?.gameObject;
-            requestBadgeText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge/TMPLabel");
-            toggleCaptionText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/TMPLabel");
+            if (resultTitleText == null) resultTitleText = resultLabels.Length > 0 ? resultLabels[0] : null;
+            if (resultSubtitleText == null) resultSubtitleText = resultLabels.Length > 1 ? resultLabels[1] : null;
+            if (listSectionTitleText == null) listSectionTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsHeader/TMPLabel");
+            if (roomPopupTitleText == null) roomPopupTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendRoomPopup/TMPLabel");
+            if (requestsStateText == null) requestsStateText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent/TMPLabel");
+            if (requestBadgeObject == null) requestBadgeObject = FindByPath(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge")?.gameObject;
+            if (requestBadgeText == null) requestBadgeText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge/TMPLabel");
+            if (toggleCaptionText == null) toggleCaptionText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/TMPLabel");
 
             if (rootCanvas == null
                 || rootPanel == null
@@ -653,7 +661,7 @@ namespace LudoClassicOffline
             toggleCaptionText.color = new Color32(243, 247, 251, 255);
         }
 
-        private void HandleSearchClicked()
+        public void HandleSearchClicked()
         {
             string playerId = playerIdInput != null ? playerIdInput.text?.Trim() : string.Empty;
             if (string.IsNullOrWhiteSpace(playerId))
@@ -691,7 +699,7 @@ namespace LudoClassicOffline
             );
         }
 
-        private void HandleAddByIdClicked()
+        public void HandleAddByIdClicked()
         {
             string playerId = searchedUser != null && !string.IsNullOrWhiteSpace(searchedUser.user_code)
                 ? searchedUser.user_code
@@ -723,7 +731,7 @@ namespace LudoClassicOffline
             );
         }
 
-        private void HandleRoomAddFriendClicked()
+        public void HandleRoomAddFriendClicked()
         {
             if (string.IsNullOrWhiteSpace(roomPopupUserId))
             {
@@ -831,7 +839,17 @@ namespace LudoClassicOffline
             }
         }
 
-        private void SetPanelOpen(bool shouldOpen)
+        public void TogglePanel()
+        {
+            SetPanelOpen(rootPanel == null || !rootPanel.gameObject.activeSelf);
+        }
+
+        public void ClosePanel()
+        {
+            SetPanelOpen(false);
+        }
+
+        public void SetPanelOpen(bool shouldOpen)
         {
             if (shouldOpen)
             {
@@ -1168,7 +1186,7 @@ namespace LudoClassicOffline
             roomPopup.gameObject.SetActive(true);
         }
 
-        private void HideRoomPopup()
+        public void HideRoomPopup()
         {
             if (roomPopup != null)
             {
@@ -1218,8 +1236,11 @@ namespace LudoClassicOffline
             }
 
             EnsureRequestsStateLabel();
-            requestsStateText.gameObject.SetActive(true);
-            requestsStateText.text = "Loading requests...";
+            if (requestsStateText != null)
+            {
+                requestsStateText.gameObject.SetActive(true);
+                requestsStateText.text = "Loading requests...";
+            }
 
             LudoFriendApiService.Instance?.ListFriendRequests(
                 result =>
@@ -1237,8 +1258,11 @@ namespace LudoClassicOffline
             }
 
             EnsureRequestsStateLabel();
-            requestsStateText.gameObject.SetActive(true);
-            requestsStateText.text = "Loading friends...";
+            if (requestsStateText != null)
+            {
+                requestsStateText.gameObject.SetActive(true);
+                requestsStateText.text = "Loading friends...";
+            }
 
             LudoFriendApiService.Instance?.ListFriends(
                 result =>
@@ -1248,8 +1272,9 @@ namespace LudoClassicOffline
             );
         }
 
-        private void RefreshActiveList()
+        public void RefreshActiveList()
         {
+            TryBuildUi();
             if (showingFriendsList)
             {
                 RefreshFriends();
@@ -1259,7 +1284,19 @@ namespace LudoClassicOffline
             RefreshRequests();
         }
 
-        private void SetListMode(bool showFriends)
+        public void ShowRequestsTab()
+        {
+            TryBuildUi();
+            SetListMode(false);
+        }
+
+        public void ShowFriendsTab()
+        {
+            TryBuildUi();
+            SetListMode(true);
+        }
+
+        public void SetListMode(bool showFriends)
         {
             showingFriendsList = showFriends;
 

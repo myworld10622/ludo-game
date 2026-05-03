@@ -87,12 +87,12 @@ namespace AndroApps
         private TMP_InputField emergencyPasswordInput;
         private GameObject emergencyLoginCard;
 
-        [Header("Sing up details")]
-        string Mobile,
-            Password,
-            Name,
-            Referral,
-            Otp_id;
+        [Header("Sign up details")]
+        public string Mobile;
+        public string Password;
+        public string Name;
+        public string Referral;
+        public string Otp_id;
 
         public Toggle logintoggle,
             registertoggle;
@@ -116,14 +116,14 @@ namespace AndroApps
 
         void OnEnable()
         {
-            foreach (var txt in TMPInput_Text)
+           /* foreach (var txt in TMPInput_Text)
             {
                 txt.color = data.inputcolor;
             }
             foreach (var txt in TMPPlaceholder_Text)
             {
                 txt.color = data.placeholdercolor;
-            }
+            }*/
 
             ApplyLoginFieldVisuals();
         }
@@ -959,21 +959,41 @@ namespace AndroApps
             AudioManager._instance?.ButtonClick();
             number = 0;
             CommonUtil.CheckLog("RES_Check Login Called");
-            Password = LogInDetail.PasswordInputfield.text;
-            Mobile = LogInDetail.MobileInputfield.text;
-            if (Mobile == string.Empty)
+
+            if (LogInDetail != null)
+            {
+                if (LogInDetail.PasswordInputfield != null)
+                    Password = LogInDetail.PasswordInputfield.text;
+                if (LogInDetail.MobileInputfield != null)
+                    Mobile = LogInDetail.MobileInputfield.text;
+            }
+
+            // SMART SYNC: If fields are still empty, try pulling from the Redesigner
+            LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+            if (redesign != null)
+            {
+                if (string.IsNullOrEmpty(Mobile) && redesign.idInput != null)
+                    Mobile = redesign.idInput.text;
+                if (string.IsNullOrEmpty(Password) && redesign.pwInput != null)
+                    Password = redesign.pwInput.text;
+                
+                Debug.Log($"[Auth] SmartSync Login: Mobile={Mobile}, Password={Password}");
+            }
+
+            if (string.IsNullOrEmpty(Mobile))
             {
                 showtoastmessage("Please Enter Your Login ID or Username");
                 return;
             }
-            else if (Password == string.Empty)
+            else if (string.IsNullOrEmpty(Password))
             {
                 showtoastmessage("Please Enter Your Password");
                 return;
             }
             else
             {
-                if (logintoggle.isOn)
+                bool isAgreed = logintoggle != null ? logintoggle.isOn : true;
+                if (isAgreed)
                     LogInId(Password, Mobile);
                 else
                     showtoastmessage("Please agree with our terms & conditions to continue");
@@ -1015,11 +1035,17 @@ namespace AndroApps
                 PlayerPrefs.SetString("name", LogInOutput.user_data[0].name);
                 PlayerPrefs.SetString("MyEmail", LogInOutput.user_data[0].email);
                 PlayerPrefs.Save();
-                LogInDetail.LogInPnl.SetActive(false);
-                //CurrentPackage.passbook_img = LogInOutput.user_bank_details[0].passbook_img;
+                if (LogInDetail != null)
+                {
+                    if (LogInDetail.LogInPnl != null) LogInDetail.LogInPnl.SetActive(false);
+                    if (LogInDetail.PasswordInputfield != null) LogInDetail.PasswordInputfield.text = string.Empty;
+                    if (LogInDetail.MobileInputfield != null) LogInDetail.MobileInputfield.text = string.Empty;
+                }
 
-                LogInDetail.PasswordInputfield.text = string.Empty;
-                LogInDetail.MobileInputfield.text = string.Empty;
+                // Clear Redesigner fields if present
+                LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+                if (redesign != null) redesign.ClearAllFields();
+
                 GetProfileImage(LogInOutput.user_data[0].profile_pic);
                 //util.instance.LoadScene("DNT");
             }
@@ -1107,18 +1133,42 @@ namespace AndroApps
         public void OnClickSignUp()
         {
             CommonUtil.CheckLog("signup click");
-            number   = 1;
-            Password = SignUpDetail.PasswordInputfield.text;
-            Referral = SignUpDetail.ReferralCodeInputfield != null
-                ? SignUpDetail.ReferralCodeInputfield.text : string.Empty;
+            number = 1;
 
-            string emailText  = SignUpDetail.EmailInputfield  != null
-                ? SignUpDetail.EmailInputfield.text.Trim()  : string.Empty;
-            string mobileText = SignUpDetail.MobileInputfield != null
-                ? SignUpDetail.MobileInputfield.text.Trim() : string.Empty;
+            if (SignUpDetail != null && SignUpDetail.PasswordInputfield != null)
+                Password = SignUpDetail.PasswordInputfield.text;
 
-            bool hasEmail  = !string.IsNullOrEmpty(emailText);
+            if (SignUpDetail != null && SignUpDetail.ReferralCodeInputfield != null)
+                Referral = SignUpDetail.ReferralCodeInputfield.text;
+            else if (string.IsNullOrEmpty(Referral))
+                Referral = string.Empty;
+
+            string emailText = (SignUpDetail != null && SignUpDetail.EmailInputfield != null)
+                ? SignUpDetail.EmailInputfield.text.Trim() : string.Empty;
+
+            string mobileText = (SignUpDetail != null && SignUpDetail.MobileInputfield != null)
+                ? SignUpDetail.MobileInputfield.text.Trim() : (Mobile ?? string.Empty);
+
+            // SMART SYNC: If fields are still empty, try pulling from the Redesigner
+            LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+            if (redesign != null)
+            {
+                if (string.IsNullOrEmpty(mobileText) && redesign.signupMobileOrEmailInput != null)
+                    mobileText = redesign.signupMobileOrEmailInput.text;
+                if (string.IsNullOrEmpty(Password) && redesign.signupPasswordInput != null)
+                    Password = redesign.signupPasswordInput.text;
+                if (string.IsNullOrEmpty(Referral) && redesign.signupReferralInput != null)
+                    Referral = redesign.signupReferralInput.text;
+
+                Debug.Log($"[Auth] SmartSync Signup: Mobile={mobileText}, Password={Password}");
+            }
+
+            if (string.IsNullOrEmpty(mobileText)) mobileText = Mobile ?? string.Empty;
+
+            bool hasEmail = !string.IsNullOrEmpty(emailText);
             bool hasMobile = !string.IsNullOrEmpty(mobileText);
+
+            Debug.Log($"[Auth] Data state: mobile={mobileText}, email={emailText}, password={Password}, hasEmail={hasEmail}, hasMobile={hasMobile}");
 
             if (!hasEmail && !hasMobile)
             {
@@ -1132,7 +1182,10 @@ namespace AndroApps
                 return;
             }
 
-            if (!registertoggle.isOn)
+            bool toggleIsOn = registertoggle != null ? registertoggle.isOn : true;
+            Debug.Log($"[Auth] Register toggle state: {(registertoggle == null ? "NULL (skipping)" : toggleIsOn.ToString())}");
+
+            if (registertoggle != null && !registertoggle.isOn)
             {
                 showtoastmessage("Please agree with our terms & conditions to continue");
                 return;
@@ -1166,6 +1219,7 @@ namespace AndroApps
                 // Auto-generate name from mobile number (Name field is hidden)
                 Name = "User" + mobileText.Substring(mobileText.Length - 4);
 
+                Debug.Log($"[Auth] Calling PostDirectSignup for mobile: {Mobile}");
                 PostDirectSignup(Name, Mobile, Password, Referral, Application.productName);
             }
         }
@@ -1224,9 +1278,18 @@ namespace AndroApps
                     PlayerPrefs.SetString("username", v1Response.data.user.username);
                 PlayerPrefs.Save();
 
-                SignUpDetail?.Clear();
-                if (SignUpDetail?.SignUpPnl  != null) SignUpDetail.SignUpPnl.SetActive(false);
-                if (LogInDetail?.LogInPnl    != null) LogInDetail.LogInPnl.SetActive(false);
+                if (SignUpDetail != null)
+                {
+                    if (SignUpDetail.EmailInputfield != null) SignUpDetail.EmailInputfield.text = "";
+                    if (SignUpDetail.PasswordInputfield != null) SignUpDetail.PasswordInputfield.text = "";
+                    if (SignUpDetail.SignUpPnl != null) SignUpDetail.SignUpPnl.SetActive(false);
+                }
+                
+                if (LogInDetail?.LogInPnl != null) LogInDetail.LogInPnl.SetActive(false);
+
+                // Clear Redesigner fields if present
+                LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+                if (redesign != null) redesign.ClearAllFields();
 
                 bool popupShown = ShowSignupDetailsPopup(
                     "Email",
@@ -1362,6 +1425,7 @@ namespace AndroApps
         )
         {
             string Url = Configuration.Url + Configuration.Signup;
+            Debug.Log("RES_Check url " + Url);
 
             var formData = new Dictionary<string, string>
             {
@@ -1405,9 +1469,9 @@ namespace AndroApps
 
             if (SignUpDetail != null)
             {
-                SignUpDetail.MobileInputfield.text =
-                    SignUpDetail.PasswordInputfield.text =
-                    SignUpDetail.NameInputfield.text = "";
+                if (SignUpDetail.MobileInputfield != null) SignUpDetail.MobileInputfield.text = "";
+                if (SignUpDetail.PasswordInputfield != null) SignUpDetail.PasswordInputfield.text = "";
+                if (SignUpDetail.NameInputfield != null) SignUpDetail.NameInputfield.text = "";
 
                 if (SignUpDetail.SignUpPnl != null)
                     SignUpDetail.SignUpPnl.SetActive(false);
@@ -1415,6 +1479,10 @@ namespace AndroApps
                 if (usedOtpFlow && SignUpDetail.OtpPanel != null)
                     SignUpDetail.OtpPanel.SetActive(false);
             }
+
+            // Clear Redesigner fields if present
+            LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+            if (redesign != null) redesign.ClearAllFields();
 
             if (LogInDetail != null && LogInDetail.LogInPnl != null)
             {

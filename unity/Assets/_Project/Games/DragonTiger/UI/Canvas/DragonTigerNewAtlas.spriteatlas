@@ -83,12 +83,10 @@ SpriteAtlas:
     - {fileID: 21300000, guid: 1c48f1d6775e2e64ab0adc4580fac901, type: 3}
     - {fileID: 21300000, guid: 5c3dd3aabbf13894abc44e25f934d245, type: 3}
     - {fileID: 21300000, guid: c8c2252f79b05e743ae85c3d56bde996, type: 3}
-    - {fileID: 21300000, guid: ddfd00cda3b895e4598f1acb17d471f1, type: 3}
     - {fileID: 21300000, guid: 50cd770fb0e443c409a708640378e919, type: 3}
     - {fileID: 21300000, guid: 8ea870ce7c079fc4aa99ce74c2e75ed1, type: 3}
     - {fileID: 21300000, guid: ac87869ffdccb464b832a72d7b075d11, type: 3}
     - {fileID: 21300000, guid: 3dd21bff70b6a70408d814f83b56701b, type: 3}
-    - {fileID: 21300000, guid: 4a96fc318651686459b69cf183c5ef35, type: 3}
     - {fileID: 21300000, guid: eae37d63aab08c741b6890dd8cb2b653, type: 3}
     - {fileID: 21300000, guid: 293c1290e077bbd4da70a15659ebd81e, type: 3}
     - {fileID: 21300000, guid: 642545617c95b9c4d83a1fe97763f622, type: 3}
@@ -122,7 +120,6 @@ SpriteAtlas:
     - 9960b250118f89042911a269b1ef8c96: 21300000
     - 293c1290e077bbd4da70a15659ebd81e: 21300000
     - 9729ecd002646454991a752432288cc2: 21300000
-    - 4a96fc318651686459b69cf183c5ef35: 21300000
     - 642545617c95b9c4d83a1fe97763f622: 21300000
     - eef351f103924e440be7f033e0780c43: 21300000
     - b02f23f1f4e2b2685a321e7f8f2345dc: 21300000
@@ -157,7 +154,6 @@ SpriteAtlas:
     - e9bd3a3dcfe2e1c42a731b0c16dc0677: 21300000
     - ab36c9adbc979604ca42ac31ba3034ae: 21300000
     - 6e3375bd4aa6a3e49af34e3b8e1711a9: 21300000
-    - ddfd00cda3b895e4598f1acb17d471f1: 21300000
     - 1236fedd048ce15429441a9f230daa70: 21300000
     - 8ea870ce7c079fc4aa99ce74c2e75ed1: 21300000
     - 50cd770fb0e443c409a708640378e919: 21300000
@@ -174,7 +170,6 @@ SpriteAtlas:
   - {fileID: 21300000, guid: 9960b250118f89042911a269b1ef8c96, type: 3}
   - {fileID: 21300000, guid: 293c1290e077bbd4da70a15659ebd81e, type: 3}
   - {fileID: 21300000, guid: 9729ecd002646454991a752432288cc2, type: 3}
-  - {fileID: 21300000, guid: 4a96fc318651686459b69cf183c5ef35, type: 3}
   - {fileID: 21300000, guid: 642545617c95b9c4d83a1fe97763f622, type: 3}
   - {fileID: 21300000, guid: eef351f103924e440be7f033e0780c43, type: 3}
   - {fileID: 21300000, guid: b02f23f1f4e2b2685a321e7f8f2345dc, type: 3}
@@ -209,7 +204,6 @@ SpriteAtlas:
   - {fileID: 21300000, guid: e9bd3a3dcfe2e1c42a731b0c16dc0677, type: 3}
   - {fileID: 21300000, guid: ab36c9adbc979604ca42ac31ba3034ae, type: 3}
   - {fileID: 21300000, guid: 6e3375bd4aa6a3e49af34e3b8e1711a9, type: 3}
-  - {fileID: 21300000, guid: ddfd00cda3b895e4598f1acb17d471f1, type: 3}
   - {fileID: 21300000, guid: 1236fedd048ce15429441a9f230daa70, type: 3}
   - {fileID: 21300000, guid: 8ea870ce7c079fc4aa99ce74c2e75ed1, type: 3}
   - {fileID: 21300000, guid: 50cd770fb0e443c409a708640378e919, type: 3}
@@ -225,7 +219,6 @@ SpriteAtlas:
   - Dragonns 166
   - Yes butttton
   - 50
-  - logo
   - No Button
   - profile-icon
   - tiger-text-1-2
@@ -260,7 +253,6 @@ SpriteAtlas:
   - history-pannel-1
   - Menu iconns
   - tietext
-  - Table-Bg
   - history-blue
   - vsHightlighted
   - Dragonns

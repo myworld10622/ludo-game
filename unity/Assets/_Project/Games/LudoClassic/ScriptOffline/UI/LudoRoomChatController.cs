@@ -14,6 +14,10 @@ namespace LudoClassicOffline
         private readonly List<LudoV2ChatMessagePayload> messages = new List<LudoV2ChatMessagePayload>();
         private readonly HashSet<string> messageIds = new HashSet<string>();
 
+        [Tooltip("If assigned, the script will use this Canvas instead of creating a new one.")]
+        public Canvas manualRootCanvas;
+        public GameObject manualToggle;
+        public GameObject manualPanel;
         private Canvas rootCanvas;
         private RectTransform rootPanel;
         private RectTransform listContent;
@@ -116,18 +120,126 @@ namespace LudoClassicOffline
                 return;
             }
 
-            rootCanvas = CreateOverlayCanvas();
+            // Sync with DashBoardManagerOffline if not manually assigned
+            if (manualToggle == null || manualPanel == null)
+            {
+                var dash = GetComponent<DashBoardManagerOffline>() ?? DashBoardManagerOffline.instance;
+                if (dash != null)
+                {
+                    if (manualRootCanvas == null) manualRootCanvas = dash.ludoChatCanvas;
+                    if (manualToggle == null) manualToggle = dash.LudoChatToggle;
+                    if (manualPanel == null) manualPanel = dash.LudoChatPanel;
+                }
+            }
+
+            if (manualRootCanvas != null)
+            {
+                rootCanvas = manualRootCanvas;
+            }
+            else
+            {
+                rootCanvas = CreateOverlayCanvas();
+            }
+
             if (rootCanvas == null)
             {
                 return;
             }
 
-            BuildToggle();
-            BuildPanel();
+            if (!rootCanvas.gameObject.activeSelf)
+            {
+                rootCanvas.gameObject.SetActive(true);
+            }
+
+            if (manualToggle != null && manualPanel != null)
+            {
+                BindManualUi();
+            }
+            else
+            {
+                BuildToggle();
+                BuildPanel();
+            }
 
             SetPanelOpen(false);
             uiReady = true;
             RefreshUnreadBadge();
+        }
+
+        private void BindManualUi()
+        {
+            if (manualToggle != null)
+            {
+                toggleButton = manualToggle.GetComponent<Button>();
+                if (toggleButton == null) toggleButton = manualToggle.GetComponentInChildren<Button>();
+
+                if (toggleButton != null)
+                {
+                    toggleButton.onClick.RemoveAllListeners();
+                    toggleButton.onClick.AddListener(() => SetPanelOpen(!isOpen));
+                }
+
+                unreadBadgeObject = manualToggle.transform.Find("UnreadBadge")?.gameObject;
+                if (unreadBadgeObject == null)
+                {
+                    // Fallback to searching by name if depth is different
+                    foreach (Transform t in manualToggle.GetComponentsInChildren<Transform>(true))
+                    {
+                        if (t.name == "UnreadBadge")
+                        {
+                            unreadBadgeObject = t.gameObject;
+                            break;
+                        }
+                    }
+                }
+
+                if (unreadBadgeObject != null)
+                {
+                    unreadBadgeText = unreadBadgeObject.GetComponentInChildren<Text>();
+                }
+            }
+
+            if (manualPanel != null)
+            {
+                rootPanel = manualPanel.GetComponent<RectTransform>();
+
+                scrollRect = manualPanel.GetComponentInChildren<ScrollRect>(true);
+                if (scrollRect != null)
+                {
+                    listContent = scrollRect.content;
+                }
+
+                inputField = manualPanel.GetComponentInChildren<InputField>(true);
+                if (inputField != null)
+                {
+                    inputField.onEndEdit.RemoveAllListeners();
+                    inputField.onEndEdit.AddListener(HandleInputEndEdit);
+                }
+
+                // Find send button
+                Button[] buttons = manualPanel.GetComponentsInChildren<Button>(true);
+                foreach (var b in buttons)
+                {
+                    if (b.name.Contains("Send") || b.name.Contains("➤"))
+                    {
+                        sendButton = b;
+                        sendButton.onClick.RemoveAllListeners();
+                        sendButton.onClick.AddListener(SubmitCurrentMessage);
+                        break;
+                    }
+                }
+
+                // Find close button
+                foreach (var b in buttons)
+                {
+                    if (b.name.Contains("Close") || b.name.Contains("✕") || b.name.Contains("Exit"))
+                    {
+                        b.onClick.RemoveAllListeners();
+                        b.onClick.AddListener(() => SetPanelOpen(false));
+                        break;
+                    }
+                }
+            }
         }
 
         // Draws a speech-bubble icon inside the toggle button using plain Images + Text.

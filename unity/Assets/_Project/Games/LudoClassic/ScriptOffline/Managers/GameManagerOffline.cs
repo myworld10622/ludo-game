@@ -1,3 +1,4 @@
+using Best.SocketIO;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ namespace LudoClassicOffline
                 instace = this;
 
             Input.multiTouchEnabled = false;
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
 
         public void Signup() =>
@@ -52,7 +53,15 @@ namespace LudoClassicOffline
             );
             OnClickExit(); //socketConnection.SendDataToSocket(ludoNumberEventManager.SendLeaveTable(), ludoNumbersAcknowledgementHandler.LevaeTable, LudoNumberEventList.LEAVE_TABLE.ToString());
         }
+        public void LeaveGame()
+        {
+            SceneManager.LoadScene("HomePage");
+          
+            StopAllCoroutines();
 
+            Screen.orientation = ScreenOrientation.Portrait;
+
+        }
         public void OnClickExit()
         {
             if (!gameRunOnSdk)

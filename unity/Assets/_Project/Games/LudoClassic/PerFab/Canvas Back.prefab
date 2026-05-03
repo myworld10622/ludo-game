@@ -34,10 +34,10 @@ RectTransform:
   - {fileID: 5784124480807472999}
   m_Father: {fileID: 2418526021650522371}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: -85}
-  m_SizeDelta: {x: 631.4673, y: 114.83771}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 0}
+  m_AnchoredPosition: {x: 0, y: 114}
+  m_SizeDelta: {x: 0, y: 150.2809}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1472294698073419347
 CanvasRenderer:
@@ -111,7 +111,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 2064, y: 1004}
+  m_SizeDelta: {x: 850, y: 525}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6753097805975731568
 CanvasRenderer:
@@ -278,10 +278,10 @@ RectTransform:
   - {fileID: 7906790940681062728}
   m_Father: {fileID: 6218404656852161705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 448.60046, y: -57.418854}
-  m_SizeDelta: {x: 265.73364, y: 94.83771}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2555919229863954524
 CanvasRenderer:
@@ -611,10 +611,10 @@ RectTransform:
   - {fileID: 3783809614819877826}
   m_Father: {fileID: 6218404656852161705}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 182.86682, y: -57.418854}
-  m_SizeDelta: {x: 265.73364, y: 94.83771}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &3347605312170281153
 CanvasRenderer:
@@ -699,8 +699,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls:
       - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: RBManager, Assembly-CSharp
-        m_MethodName: CALL_Leave_table
+        m_TargetAssemblyTypeName: LudoClassicOffline.DashBoardManagerOffline, Assembly-CSharp
+        m_MethodName: ClickOnLudoGameExitBtn
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -728,7 +728,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &5003118771709534172
 RectTransform:
   m_ObjectHideFlags: 0
@@ -845,10 +845,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 2418526021650522371}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0.0000076293945}
-  m_SizeDelta: {x: 746.3009, y: 430.29}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &390115845970446490
 CanvasRenderer:

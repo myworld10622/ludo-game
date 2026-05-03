@@ -99,7 +99,12 @@ public class DashBoardManagerOffline : MonoBehaviour
         public GameObject twoPlayerLobby,
             fourPlayerLobby;
 
-        [Header("Wallet")]
+        [Header("Chat Settings")]
+        public Canvas ludoChatCanvas;
+        public GameObject LudoChatToggle;
+        public GameObject LudoChatPanel;
+
+        [Header("Tournaments")]
         public GameObject walletPopUp;
 
         [Header("Other")]
@@ -353,6 +358,11 @@ public class DashBoardManagerOffline : MonoBehaviour
             //  dashBoardAPIRequestHandler.RunningGameAPI();
         }
 
+        public void OnOpenLink()
+        {
+            Application.OpenURL("https://roxludo.com/login");
+        }
+
         private void Update()
         {
             if (suppressTournamentSideMenu)
@@ -478,23 +488,23 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 onlineLobbySelectionPanel.SetActive(true);
                 CloseTournamentPanel();
-                HideTournamentClassicTab();
+                // HideTournamentClassicTab();
             }
             else
             {
                 lobbySelectPanal.SetActive(true);
                 if (gameMode == "CLASSIC")
                 {
-                    PrepareClassicLobbyVisibility();
-                    RefreshClassicLobbyVisibilityFromAdmin();
+                    // PrepareClassicLobbyVisibility();
+                    // RefreshClassicLobbyVisibilityFromAdmin();
                     ResolveTournamentPanel().ShowLauncherButton(false);
-                    EnsureTournamentClassicTab();
+                    // EnsureTournamentClassicTab();
                 }
                 else
                 {
                     ResolveTournamentPanel().ShowLauncherButton(false);
                     CloseTournamentPanel();
-                    HideTournamentClassicTab();
+                    // HideTournamentClassicTab();
                 }
             }
             //  MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.noOfPlayer = 4;
@@ -510,7 +520,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             //ADManagerOffline.instance.HideBanner(false);
             CloseTournamentPanel();
-            HideTournamentClassicTab();
+            // HideTournamentClassicTab();
             backButton.SetActive(false);
             selectGameModePanal.SetActive(true);
             lobbySelectPanal.SetActive(false);
@@ -879,25 +889,17 @@ public class DashBoardManagerOffline : MonoBehaviour
             switch (no)
             {
                 case 2:
-                    player2.sizeDelta = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
-                        ? _tabCustomSize : maxSize;
-                    player2Button.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 2;
-                    fourPlayerLobby.SetActive(false);
-                    twoPlayerLobby.SetActive(true);
-                    ApplyClassicLobbyVisibility(2);
+                    if (fourPlayerLobby != null) fourPlayerLobby.SetActive(false);
+                    if (twoPlayerLobby != null) twoPlayerLobby.SetActive(true);
                     UpdateClassicModeTabSelection(2);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
 
                 case 4:
-                    player4.sizeDelta = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
-                        ? _tabCustomSize : maxSize;
-                    player4Button.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 4;
-                    fourPlayerLobby.SetActive(true);
-                    twoPlayerLobby.SetActive(false);
-                    ApplyClassicLobbyVisibility(4);
+                    if (fourPlayerLobby != null) fourPlayerLobby.SetActive(true);
+                    if (twoPlayerLobby != null) twoPlayerLobby.SetActive(false);
                     UpdateClassicModeTabSelection(4);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
@@ -907,50 +909,27 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         public void ClickOnOnlinePlayerButton(int no)
         {
-            player2Online.DOAnchorPosY(oldPostion, 0f);
-            player2Online.sizeDelta = smallSize;
-            player2ButtonOnline.sprite = unSelectSprite;
-            player4Online.DOAnchorPosY(oldPostion, 0f);
-            player4Online.sizeDelta = smallSize;
-            player4ButtonOnline.sprite = unSelectSprite;
+            // Visual changes removed as requested
             switch (no)
             {
                 case 2:
-                    player2Online.DOAnchorPosY(newPostion, 0f);
-                    player2Online.sizeDelta = maxSize;
-                    player2ButtonOnline.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 2;
-                    //fourPlayerLobby.SetActive(false);
-                    //twoPlayerLobby.SetActive(true);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
 
                 case 4:
-                    player4Online.DOAnchorPosY(newPostion, 0f);
-                    player4Online.sizeDelta = maxSize;
-                    player4ButtonOnline.sprite = selectSprite;
                     socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = 4;
-                    //fourPlayerLobby.SetActive(true);
-                    //twoPlayerLobby.SetActive(false);
                     Debug.Log(socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount);
                     break;
             }
-            // dashBoardAPIRequestHandler.LobyyRequestData();
         }
 
         public void ResetButton()
         {
-            // When tournament tab is active use custom size so spacing never breaks
-            Vector2 resetSize = (_tabCustomSizeReady && tournamentTab != null && tournamentTab.gameObject.activeSelf)
-                ? _tabCustomSize
-                : smallSize;
-
-            player2.sizeDelta    = resetSize;
-            player2Button.sprite = unSelectSprite;
-            player4.sizeDelta    = resetSize;
-            player4Button.sprite = unSelectSprite;
+            // Visual changes removed as requested.
         }
 
+        /*
         private void PrepareClassicLobbyVisibility()
         {
             HideClassicLobbyFeeCards(twoPlayerLobby);
@@ -972,6 +951,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 LoadClassicLobbyVisibilityFromAdmin(classicLobbyTablesRequestVersion)
             );
         }
+        */
 
         private IEnumerator LoadClassicLobbyVisibilityFromAdmin(int requestVersion)
         {
@@ -1728,6 +1708,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             return ludoMatchNotification;
         }
 
+        /*
         private void EnsureTournamentClassicTab()
         {
             if (player2 == null || player4 == null || player4.gameObject == null)
@@ -1775,6 +1756,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
             UpdateClassicModeTabSelection(4);
         }
+        */
 
         public void SetLobbyUiBlocking(bool enabled)
         {
@@ -1836,6 +1818,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
         }
 
+        /*
         private void HideTournamentClassicTab()
         {
             if (hasCachedTabPositions)
@@ -1853,6 +1836,7 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             UpdateClassicModeTabSelection(4);
         }
+        */
 
         private static GameObject FindSceneObjectByName(string objectName)
         {
@@ -1898,35 +1882,28 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         private void UpdateClassicModeTabSelection(int selectedMode)
         {
-            // Active:   warm gold tint on sprite + dark maroon text — clear "selected" look
-            // Inactive: deep maroon tint on sprite + gold text — matches app red theme, fully readable
-            Color activeTabColor    = new Color(1f,    0.88f, 0.30f, 1f);  // warm gold
-            Color inactiveTabColor  = new Color(0.52f, 0.07f, 0.12f, 1f); // deep maroon
-            Color activeTextColor   = new Color(0.28f, 0.04f, 0.06f, 1f); // dark maroon on gold
-            Color inactiveTextColor = new Color(1f,    0.88f, 0.45f, 1f); // gold on dark red
+            // Visual tinting removed to preserve Inspector settings.
+            // But we still update the text color if you want the text to change (optional)
+            
+            Color activeTextColor   = new Color(1f, 1f, 1f, 1f); // White or your preferred color
+            Color inactiveTextColor = new Color(0.8f, 0.8f, 0.8f, 1f); // Grey or your preferred color
 
             if (player2Button != null)
             {
                 bool active = selectedMode == 2;
-                player2Button.sprite = active ? selectSprite : unSelectSprite;
-                player2Button.color  = active ? activeTabColor : inactiveTabColor;
-                ApplyTabTextColor(player2Button.transform, active ? activeTextColor : inactiveTextColor);
+                // ApplyTabTextColor(player2Button.transform, active ? activeTextColor : inactiveTextColor);
             }
 
             if (player4Button != null)
             {
                 bool active = selectedMode == 4;
-                player4Button.sprite = active ? selectSprite : unSelectSprite;
-                player4Button.color  = active ? activeTabColor : inactiveTabColor;
-                ApplyTabTextColor(player4Button.transform, active ? activeTextColor : inactiveTextColor);
+                // ApplyTabTextColor(player4Button.transform, active ? activeTextColor : inactiveTextColor);
             }
 
             if (tournamentTabImage != null)
             {
                 bool active = selectedMode == 0;
-                tournamentTabImage.sprite = active ? selectSprite : unSelectSprite;
-                tournamentTabImage.color  = active ? activeTabColor : inactiveTabColor;
-                ApplyTabTextColor(tournamentTabImage.transform, active ? activeTextColor : inactiveTextColor);
+                // ApplyTabTextColor(tournamentTabImage.transform, active ? activeTextColor : inactiveTextColor);
             }
         }
 
@@ -2018,8 +1995,21 @@ public class DashBoardManagerOffline : MonoBehaviour
             ShowPassNPlayPlayerCountPopup();
         }
 
+        public void CLickOnPrivateTableButton()
+        {
+            PassNPlayPopup.Index = 1;
+            ShowPassNPlayPlayerCountPopup();
+        }
+
         private void StartPassNPlayMatch(int playerCount)
         {
+            Debug.Log("--------StartPassNPlayMatch---------");
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = false;
+
             selectedPassNPlayPlayerCount = Mathf.Clamp(playerCount, 2, 4);
             HidePassNPlayPlayerCountPopup();
 
@@ -2086,6 +2076,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 {
                     debugChatController = gameObject.AddComponent<LudoRoomChatController>();
                 }
+                debugChatController.manualRootCanvas = ludoChatCanvas;
                 debugChatController.EnableDebugPreview();
                 ResolveFriendPanelController().SetRoomActionAvailability(true);
             }
@@ -2913,7 +2904,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         public void ResetGame()
         {
             CloseTournamentPanel();
-            HideTournamentClassicTab();
+            // HideTournamentClassicTab();
             GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
             GetComponent<LudoRoomChatController>()?.ClearMessages();
             ResolveFriendPanelController().SetRoomActionAvailability(false);

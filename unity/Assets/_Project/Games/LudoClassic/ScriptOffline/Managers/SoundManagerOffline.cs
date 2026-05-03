@@ -48,13 +48,16 @@ namespace LudoClassicOffline
             PlayerPrefs.SetString("music", isOn ? "on" : "");
             PlayerPrefs.Save();
 
-            if (isOn)
+            if (AudioManager._instance != null)
             {
-                AudioManager._instance.PlayBackgroundAudio();
-            }
-            else
-            {
-                AudioManager._instance.StopBackgroundAudio();
+                if (isOn)
+                {
+                    AudioManager._instance.PlayBackgroundAudio();
+                }
+                else
+                {
+                    AudioManager._instance.StopBackgroundAudio();
+                }
             }
         }
 
@@ -64,7 +67,7 @@ namespace LudoClassicOffline
 
             PlayerPrefs.SetString("sound", isOn ? "on" : "");
             PlayerPrefs.Save();
-            if (!isOn)
+            if (!isOn && AudioManager._instance != null)
                 AudioManager._instance.StopEffect();
         }
 

@@ -12,7 +12,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using UnityEngine.UI;
 
-[ExecuteAlways]
+// [ExecuteAlways] removed to prevent overriding manual Inspector adjustments in the Editor.
 public class PaymentManager : MonoBehaviour
 {
     public Transform content;
@@ -61,6 +61,8 @@ public class PaymentManager : MonoBehaviour
     private Vector2 _lastLayoutScreenSize = new Vector2(-1f, -1f);
     private ScreenOrientation _lastLayoutOrientation = ScreenOrientation.Unknown;
     private bool _lastLayoutPortrait = true;
+    private bool _isApplyingLayout = false;
+    private bool _layoutInitialized = false;
 
     void OnDisable()
     {
@@ -70,22 +72,17 @@ public class PaymentManager : MonoBehaviour
 
     async void OnEnable()
     {
-#if UNITY_EDITOR
-        if (!Application.isPlaying)
-        {
-            ApplyDirectSkin();
-            ApplyResponsiveAddCashLayout();
-            return;
-        }
-#endif
+        _layoutInitialized = false;
 #if UNITY_WEBGL
-        USDT_AUTO.SetActive(false);
+        if (USDT_AUTO != null) USDT_AUTO.SetActive(false);
 #endif
         ApplyDirectSkin();
         ApplyResponsiveAddCashLayout();
+        
         await AvailableChips();
+        if (this == null || !gameObject.activeInHierarchy) return;
+        
         DefaultSet();
-        ApplyResponsiveAddCashLayout();
     }
 
     void Update()
@@ -107,6 +104,13 @@ public class PaymentManager : MonoBehaviour
         {
             return;
         }
+
+        // Only apply layout if resolution or orientation actually changed
+        if (_layoutInitialized && 
+            canvasSize == _lastLayoutCanvasSize && 
+            screenSize == _lastLayoutScreenSize && 
+            Screen.orientation == _lastLayoutOrientation) 
+            return;
 
         ApplyResponsiveAddCashLayout();
     }
@@ -407,8 +411,8 @@ public class PaymentManager : MonoBehaviour
         StyleTab(selectedAddcash, active: true);
         StyleTab(selectedRecentTransaction, active: false);
 
-        if (finalpanel != null)
-            finalpanel.SetActive(false);
+        // if (finalpanel != null)
+        //     finalpanel.SetActive(false);
 
         ApplyResponsiveAddCashLayout();
         BindPresetAmountButtons();
@@ -464,32 +468,25 @@ public class PaymentManager : MonoBehaviour
         _lastLayoutScreenSize = new Vector2(Screen.width, Screen.height);
         _lastLayoutOrientation = Screen.orientation;
         _lastLayoutPortrait = portrait;
+        _layoutInitialized = true;
 
         // Always write the active orientation layout. Otherwise a previous
         // landscape rect can remain on the object when the view returns portrait.
-        if (root != null)
-        {
-            Rect bounds = GetLayoutBounds(new Rect(0f, 0f, canvasSize.x, canvasSize.y), portrait);
-            float rootWidth = portrait
-                ? Mathf.Min(980f, bounds.width * 0.92f)
-                : Mathf.Min(1540f, bounds.width * 0.92f);
-            float rootHeight = portrait
-                ? Mathf.Min(1420f, bounds.height * 0.82f)
-                : Mathf.Min(900f, bounds.height * 0.90f);
+            // We preserve the manual layout (size, anchors, pivot) of the root object to respect your Inspector design.
+            // root.sizeDelta = new Vector2(rootWidth, rootHeight);
+            /*
+            // root.anchorMin = new Vector2(0.5f, 0.5f);
+            // root.anchorMax = new Vector2(0.5f, 0.5f);
+            // root.pivot = new Vector2(0.5f, 0.5f);
+            // root.anchoredPosition = Vector2.zero;
+            // root.localScale = Vector3.one;
+            // */
 
-            root.anchorMin = new Vector2(0.5f, 0.5f);
-            root.anchorMax = new Vector2(0.5f, 0.5f);
-            root.pivot = new Vector2(0.5f, 0.5f);
-            root.anchoredPosition = Vector2.zero;
-            root.localScale = Vector3.one;
-            root.sizeDelta = new Vector2(rootWidth, rootHeight);
+            // LayoutAddCashRoot(root.sizeDelta.x, root.sizeDelta.y, portrait);
+            // LayoutPaymentFlowPanels(root.sizeDelta.x, root.sizeDelta.y, portrait);
 
-            LayoutAddCashRoot(rootWidth, rootHeight, portrait);
-            LayoutPaymentFlowPanels(rootWidth, rootHeight, portrait);
-        }
-
-        ApplyInputReadability(transform);
-        ApplyCustomAmountInputReadability();
+            // ApplyInputReadability(transform);
+            // ApplyCustomAmountInputReadability();
     }
 
     private bool IsPortraitLayout(Vector2 canvasSize)
@@ -905,29 +902,7 @@ public class PaymentManager : MonoBehaviour
 
     private static void ConfigureAnyText(RectTransform root, float fontSize, Color color, bool noWrap)
     {
-        if (root == null) return;
-
-        foreach (Text text in root.GetComponentsInChildren<Text>(true))
-        {
-            if (text == null) continue;
-            text.fontSize = Mathf.RoundToInt(fontSize);
-            text.color = color;
-            text.alignment = TextAnchor.MiddleCenter;
-            text.horizontalOverflow = noWrap ? HorizontalWrapMode.Overflow : HorizontalWrapMode.Wrap;
-            text.verticalOverflow = VerticalWrapMode.Overflow;
-            text.resizeTextForBestFit = false;
-        }
-
-        foreach (TMP_Text text in root.GetComponentsInChildren<TMP_Text>(true))
-        {
-            if (text == null) continue;
-            text.enableAutoSizing = false;
-            text.fontSize = fontSize;
-            text.color = color;
-            text.alignment = TextAlignmentOptions.Center;
-            text.textWrappingMode = noWrap ? TextWrappingModes.NoWrap : TextWrappingModes.Normal;
-            text.overflowMode = TextOverflowModes.Overflow;
-        }
+        // Text configuration set in the Inspector is preserved.
     }
 
     private static void ConfigureInput(RectTransform inputRect, float fontSize)
@@ -1050,35 +1025,12 @@ public class PaymentManager : MonoBehaviour
 
     private void ApplyPopupBackground(RectTransform rect)
     {
-        if (rect == null) return;
-
-        Image image = rect.GetComponent<Image>();
-        if (image == null) return;
-
-        bool hasAuthoredSprite = image.sprite != null;
-        Sprite popupSprite = !hasAuthoredSprite ? ResolvePopupSprite() : null;
-        if (!hasAuthoredSprite && popupSprite != null)
-        {
-            image.sprite = popupSprite;
-            image.color = Color.white;
-        }
-
-        image.type = Image.Type.Sliced;
+        // Popup backgrounds set in Inspector are preserved.
     }
 
     private void ApplyButtonBackground(RectTransform rect)
     {
-        if (rect == null) return;
-
-        Image image = rect.GetComponent<Image>();
-        if (image != null)
-        {
-            Sprite buttonSprite = ResolveButtonSprite();
-            if (buttonSprite != null)
-                image.sprite = buttonSprite;
-            image.type = Image.Type.Sliced;
-            image.color = Color.white;
-        }
+        // Button backgrounds set in the Inspector are preserved.
     }
 
     private Sprite ResolveButtonSprite()
@@ -1490,28 +1442,7 @@ public class PaymentManager : MonoBehaviour
 
     private static void ConfigureChipButton(ChipUI chipUI, float fontSize)
     {
-        if (chipUI == null) return;
-
-        if (chipUI.coinText != null)
-        {
-            chipUI.coinText.enableAutoSizing = false;
-            chipUI.coinText.fontSize = fontSize;
-            chipUI.coinText.textWrappingMode = TextWrappingModes.NoWrap;
-            chipUI.coinText.overflowMode = TextOverflowModes.Overflow;
-            chipUI.coinText.alignment = TextAlignmentOptions.Center;
-            chipUI.coinText.margin = Vector4.zero;
-        }
-
-        if (chipUI.percentage != null)
-        {
-            chipUI.percentage.text = string.Empty;
-            chipUI.percentage.gameObject.SetActive(false);
-        }
-
-        if (chipUI.percentageobj != null)
-        {
-            chipUI.percentageobj.SetActive(false);
-        }
+        // Manual Inspector configuration for font sizes and percentage visibility is preserved.
     }
 
     private static void RemoveGeneratedObject(GameObject obj)
@@ -1676,18 +1607,7 @@ public class PaymentManager : MonoBehaviour
 
     private void ApplyAddCashConfirmationLayout()
     {
-        if (finalpanel == null) return;
-
-        RectTransform panel = finalpanel.transform as RectTransform;
-        RectTransform details = panel != null ? panel.parent as RectTransform : null;
-        float width = details != null && details.rect.width > 0f ? details.rect.width : 720f;
-        Canvas canvas = GetComponentInParent<Canvas>();
-        RectTransform canvasRect = canvas != null ? canvas.transform as RectTransform : null;
-        bool portrait = canvasRect == null || canvasRect.rect.height >= canvasRect.rect.width;
-        float height = portrait ? 220f : 205f;
-
-        SetBottomStretch(panel, width, height, Vector2.zero);
-        LayoutConfirmationPanel(panel, width, height, portrait);
+        // Manual Inspector layout for the confirmation panel is preserved.
     }
 
     private void SetTmpLayout(string relativePath, Vector2 position, Vector2 size, float fontSize)

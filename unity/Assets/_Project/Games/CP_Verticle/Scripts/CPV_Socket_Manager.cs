@@ -166,7 +166,7 @@ public class CPV_Socket_Manager : MonoBehaviour
         Manager.Close();
         StopAllCoroutines();
 
-        Screen.orientation = ScreenOrientation.LandscapeLeft;
+        Screen.orientation = ScreenOrientation.Portrait;
 
     }
 
@@ -326,22 +326,22 @@ public class CPV_Socket_Manager : MonoBehaviour
         if (SceneManager.GetActiveScene().name == "ColorVerticle")
         {
             Debug.Log("RES_Check + Portrait");
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
         else
         {
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
 #endif
 
         if (SceneManager.GetActiveScene().name == "ColorVerticle")
         {
             Debug.Log("RES_Check + Portrait");
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
         else
         {
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.orientation = ScreenOrientation.Portrait;
         }
 
         string walletString = Configuration.GetWallet();
@@ -424,7 +424,7 @@ public class CPV_Socket_Manager : MonoBehaviour
     {
         Manager.Close();
         AudioManager._instance.StopAudio();
-        Screen.orientation = ScreenOrientation.LandscapeLeft;
+        Screen.orientation = ScreenOrientation.Portrait;
 #if UNITY_ANDROID
         this.GetComponent<GameSelection>().loaddynamicscenebyname("HomePage");
 #elif UNITY_WEBGL

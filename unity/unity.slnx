@@ -1,7 +1,6 @@
 ﻿<Solution>
   <Project Path="Unity.Timeline.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.csproj" />
-  <Project Path="MCPForUnity.Runtime.csproj" />
   <Project Path="gpm_common.csproj" />
   <Project Path="com.Tivadar.Best.HTTP.csproj" />
   <Project Path="Unity.Mathematics.csproj" />
@@ -18,7 +17,6 @@
   <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Recorder.Editor.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
-  <Project Path="MCPForUnity.Editor.csproj" />
   <Project Path="CodeStage.Maintainer.Editor.csproj" />
   <Project Path="NativeShare.Editor.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
@@ -38,6 +36,7 @@
   <Project Path="UnityEditor.UI.csproj" />
   <Project Path="Unity.2D.Sprite.Editor.csproj" />
   <Project Path="EasyButtons.Editor.csproj" />
+  <Project Path="McpUnity.Editor.csproj" />
   <Project Path="UniRx.Examples.csproj" />
   <Project Path="Assembly-CSharp-firstpass.csproj" />
   <Project Path="Unity.Recorder.csproj" />
@@ -57,6 +56,7 @@
   <Project Path="Unity.Recorder.Base.csproj" />
   <Project Path="Unity.Profiling.Core.csproj" />
   <Project Path="NativeShare.Runtime.csproj" />
+  <Project Path="Unity.EditorCoroutines.Editor.csproj" />
   <Project Path="Assembly-CSharp-Editor-firstpass.csproj" />
   <Project Path="Unity.CollabProxy.Editor.csproj" />
   <Project Path="NativeGallery.Runtime.csproj" />

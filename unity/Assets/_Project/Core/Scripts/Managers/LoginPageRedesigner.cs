@@ -22,15 +22,21 @@ namespace AndroApps
 
         private AuthManager    _auth;
         private GameObject     _overlay;
-        private GameObject     _landingPanel;
-        private GameObject     _loginFormPanel;
-        private GameObject     _signupFormPanel;
-        private InputField     _idInput;
-        private InputField     _pwInput;
-        private InputField     _signupMobileOrEmailInput;
-        private InputField     _signupPasswordInput;
-        private InputField     _signupReferralInput;
-        private Toggle         _signupTermsToggle;
+        [Header("State Panels")]
+        public GameObject landingPanel;
+        public GameObject loginFormPanel;
+        public GameObject signupFormPanel;
+
+        [Header("Login Form Fields")]
+        public InputField idInput;
+        public InputField pwInput;
+
+        [Header("Signup Form Fields")]
+        public InputField signupMobileOrEmailInput;
+        public InputField signupPasswordInput;
+        public InputField signupReferralInput;
+        public Toggle     signupTermsToggle;
+
         private GameObject     _sceneLogoObject;
         private Sprite         _sceneLogoSprite;
         private bool           _built;
@@ -80,15 +86,15 @@ namespace AndroApps
             }
 
             _overlay = null;
-            _landingPanel = null;
-            _loginFormPanel = null;
-            _signupFormPanel = null;
-            _idInput = null;
-            _pwInput = null;
-            _signupMobileOrEmailInput = null;
-            _signupPasswordInput = null;
-            _signupReferralInput = null;
-            _signupTermsToggle = null;
+            landingPanel = null;
+            loginFormPanel = null;
+            signupFormPanel = null;
+            idInput = null;
+            pwInput = null;
+            signupMobileOrEmailInput = null;
+            signupPasswordInput = null;
+            signupReferralInput = null;
+            signupTermsToggle = null;
             _built = false;
             _buildSucceeded = false;
 
@@ -170,7 +176,6 @@ namespace AndroApps
             }
             catch (System.Exception ex)
             {
-                Debug.LogError("[LoginPageRedesigner] Build failed: " + ex);
                 _buildSucceeded = false;
                 _built = false;
 
@@ -197,10 +202,10 @@ namespace AndroApps
 
         private void BuildLandingPanel()
         {
-            _landingPanel = new GameObject("LandingPanel",
+            landingPanel = new GameObject("LandingPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            _landingPanel.transform.SetParent(_overlay.transform, false);
-            Stretch(_landingPanel.GetComponent<RectTransform>());
+            landingPanel.transform.SetParent(_overlay.transform, false);
+            Stretch(landingPanel.GetComponent<RectTransform>());
 
             Font font = GetFont();
             EnsureModelSprite();
@@ -208,7 +213,7 @@ namespace AndroApps
             // ── Left panel — Model (30% width) ───────────────────────────────
             var leftPanel = new GameObject("LeftPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            leftPanel.transform.SetParent(_landingPanel.transform, false);
+            leftPanel.transform.SetParent(landingPanel.transform, false);
             var lp = leftPanel.GetComponent<RectTransform>();
             lp.anchorMin = new Vector2(0f, 0f);
             lp.anchorMax = new Vector2(0.32f, 1f);
@@ -232,7 +237,7 @@ namespace AndroApps
             // ── Right panel — Buttons (68% width) ────────────────────────────
             var rightPanel = new GameObject("RightPanel",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
-            rightPanel.transform.SetParent(_landingPanel.transform, false);
+            rightPanel.transform.SetParent(landingPanel.transform, false);
             rightPanel.GetComponent<Image>().color = new Color32(60, 6, 16, 200);
             var rp = rightPanel.GetComponent<RectTransform>();
             rp.anchorMin = new Vector2(0.32f, 0f);
@@ -307,7 +312,7 @@ namespace AndroApps
             // Exit App button — top-right corner of landing panel
             var exitGo = new GameObject("ExitAppBtn",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button));
-            exitGo.transform.SetParent(_landingPanel.transform, false);
+            exitGo.transform.SetParent(landingPanel.transform, false);
             var exitR = exitGo.GetComponent<RectTransform>();
             exitR.anchorMin        = new Vector2(1f, 1f);
             exitR.anchorMax        = new Vector2(1f, 1f);
@@ -342,10 +347,10 @@ namespace AndroApps
 
         private void BuildLoginFormPanel()
         {
-            _loginFormPanel = new GameObject("LoginFormPanel",
+            loginFormPanel = new GameObject("LoginFormPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            _loginFormPanel.transform.SetParent(_overlay.transform, false);
-            Stretch(_loginFormPanel.GetComponent<RectTransform>());
+            loginFormPanel.transform.SetParent(_overlay.transform, false);
+            Stretch(loginFormPanel.GetComponent<RectTransform>());
 
             Font font = GetFont();
             EnsureModelSprite();
@@ -353,7 +358,7 @@ namespace AndroApps
             // Background model stays visible behind the centered red card.
             var leftPanel = new GameObject("LeftPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            leftPanel.transform.SetParent(_loginFormPanel.transform, false);
+            leftPanel.transform.SetParent(loginFormPanel.transform, false);
             var lp = leftPanel.GetComponent<RectTransform>();
             lp.anchorMin = new Vector2(0f, 0f);
             lp.anchorMax = new Vector2(1f, 1f);
@@ -377,7 +382,7 @@ namespace AndroApps
             // Form layer covers the screen; the card is centered by ApplyResponsiveAuthLayout.
             var rightPanel = new GameObject("RightPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            rightPanel.transform.SetParent(_loginFormPanel.transform, false);
+            rightPanel.transform.SetParent(loginFormPanel.transform, false);
             var rp = rightPanel.GetComponent<RectTransform>();
             rp.anchorMin = new Vector2(0f, 0f);
             rp.anchorMax = new Vector2(1f, 1f);
@@ -412,11 +417,11 @@ namespace AndroApps
 
             // Identifier input — taller, bigger font
             AddLabel(card.transform, font, "ID / Mobile / Email / Username", 28, FontStyle.Normal, MutedText, 34f);
-            _idInput = MakeInput(card.transform, font, "Enter your ID, Mobile or Email", false, 76f, 32);
+            idInput = MakeInput(card.transform, font, "Enter your ID, Mobile or Email", false, 76f, 32);
 
             // Password input
             AddLabel(card.transform, font, "Password", 28, FontStyle.Normal, MutedText, 34f);
-            _pwInput = MakeInput(card.transform, font, "Enter your password", true, 76f, 32);
+            pwInput = MakeInput(card.transform, font, "Enter your password", true, 76f, 32);
 
             Spacer(card.transform, 4f);
 
@@ -444,17 +449,17 @@ namespace AndroApps
 
         private void BuildSignupFormPanel()
         {
-            _signupFormPanel = new GameObject("SignupFormPanel",
+            signupFormPanel = new GameObject("SignupFormPanel",
                 typeof(RectTransform), typeof(CanvasRenderer));
-            _signupFormPanel.transform.SetParent(_overlay.transform, false);
-            Stretch(_signupFormPanel.GetComponent<RectTransform>());
+            signupFormPanel.transform.SetParent(_overlay.transform, false);
+            Stretch(signupFormPanel.GetComponent<RectTransform>());
 
             Font font = GetFont();
 
             var card = new GameObject("SignupCard",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(Image),
                 typeof(VerticalLayoutGroup));
-            card.transform.SetParent(_signupFormPanel.transform, false);
+            card.transform.SetParent(signupFormPanel.transform, false);
             card.GetComponent<Image>().color = new Color32(CardColor.r, CardColor.g, CardColor.b, 210);
             var cr = card.GetComponent<RectTransform>();
             cr.anchorMin = new Vector2(0.03f, 0.04f);
@@ -478,13 +483,13 @@ namespace AndroApps
             Spacer(card.transform, 4f);
 
             AddLabel(card.transform, font, "Mobile Or Email", 36, FontStyle.Normal, new Color32(235, 215, 220, 220), 44f);
-            _signupMobileOrEmailInput = MakeInput(card.transform, font, "Enter mobile number or email", false, 96f, 36);
+            signupMobileOrEmailInput = MakeInput(card.transform, font, "Enter mobile number or email", false, 96f, 36);
 
             AddLabel(card.transform, font, "Password", 36, FontStyle.Normal, new Color32(235, 215, 220, 220), 44f);
-            _signupPasswordInput = MakeInput(card.transform, font, "Create your password", true, 96f, 36);
+            signupPasswordInput = MakeInput(card.transform, font, "Create your password", true, 96f, 36);
 
             AddLabel(card.transform, font, "Referral Code", 36, FontStyle.Normal, new Color32(235, 215, 220, 220), 44f);
-            _signupReferralInput = MakeInput(card.transform, font, "Enter referral code (optional)", false, 96f, 34);
+            signupReferralInput = MakeInput(card.transform, font, "Enter referral code (optional)", false, 96f, 34);
 
             var termsRow = new GameObject("TermsRow",
                 typeof(RectTransform), typeof(CanvasRenderer), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
@@ -523,10 +528,10 @@ namespace AndroApps
             toggleCheckRect.sizeDelta = new Vector2(20f, 20f);
             toggleCheck.GetComponent<Image>().color = AccentGold;
 
-            _signupTermsToggle = toggleGo.GetComponent<Toggle>();
-            _signupTermsToggle.targetGraphic = toggleBg.GetComponent<Image>();
-            _signupTermsToggle.graphic = toggleCheck.GetComponent<Image>();
-            _signupTermsToggle.isOn = _auth != null && _auth.registertoggle != null ? _auth.registertoggle.isOn : true;
+            signupTermsToggle = toggleGo.GetComponent<Toggle>();
+            signupTermsToggle.targetGraphic = toggleBg.GetComponent<Image>();
+            signupTermsToggle.graphic = toggleCheck.GetComponent<Image>();
+            signupTermsToggle.isOn = _auth != null && _auth.registertoggle != null ? _auth.registertoggle.isOn : true;
 
             var termsLabel = AddLabel(termsRow.transform, font, "I agree to Terms & Conditions", 20, FontStyle.Normal, MutedText, 40f);
             termsLabel.alignment = TextAnchor.MiddleLeft;
@@ -975,6 +980,15 @@ namespace AndroApps
             }
         }
 
+        private static void SetLayoutHeight(Transform transform, float height)
+        {
+            if (transform == null) return;
+            LayoutElement layout = transform.GetComponent<LayoutElement>();
+            if (layout == null) layout = transform.gameObject.AddComponent<LayoutElement>();
+            layout.preferredHeight = height;
+            layout.minHeight = height;
+        }
+
         private static void SetAnchors(RectTransform rect, Vector2 min, Vector2 max)
         {
             if (rect == null)
@@ -988,74 +1002,50 @@ namespace AndroApps
             rect.offsetMax = Vector2.zero;
         }
 
-        private static void SetLayoutHeight(Transform transform, float height)
-        {
-            if (transform == null)
-            {
-                return;
-            }
-
-            LayoutElement layout = transform.GetComponent<LayoutElement>();
-            if (layout == null)
-            {
-                layout = transform.gameObject.AddComponent<LayoutElement>();
-            }
-
-            layout.preferredHeight = height;
-            layout.minHeight = height;
-        }
 
         // ── State transitions ──────────────────────────────────────────────────
 
-        private void ShowLanding()
+        public void ShowLanding()
         {
             ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
-            if (_auth.SignUpDetail?.SignUpPnl != null)
-            {
+            if (_auth != null && _auth.SignUpDetail?.SignUpPnl != null)
                 _auth.SignUpDetail.SignUpPnl.SetActive(false);
-            }
-            _landingPanel.SetActive(true);
-            _loginFormPanel.SetActive(false);
-            if (_signupFormPanel != null)
-            {
-                _signupFormPanel.SetActive(false);
-            }
+
+            if (landingPanel != null) landingPanel.SetActive(true);
+            if (loginFormPanel != null) loginFormPanel.SetActive(false);
+            if (signupFormPanel != null) signupFormPanel.SetActive(false);
         }
 
-        private void ShowLoginForm()
+        public void ShowLoginForm()
         {
             ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
-            if (_auth.SignUpDetail?.SignUpPnl != null)
-            {
+            
+            if (_auth != null && _auth.SignUpDetail?.SignUpPnl != null)
                 _auth.SignUpDetail.SignUpPnl.SetActive(false);
-            }
-            _landingPanel.SetActive(false);
-            _loginFormPanel.SetActive(true);
-            if (_signupFormPanel != null)
-            {
-                _signupFormPanel.SetActive(false);
-            }
+
+            if (landingPanel != null) landingPanel.SetActive(false);
+            if (loginFormPanel != null) loginFormPanel.SetActive(true);
+            if (signupFormPanel != null) signupFormPanel.SetActive(false);
         }
 
-        private void ShowSignup()
+        public void ShowSignup()
         {
             ApplyResponsiveAuthLayout();
             SetSceneLogoVisible(false);
-            _overlay.SetActive(true);
-            _landingPanel.SetActive(false);
-            _loginFormPanel.SetActive(false);
-            if (_signupFormPanel != null)
+            if (_overlay != null) _overlay.SetActive(true);
+
+            if (landingPanel != null) landingPanel.SetActive(false);
+            if (loginFormPanel != null) loginFormPanel.SetActive(false);
+            if (signupFormPanel != null) signupFormPanel.SetActive(true);
+
+            if (_auth != null)
             {
-                _signupFormPanel.SetActive(true);
+                if (_auth.loginpanel != null) _auth.loginpanel.SetActive(false);
+                if (_auth.LogInDetail?.LogInPnl != null) _auth.LogInDetail.LogInPnl.SetActive(false);
+                if (_auth.SignUpDetail?.SignUpPnl != null) _auth.SignUpDetail.SignUpPnl.SetActive(false);
             }
-            if (_auth.loginpanel != null)
-                _auth.loginpanel.SetActive(false);
-            if (_auth.LogInDetail?.LogInPnl != null)
-                _auth.LogInDetail.LogInPnl.SetActive(false);
-            if (_auth.SignUpDetail?.SignUpPnl != null)
-                _auth.SignUpDetail.SignUpPnl.SetActive(false);
         }
 
         /// <summary>Called externally (e.g. from a "Back" button on signup panel) to restore landing.</summary>
@@ -1080,65 +1070,83 @@ namespace AndroApps
 
         // ── Actions ────────────────────────────────────────────────────────────
 
-        private void DoLogin()
+        public void DoLogin()
         {
-            // Sync our runtime inputs into AuthManager's TMP fields, then trigger login
+            Debug.Log("[LoginPageRedesigner] DoLogin clicked");
+            if (_auth == null) { Debug.LogError("[LoginPageRedesigner] AuthManager reference missing!"); return; }
+
+            // Sync our runtime inputs into AuthManager's fields
+            _auth.Mobile = idInput != null ? idInput.text : string.Empty;
+            _auth.Password = pwInput != null ? pwInput.text : string.Empty;
+
             if (_auth.LogInDetail?.MobileInputfield != null)
-                _auth.LogInDetail.MobileInputfield.text = _idInput != null ? _idInput.text : string.Empty;
+                _auth.LogInDetail.MobileInputfield.text = _auth.Mobile;
             if (_auth.LogInDetail?.PasswordInputfield != null)
-                _auth.LogInDetail.PasswordInputfield.text = _pwInput != null ? _pwInput.text : string.Empty;
+                _auth.LogInDetail.PasswordInputfield.text = _auth.Password;
 
             _auth.OnClickLogIn();
         }
 
-        private void DoGuestLogin()
+        public void DoGuestLogin()
         {
-            _auth.OnClickGuest();
+            Debug.Log("[LoginPageRedesigner] DoGuestLogin clicked");
+            if (_auth != null) _auth.OnClickGuest();
         }
 
-        private void DoSignup()
+        public void DoSignup()
         {
+            Debug.Log("[LoginPageRedesigner] DoSignup clicked");
             if (_auth == null || _auth.SignUpDetail == null)
             {
+                Debug.LogError("[LoginPageRedesigner] AuthManager or SignUpDetail missing!");
                 return;
             }
 
-            string loginValue = _signupMobileOrEmailInput != null ? _signupMobileOrEmailInput.text.Trim() : string.Empty;
-            string passwordValue = _signupPasswordInput != null ? _signupPasswordInput.text : string.Empty;
-            string referralValue = _signupReferralInput != null ? _signupReferralInput.text.Trim() : string.Empty;
+            string loginValue = signupMobileOrEmailInput != null ? signupMobileOrEmailInput.text.Trim() : string.Empty;
+            string passwordValue = signupPasswordInput != null ? signupPasswordInput.text : string.Empty;
+            string referralValue = signupReferralInput != null ? signupReferralInput.text.Trim() : string.Empty;
             bool isEmail = !string.IsNullOrEmpty(loginValue) && loginValue.Contains("@");
 
+            // Sync directly to AuthManager string fields to ensure it works even if UI fields are null
+            _auth.Password = passwordValue;
+            _auth.Referral = referralValue;
+            _auth.Mobile = loginValue; // Use Mobile as the main identifier field
+
             if (_auth.SignUpDetail.EmailInputfield != null)
-            {
                 _auth.SignUpDetail.EmailInputfield.text = isEmail ? loginValue : string.Empty;
-            }
 
             if (_auth.SignUpDetail.MobileInputfield != null)
-            {
                 _auth.SignUpDetail.MobileInputfield.text = isEmail ? string.Empty : loginValue;
-            }
 
             if (_auth.SignUpDetail.PasswordInputfield != null)
-            {
                 _auth.SignUpDetail.PasswordInputfield.text = passwordValue;
-            }
 
             if (_auth.SignUpDetail.ReferralCodeInputfield != null)
-            {
                 _auth.SignUpDetail.ReferralCodeInputfield.text = referralValue;
-            }
 
             if (_auth.registertoggle != null)
             {
-                _auth.registertoggle.isOn = _signupTermsToggle == null || _signupTermsToggle.isOn;
+                _auth.registertoggle.isOn = signupTermsToggle == null || signupTermsToggle.isOn;
             }
 
             if (_auth.SignUpDetail._Toggle != null)
             {
-                _auth.SignUpDetail._Toggle.isOn = _signupTermsToggle == null || _signupTermsToggle.isOn;
+                _auth.SignUpDetail._Toggle.isOn = signupTermsToggle == null || signupTermsToggle.isOn;
             }
 
             _auth.OnClickSignUp();
+        }
+
+        /// <summary>
+        /// Clears all input fields in the redesigned UI.
+        /// </summary>
+        public void ClearAllFields()
+        {
+            if (idInput != null) idInput.text = "";
+            if (pwInput != null) pwInput.text = "";
+            if (signupMobileOrEmailInput != null) signupMobileOrEmailInput.text = "";
+            if (signupPasswordInput != null) signupPasswordInput.text = "";
+            if (signupReferralInput != null) signupReferralInput.text = "";
         }
 
         private bool TryBindExistingOverlay(Transform parent)
@@ -1149,29 +1157,29 @@ namespace AndroApps
                 return false;
             }
 
-            _landingPanel = FindByPath(_overlay.transform, "LandingPanel")?.gameObject;
-            _loginFormPanel = FindByPath(_overlay.transform, "LoginFormPanel")?.gameObject;
-            _signupFormPanel = FindByPath(_overlay.transform, "SignupFormPanel")?.gameObject;
+            landingPanel = FindByPath(_overlay.transform, "LandingPanel")?.gameObject;
+            loginFormPanel = FindByPath(_overlay.transform, "LoginFormPanel")?.gameObject;
+            signupFormPanel = FindByPath(_overlay.transform, "SignupFormPanel")?.gameObject;
             Transform loginCard = FindByPath(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard");
             Transform signupCard = FindByPath(_overlay.transform, "SignupFormPanel/SignupCard");
             InputField[] loginInputs = loginCard != null ? loginCard.GetComponentsInChildren<InputField>(true) : new InputField[0];
             InputField[] signupInputs = signupCard != null ? signupCard.GetComponentsInChildren<InputField>(true) : new InputField[0];
-            _idInput = loginInputs.Length > 0 ? loginInputs[0] : null;
-            _pwInput = loginInputs.Length > 1 ? loginInputs[1] : null;
-            _signupMobileOrEmailInput = signupInputs.Length > 0 ? signupInputs[0] : null;
-            _signupPasswordInput = signupInputs.Length > 1 ? signupInputs[1] : null;
-            _signupReferralInput = signupInputs.Length > 2 ? signupInputs[2] : null;
-            _signupTermsToggle = FindComponent<Toggle>(_overlay.transform, "SignupFormPanel/SignupCard/TermsRow/TermsToggle");
+            idInput = loginInputs.Length > 0 ? loginInputs[0] : null;
+            pwInput = loginInputs.Length > 1 ? loginInputs[1] : null;
+            signupMobileOrEmailInput = signupInputs.Length > 0 ? signupInputs[0] : null;
+            signupPasswordInput = signupInputs.Length > 1 ? signupInputs[1] : null;
+            signupReferralInput = signupInputs.Length > 2 ? signupInputs[2] : null;
+            signupTermsToggle = FindComponent<Toggle>(_overlay.transform, "SignupFormPanel/SignupCard/TermsRow/TermsToggle");
 
-            if (_landingPanel == null
-                || _loginFormPanel == null
-                || _signupFormPanel == null
-                || _idInput == null
-                || _pwInput == null
-                || _signupMobileOrEmailInput == null
-                || _signupPasswordInput == null
-                || _signupReferralInput == null
-                || _signupTermsToggle == null)
+            if (landingPanel == null
+                || loginFormPanel == null
+                || signupFormPanel == null
+                || idInput == null
+                || pwInput == null
+                || signupMobileOrEmailInput == null
+                || signupPasswordInput == null
+                || signupReferralInput == null
+                || signupTermsToggle == null)
             {
                 Debug.LogWarning("[LoginPageRedesigner] Existing _LoginRedesign hierarchy found but some references could not be rebound. Reusing it anyway to avoid duplicate runtime UI.");
             }

@@ -74,6 +74,10 @@ namespace LudoClassicOffline
             {
                 roomChatController = gameObject.AddComponent<LudoRoomChatController>();
             }
+            if (dashBoardManager != null)
+            {
+                roomChatController.manualRootCanvas = dashBoardManager.ludoChatCanvas;
+            }
             roomChatController.SetChatAvailability(false);
 
             friendPanelController = GetComponent<LudoFriendPanelController>();

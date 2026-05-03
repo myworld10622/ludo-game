@@ -7,6 +7,12 @@
         "serve"
       ],
       "type": "stdio"
+    },
+    "mcp-unity": {
+      "command": "node",
+      "args": [
+        "D:/Live-Code/Live-Rox-Ludo/games/unity/Library/PackageCache/com.gamelovers.mcp-unity@4c24251eb7c0/Server~/build/index.js"
+      ]
     }
   }
 }
