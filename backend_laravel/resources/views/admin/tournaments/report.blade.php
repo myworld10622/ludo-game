@@ -82,11 +82,11 @@
             <div style="margin-top:12px;">
                 <div style="font-size:16px;font-weight:700;margin-bottom:10px;">Playing Slots</div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">
-                    @foreach($tournament->play_slots as $slot)
+                    @foreach($tournament->normalizedPlaySlots() as $slot)
                         <div class="panel">
                             <div class="stat-label">{{ $slot['label'] ?? 'Slot' }}</div>
-                            <div><span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }}</span></div>
-                            <div class="muted" style="margin-top:4px;">to <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</span></div>
+                            <div>{{ $slot['start_time'] ?? '—' }}</div>
+                            <div class="muted" style="margin-top:4px;">to {{ $slot['end_time'] ?? '—' }}{{ !empty($slot['timezone']) ? ' · '.$slot['timezone'] : '' }}{{ ($slot['recurrence'] ?? '') === 'daily' ? ' · Daily' : '' }}</div>
                         </div>
                     @endforeach
                 </div>

@@ -76,6 +76,10 @@ class TournamentStatusAutomationService
             ->chunkById(100, function ($tournaments) use ($now, &$disqualifiedCount) {
                 foreach ($tournaments as $tournament) {
                     foreach ($tournament->normalizedPlaySlots() as $slot) {
+                        if (! ($slot['is_enforced'] ?? false)) {
+                            continue;
+                        }
+
                         if (! $slot['end_at'] || $slot['end_at']->gt($now)) {
                             continue;
                         }

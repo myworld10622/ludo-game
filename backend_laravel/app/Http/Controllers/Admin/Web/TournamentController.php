@@ -11,6 +11,7 @@ use App\Support\TournamentReportBuilder;
 use App\Services\Tournament\TournamentStatusAutomationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
@@ -435,16 +436,16 @@ class TournamentController extends Controller
             'tournament_start_at'   => ['required', 'date'],
             'terms_conditions'      => ['nullable', 'string'],
             'timezone'              => ['nullable', 'string', 'max:64'],
-            'play_slot_start_1'     => ['nullable', 'date'],
-            'play_slot_end_1'       => ['nullable', 'date', 'after:play_slot_start_1'],
-            'play_slot_start_2'     => ['nullable', 'date'],
-            'play_slot_end_2'       => ['nullable', 'date', 'after:play_slot_start_2'],
-            'play_slot_start_3'     => ['nullable', 'date'],
-            'play_slot_end_3'       => ['nullable', 'date', 'after:play_slot_start_3'],
-            'play_slot_start_4'     => ['nullable', 'date'],
-            'play_slot_end_4'       => ['nullable', 'date', 'after:play_slot_start_4'],
-            'play_slot_start_5'     => ['nullable', 'date'],
-            'play_slot_end_5'       => ['nullable', 'date', 'after:play_slot_start_5'],
+            'play_slot_start_1'     => ['nullable', 'date_format:H:i'],
+            'play_slot_end_1'       => ['nullable', 'date_format:H:i'],
+            'play_slot_start_2'     => ['nullable', 'date_format:H:i'],
+            'play_slot_end_2'       => ['nullable', 'date_format:H:i'],
+            'play_slot_start_3'     => ['nullable', 'date_format:H:i'],
+            'play_slot_end_3'       => ['nullable', 'date_format:H:i'],
+            'play_slot_start_4'     => ['nullable', 'date_format:H:i'],
+            'play_slot_end_4'       => ['nullable', 'date_format:H:i'],
+            'play_slot_start_5'     => ['nullable', 'date_format:H:i'],
+            'play_slot_end_5'       => ['nullable', 'date_format:H:i'],
             'prize_pct_1'           => ['nullable', 'numeric', 'min:0', 'max:100'],
             'prize_pct_2'           => ['nullable', 'numeric', 'min:0', 'max:100'],
             'prize_pct_3'           => ['nullable', 'numeric', 'min:0', 'max:100'],
@@ -458,17 +459,36 @@ class TournamentController extends Controller
         $slots = [];
 
         for ($i = 1; $i <= 5; $i++) {
-            $startAt = $data["play_slot_start_{$i}"] ?? null;
-            $endAt = $data["play_slot_end_{$i}"] ?? null;
+            $startAt = trim((string) ($data["play_slot_start_{$i}"] ?? ''));
+            $endAt = trim((string) ($data["play_slot_end_{$i}"] ?? ''));
 
-            if (! $startAt || ! $endAt) {
+            if ($startAt === '' && $endAt === '') {
                 continue;
+            }
+
+            if ($startAt === '' || $endAt === '') {
+                throw ValidationException::withMessages([
+                    "play_slot_start_{$i}" => ["Slot {$i} requires both start and end time."],
+                    "play_slot_end_{$i}" => ["Slot {$i} requires both start and end time."],
+                ]);
+            }
+
+            $startTime = Carbon::createFromFormat('H:i', $startAt, $timezone);
+            $endTime = Carbon::createFromFormat('H:i', $endAt, $timezone);
+
+            if ($endTime->lessThanOrEqualTo($startTime)) {
+                throw ValidationException::withMessages([
+                    "play_slot_end_{$i}" => ["Slot {$i} end time must be after start time."],
+                ]);
             }
 
             $slots[] = [
                 'label' => "Slot {$i}",
-                'start_at' => Carbon::parse($startAt, $timezone)->utc()->toIso8601String(),
-                'end_at' => Carbon::parse($endAt, $timezone)->utc()->toIso8601String(),
+                'start_time' => $startTime->format('H:i'),
+                'end_time' => $endTime->format('H:i'),
+                'timezone' => $timezone,
+                'recurrence' => 'daily',
+                'is_enforced' => false,
             ];
         }
 
