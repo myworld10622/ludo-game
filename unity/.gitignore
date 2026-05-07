@@ -69,6 +69,10 @@ crashlytics-build.properties
 # Packed Addressables
 /[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
 
+# Agora Unity SDK iOS frameworks are too large for this repo and are not needed
+# for the current Android release flow.
+/[Aa]ssets/Agora-RTC-Plugin/Agora-Unity-RTC-SDK/Plugins/iOS/
+
 # Temporary auto-generated Android Assets
 /[Aa]ssets/[Ss]treamingAssets/aa.meta
 /[Aa]ssets/[Ss]treamingAssets/aa/*

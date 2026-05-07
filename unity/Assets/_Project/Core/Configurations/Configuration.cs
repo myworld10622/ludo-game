@@ -9,12 +9,12 @@ using static System.Net.WebRequestMethods;
 public class Configuration : MonoBehaviour
 {
 
-    public const string BaseUrl = "http://localhost:8000/";
-    public const string Website = "http://localhost:8000/";
-    public const string BaseSocketUrl = "http://localhost:3002";
-    // public const string BaseUrl = "https://roxludo.com/";
-    // public const string Website = "https://roxludo.com/";
-    // public const string BaseSocketUrl = "https://socket.betzono.tech/";
+    // public const string BaseUrl = "http://localhost:8000/";
+    // public const string Website = "http://localhost:8000/";
+    // public const string BaseSocketUrl = "http://localhost:3002";
+    public const string BaseUrl = "https://roxludo.com/";
+    public const string Website = "https://roxludo.com/";
+    public const string BaseSocketUrl = "https://socket.roxludo.com/";
     public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string LudoTournamentInfoUrl = BaseUrl + "api/v1/tournaments/";
 
@@ -22,6 +22,7 @@ public class Configuration : MonoBehaviour
     public const string UserUrl = BaseUrl + "api/User/";
     public const string LudoV2QueueJoinUrl = BaseUrl + "api/v1/ludo/queue/join";
     public const string LudoV2RoomUrl = BaseUrl + "api/v1/ludo/rooms/";
+    public const string AgoraTokenUrl = BaseUrl + "api/v1/agora/token";
     public const string LudoFriendListUrl = BaseUrl + "api/v1/friends";
     public const string LudoFriendRequestsUrl = BaseUrl + "api/v1/friends/requests";
     public const string LudoFriendRequestUrl = BaseUrl + "api/v1/friends/request";

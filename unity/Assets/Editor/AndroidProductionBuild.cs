@@ -3,11 +3,15 @@ using System.IO;
 using System.Linq;
 using UnityEditor;
 using UnityEditor.Build.Reporting;
+using UnityEngine;
 
 public static class AndroidProductionBuild
 {
-    private const string DefaultOutputPath = @"D:\Latest Rox Ludo Apk\ROX_Ludo_Production.apk";
+    private const string DefaultOutputPath = @"E:\New Rox APK\ROX_Ludo.apk";
     private const string BundleId = "com.roxludo.roxludo";
+
+    [UnityEditor.MenuItem("Tools/Build Android APK (E:/New Rox APK)")]
+    public static void BuildFromMenu() => Build();
 
     public static void Build()
     {
@@ -16,6 +20,9 @@ public static class AndroidProductionBuild
         {
             outputPath = DefaultOutputPath;
         }
+
+        string keystorePassword = Environment.GetEnvironmentVariable("ROX_ANDROID_KEYSTORE_PASS");
+        string keyaliasPassword = Environment.GetEnvironmentVariable("ROX_ANDROID_KEYALIAS_PASS");
 
         outputPath = Path.GetFullPath(outputPath);
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Path.GetPathRoot(outputPath));
@@ -42,6 +49,27 @@ public static class AndroidProductionBuild
         PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.Android, ManagedStrippingLevel.Medium);
         PlayerSettings.stripEngineCode = true;
+
+        if (!string.IsNullOrWhiteSpace(keystorePassword))
+        {
+            PlayerSettings.Android.keystorePass = keystorePassword;
+        }
+
+        if (!string.IsNullOrWhiteSpace(keyaliasPassword))
+        {
+            PlayerSettings.Android.keyaliasPass = keyaliasPassword;
+        }
+
+        // High quality graphics settings
+        PlayerSettings.gpuSkinning = true;
+        PlayerSettings.graphicsJobs = true;
+        QualitySettings.SetQualityLevel(QualitySettings.names.Length - 1, true); // Highest quality level
+        QualitySettings.vSyncCount = 1;
+        QualitySettings.antiAliasing = 4;
+        QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
+        QualitySettings.shadowDistance = 40f;
+        QualitySettings.shadows = ShadowQuality.All;
+        Application.targetFrameRate = 60;
 
         BuildPlayerOptions options = new BuildPlayerOptions
         {

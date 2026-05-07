@@ -419,6 +419,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             DOTween.KillAll(false);
             GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
             GetComponent<LudoRoomChatController>()?.ClearMessages();
+            GetComponent<AgoraVoiceManager>()?.HandleRoomClosed();
             ResolveFriendPanelController().SetRoomActionAvailability(false);
             ResolveFriendPanelController().SetHomeShortcutAvailability(false);
 
@@ -3234,6 +3235,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             // HideTournamentClassicTab();
             GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
             GetComponent<LudoRoomChatController>()?.ClearMessages();
+            GetComponent<AgoraVoiceManager>()?.HandleRoomClosed();
             ResolveFriendPanelController().SetRoomActionAvailability(false);
             ResolveFriendPanelController().SetHomeShortcutAvailability(false);
             selectGameModePanal.SetActive(true);

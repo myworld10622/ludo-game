@@ -40,6 +40,7 @@ namespace LudoClassicOffline
         private LudoV2RoomSnapshot latestSnapshot;
         private int lastAnnouncedSeatCount;
         private LudoRoomChatController roomChatController;
+        private AgoraVoiceManager agoraVoiceManager;
         private LudoFriendPanelController friendPanelController;
         private const string DefaultSeatAvatarUrl =
             "https://artoon-game-platform.s3.amazonaws.com/mgp/ProfileImages/ProfileImages-1691467544636.png";
@@ -72,15 +73,22 @@ namespace LudoClassicOffline
             }
 
             roomChatController = GetComponent<LudoRoomChatController>();
-            if (roomChatController == null)
+            if (roomChatController != null)
             {
-                roomChatController = gameObject.AddComponent<LudoRoomChatController>();
+                if (dashBoardManager != null)
+                {
+                    roomChatController.manualRootCanvas = dashBoardManager.ludoChatCanvas;
+                }
+                roomChatController.SetChatAvailability(false);
+                roomChatController.enabled = false;
             }
-            if (dashBoardManager != null)
+
+            agoraVoiceManager = GetComponent<AgoraVoiceManager>();
+            if (agoraVoiceManager == null)
             {
-                roomChatController.manualRootCanvas = dashBoardManager.ludoChatCanvas;
+                agoraVoiceManager = gameObject.AddComponent<AgoraVoiceManager>();
             }
-            roomChatController.SetChatAvailability(false);
+            agoraVoiceManager.SetVoiceAvailability(false);
 
             friendPanelController = GetComponent<LudoFriendPanelController>();
             if (friendPanelController == null)
@@ -489,7 +497,8 @@ namespace LudoClassicOffline
                 ToastMessage.WAITFORPLAYER
             );
             UpdateWaitingBoardMessage(snapshot);
-            roomChatController?.SetChatAvailability(true);
+            roomChatController?.SetChatAvailability(false);
+            agoraVoiceManager?.HandleRoomOpened();
             friendPanelController?.SetRoomActionAvailability(true);
             LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
         }
@@ -1019,6 +1028,7 @@ namespace LudoClassicOffline
             dashBoardManager.backButton.SetActive(true);
             roomChatController?.SetChatAvailability(false);
             roomChatController?.ClearMessages();
+            agoraVoiceManager?.HandleRoomClosed();
             friendPanelController?.SetRoomActionAvailability(false);
             CommonUtil.ShowToast(message);
             DisconnectSocket();
@@ -1027,6 +1037,8 @@ namespace LudoClassicOffline
         private void DisconnectSocket()
         {
             roomChatController?.SetChatAvailability(false);
+            roomChatController?.ClearMessages();
+            agoraVoiceManager?.HandleRoomClosed();
             friendPanelController?.SetRoomActionAvailability(false);
 
             if (socketManager == null)
@@ -1049,6 +1061,27 @@ namespace LudoClassicOffline
         public string GetActiveRoomId()
         {
             return latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+        }
+
+        public string GetAgoraVoiceChannelName()
+        {
+            string roomId = GetActiveRoomId();
+            if (string.IsNullOrWhiteSpace(roomId))
+            {
+                return null;
+            }
+
+            if (isTournamentMode)
+            {
+                return "ludo_tournament_" + roomId;
+            }
+
+            if (isPrivateTableMode)
+            {
+                return "ludo_private_" + (string.IsNullOrWhiteSpace(privateTableCode) ? roomId : privateTableCode);
+            }
+
+            return "ludo_room_" + roomId;
         }
 
         private bool IsLocalWinner(LudoV2MatchResult payload)
