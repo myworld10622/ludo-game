@@ -162,7 +162,18 @@
                     <div><label>Format</label><select name="format"><option value="knockout" @selected(old('format', $t?->format ?? 'knockout') === 'knockout')>Knockout</option><option value="round_robin" @selected(old('format', $t?->format) === 'round_robin')>Round Robin</option><option value="double_elim" @selected(old('format', $t?->format) === 'double_elim')>Double Elimination</option><option value="group_knockout" @selected(old('format', $t?->format) === 'group_knockout')>Group + Knockout</option></select></div>
                     <div><label>Status</label><select name="status">@foreach (['draft','registration_open','registration_closed','in_progress','completed','cancelled'] as $s)<option value="{{ $s }}" @selected(old('status', $t?->status ?? 'registration_open') === $s)>{{ ucwords(str_replace('_',' ',$s)) }}</option>@endforeach</select></div>
                     <div><label>Entry Fee</label><input type="number" step="0.01" name="entry_fee" value="{{ old('entry_fee', $t?->entry_fee ?? 10) }}" required></div>
-                    <div><label>Max Players</label><select name="max_players">@foreach ([4, 8, 16, 32, 64] as $n)<option value="{{ $n }}" @selected((int) old('max_players', $t?->max_players ?? 8) === $n)>{{ $n }}</option>@endforeach</select></div>
+                    <div>
+                        <label>Max Players</label>
+                        <input
+                            type="number"
+                            name="max_players"
+                            min="4"
+                            max="100000"
+                            step="1"
+                            value="{{ (int) old('max_players', $t?->max_players ?? 16) }}"
+                            placeholder="Enter player cap up to 100000"
+                        >
+                    </div>
                     <div><label>Players Per Match</label><select name="players_per_match"><option value="4" @selected((int) old('players_per_match', $t?->players_per_match ?? 4) === 4)>4 Players</option><option value="2" @selected((int) old('players_per_match', $t?->players_per_match) === 2)>2 Players</option></select></div>
                     <div><label>Platform Fee %</label><input type="number" step="0.1" name="platform_fee_pct" value="{{ old('platform_fee_pct', $t?->platform_fee_pct ?? 20) }}"></div>
                     <div><label>Bracket Mode</label><select name="bracket_mode"><option value="auto" @selected(old('bracket_mode', $t?->bracket_mode ?? 'auto') === 'auto')>Auto</option><option value="manual" @selected(old('bracket_mode', $t?->bracket_mode) === 'manual')>Manual</option></select></div>
