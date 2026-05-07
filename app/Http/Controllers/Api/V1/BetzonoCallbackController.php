@@ -72,6 +72,8 @@ class BetzonoCallbackController extends Controller
             $this->syncLegacyUserBalance($user, $amount);
         }
 
+        $this->syncLegacyPurchaseStatus($trx, $status, $payload);
+
         return response()->json(['message' => 'OK']);
     }
 
@@ -218,22 +220,41 @@ class BetzonoCallbackController extends Controller
         string $gatewayStatus,
         array $payload
     ): object {
+        $traId = (string) data_get($payload, 'tra_id', data_get($payload, 'traId', ''));
+        $utrId = (string) data_get($payload, 'utr_id', data_get($payload, 'utrId', ''));
+        $gatewayTransactionId = (string) data_get($payload, 'gateway_transaction_id', data_get($payload, 'gatewayTransactionId', ''));
+
         $existing = DB::table('rox_gateway_transactions')->where('trx', $trx)->first();
 
         if ($existing) {
+            $update = [
+                'status' => $status,
+                'gateway_status' => $gatewayStatus,
+                'payload' => json_encode($payload),
+                'updated_at' => now(),
+            ];
+
+            if (Schema::hasColumn('rox_gateway_transactions', 'callback_payload')) {
+                $update['callback_payload'] = json_encode($payload);
+            }
+            if ($gatewayTransactionId !== '' && Schema::hasColumn('rox_gateway_transactions', 'gateway_transaction_id')) {
+                $update['gateway_transaction_id'] = $gatewayTransactionId;
+            }
+            if ($traId !== '' && Schema::hasColumn('rox_gateway_transactions', 'tra_id')) {
+                $update['tra_id'] = $traId;
+            }
+            if ($utrId !== '' && Schema::hasColumn('rox_gateway_transactions', 'utr_id')) {
+                $update['utr_id'] = $utrId;
+            }
+
             DB::table('rox_gateway_transactions')
                 ->where('id', $existing->id)
-                ->update([
-                    'status' => $status,
-                    'gateway_status' => $gatewayStatus,
-                    'payload' => json_encode($payload),
-                    'updated_at' => now(),
-                ]);
+                ->update($update);
 
             return DB::table('rox_gateway_transactions')->where('id', $existing->id)->first();
         }
 
-        $id = DB::table('rox_gateway_transactions')->insertGetId([
+        $insert = [
             'trx' => $trx,
             'type' => $type,
             'user_id' => $userId,
@@ -244,7 +265,22 @@ class BetzonoCallbackController extends Controller
             'payload' => json_encode($payload),
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        if (Schema::hasColumn('rox_gateway_transactions', 'callback_payload')) {
+            $insert['callback_payload'] = json_encode($payload);
+        }
+        if ($gatewayTransactionId !== '' && Schema::hasColumn('rox_gateway_transactions', 'gateway_transaction_id')) {
+            $insert['gateway_transaction_id'] = $gatewayTransactionId;
+        }
+        if ($traId !== '' && Schema::hasColumn('rox_gateway_transactions', 'tra_id')) {
+            $insert['tra_id'] = $traId;
+        }
+        if ($utrId !== '' && Schema::hasColumn('rox_gateway_transactions', 'utr_id')) {
+            $insert['utr_id'] = $utrId;
+        }
+
+        $id = DB::table('rox_gateway_transactions')->insertGetId($insert);
 
         return DB::table('rox_gateway_transactions')->where('id', $id)->first();
     }
@@ -299,5 +335,34 @@ class BetzonoCallbackController extends Controller
                 'payout_response' => json_encode($payload),
                 'updated_date' => now()->format('Y-m-d H:i:s'),
             ]);
+    }
+
+    private function syncLegacyPurchaseStatus(string $trx, string $status, array $payload): void
+    {
+        if (! Schema::hasTable('tbl_purchase')) {
+            return;
+        }
+
+        $mapped = $status === 'success' ? 1 : ($status === 'rejected' ? 2 : 0);
+        $traId = (string) data_get($payload, 'tra_id', data_get($payload, 'traId', ''));
+        $utrId = (string) data_get($payload, 'utr_id', data_get($payload, 'utrId', ''));
+
+        $update = [
+            'status' => $mapped,
+            'json_response' => json_encode($payload),
+            'updated_date' => now()->format('Y-m-d H:i:s'),
+        ];
+
+        if ($traId !== '') {
+            $update['razor_payment_id'] = $traId;
+        }
+
+        if ($utrId !== '') {
+            $update['utr'] = $utrId;
+        }
+
+        DB::table('tbl_purchase')
+            ->where('transaction_id', $trx)
+            ->update($update);
     }
 }

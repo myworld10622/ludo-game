@@ -483,11 +483,16 @@
         <a class="nav-link {{ request()->routeIs('admin.wallet-transactions.*') ? 'active' : '' }}" href="{{ route('admin.wallet-transactions.index') }}">
             <span class="ni">💳</span> Wallet Transactions
         </a>
+        <a class="nav-link sub {{ request()->routeIs('admin.wallet-transfers.*') ? 'active' : '' }}" href="{{ route('admin.wallet-transfers.index') }}">↳ Wallet Transfers</a>
         <a class="nav-link {{ request()->routeIs('admin.deposits.index') ? 'active' : '' }}" href="{{ route('admin.deposits.index') }}">
             <span class="ni">⬇️</span> Deposits
         </a>
+        <a class="nav-link sub {{ request()->routeIs('admin.gateway-transactions.*') ? 'active' : '' }}" href="{{ route('admin.gateway-transactions.index') }}">↳ Gateway Deposits</a>
         <a class="nav-link sub {{ request()->routeIs('admin.deposits.bonus.*') ? 'active' : '' }}" href="{{ route('admin.deposits.bonus.index') }}">↳ Deposit Bonus</a>
         <a class="nav-link sub {{ request()->routeIs('admin.deposits.percentage.*') ? 'active' : '' }}" href="{{ route('admin.deposits.percentage.index') }}">↳ Deposit Percentage</a>
+        <a class="nav-link {{ request()->routeIs('admin.manual-deposits.*') ? 'active' : '' }}" href="{{ route('admin.manual-deposits.index') }}">
+            <span class="ni">💳</span> Manual Deposits
+        </a>
         <a class="nav-link {{ request()->routeIs('admin.withdrawals.index') ? 'active' : '' }}" href="{{ route('admin.withdrawals.index') }}">
             <span class="ni">⬆️</span> Withdrawals
         </a>

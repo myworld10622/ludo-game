@@ -31,11 +31,14 @@ class AuthService
                 'email' => $payload['email'] ?? null,
                 'mobile' => $payload['mobile'] ?? null,
                 'password' => Hash::make($payload['password']),
-                'referral_code' => strtoupper(Str::random(8)),
                 'referred_by_user_id' => $referrer?->id,
                 'is_active' => true,
                 'is_banned' => false,
             ]);
+
+            $user->forceFill([
+                'referral_code' => (string) $user->user_code,
+            ])->save();
 
             $user->profile()->create($payload['profile'] ?? []);
 
@@ -113,11 +116,14 @@ class AuthService
                     'username' => $this->generateUniqueUsername($provider, $name, $email),
                     'email' => $email ?: null,
                     'password' => Hash::make(Str::random(40)),
-                    'referral_code' => strtoupper(Str::random(8)),
                     'is_active' => true,
                     'is_banned' => false,
                     'email_verified_at' => $email ? now() : null,
                 ]);
+
+                $user->forceFill([
+                    'referral_code' => (string) $user->user_code,
+                ])->save();
 
                 $user->profile()->create([
                     'first_name' => $name !== '' ? $name : Str::headline($provider).' Player',

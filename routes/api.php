@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\GameController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\FriendController;
 use App\Http\Controllers\Api\V1\LudoController;
+use App\Http\Controllers\Api\V1\PrivateLudoTableController;
 use App\Http\Controllers\Api\V1\LudoRoomMessageController;
 use App\Http\Controllers\Api\V1\TournamentController;
 use App\Http\Controllers\Api\V1\TournamentRegistrationController;
@@ -38,6 +39,9 @@ Route::prefix('internal/v1')
             Route::post('/matches/{match}/result', [InternalTournamentMatchResult::class, 'submit']);
             Route::post('/matches/{match}/override', [InternalTournamentMatchResult::class, 'override']);
         });
+
+        // Private table completion (called by Node.js when game ends)
+        Route::post('/ludo/private-table/complete', [PrivateLudoTableController::class, 'complete']);
     });
 
 // ── Legacy Compatibility Routes ───────────────────────────────────────────────
@@ -50,9 +54,18 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/social_login', [UserCompatibilityController::class, 'socialLogin']);
         Route::post('/profile', [UserCompatibilityController::class, 'profile']);
         Route::post('/wallet', [UserCompatibilityController::class, 'wallet']);
+        Route::post('/transfer_lookup', [UserCompatibilityController::class, 'transferLookup']);
+        Route::post('/transfer_wallet', [UserCompatibilityController::class, 'transferWallet']);
+        Route::post('/transfer_history', [UserCompatibilityController::class, 'transferHistory']);
         Route::post('/randomBoatUsers', [UserCompatibilityController::class, 'randomBoatUsers']);
         Route::post('/game_on_off', [UserCompatibilityController::class, 'gameOnOff']);
         Route::post('/setting', [UserCompatibilityController::class, 'setting']);
+        Route::post('/recovery_status', [UserCompatibilityController::class, 'recoveryStatus']);
+        Route::post('/recovery_send_otp', [UserCompatibilityController::class, 'recoverySendOtp']);
+        Route::post('/recovery_verify_otp', [UserCompatibilityController::class, 'recoveryVerifyOtp']);
+        Route::post('/recovery_reminder_dismiss', [UserCompatibilityController::class, 'recoveryReminderDismiss']);
+        Route::post('/forgot_username', [UserCompatibilityController::class, 'forgotUsername']);
+        Route::post('/recover_username', [UserCompatibilityController::class, 'recoverUsername']);
         Route::post('/forgot_password', [UserCompatibilityController::class, 'forgotPassword']);
         Route::post('/update_password', [UserCompatibilityController::class, 'updatePassword']);
         Route::post('/update_profile', [UserCompatibilityController::class, 'updateProfile']);
@@ -87,6 +100,7 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/rebateHistory', [UserCompatibilityController::class, 'rebateHistory']);
         Route::post('/welcome_bonus', [UserCompatibilityController::class, 'welcomeBonus']);
         Route::post('/collect_welcome_bonus', [UserCompatibilityController::class, 'collectWelcomeBonus']);
+        Route::post('/reffer_level', [UserCompatibilityController::class, 'refferLevel']);
         Route::post('/withdrawal_log', [UserCompatibilityController::class, 'withdrawalLog']);
     });
 }
@@ -107,6 +121,7 @@ foreach (['plan', 'Plan'] as $planPrefix) {
         Route::post('/get_qr', [PlanCompatibilityController::class, 'getQr']);
         Route::post('/get_usdt_qr', [PlanCompatibilityController::class, 'getUsdtQr']);
         Route::post('/addcash', [PlanCompatibilityController::class, 'addCash']);
+        Route::post('/payment_status', [PlanCompatibilityController::class, 'paymentStatus']);
     });
 }
 
@@ -195,6 +210,13 @@ Route::prefix($version)
             Route::post('/queue/join', [LudoController::class, 'joinQueue']);
             Route::get('/rooms/{roomUuid}', [LudoController::class, 'room']);
             Route::get('/rooms/{roomUuid}/messages', [LudoRoomMessageController::class, 'index']);
+
+            // ── Private Table ─────────────────────────────────────────────────
+            Route::prefix('private-table')->group(function () {
+                Route::post('/create', [PrivateLudoTableController::class, 'create']);
+                Route::post('/join', [PrivateLudoTableController::class, 'join']);
+                Route::get('/{code}', [PrivateLudoTableController::class, 'info']);
+            });
         });
 
         // ── Social / Friends Routes ───────────────────────────────────────────

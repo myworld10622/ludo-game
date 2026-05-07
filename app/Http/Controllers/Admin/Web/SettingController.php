@@ -52,9 +52,14 @@ class SettingController extends Controller
             'dollar' => ['required', 'numeric', 'min:0'],
             'daily_bonus_status' => ['required', 'string', 'max:50'],
             'app_popop_status' => ['required', 'string', 'max:50'],
+            'app_popup_title' => ['nullable', 'string', 'max:190'],
+            'app_popup_message' => ['nullable', 'string', 'max:500'],
+            'app_popup_button_text' => ['nullable', 'string', 'max:80'],
+            'app_popup_url' => ['nullable', 'string', 'max:500'],
             'fcm_server_key' => ['required', 'string'],
             'qr_image' => ['nullable', 'image', 'max:2048'],
             'usdt_qr_image' => ['nullable', 'image', 'max:2048'],
+            'app_popup_image' => ['nullable', 'image', 'max:4096'],
         ]);
 
         $data = [
@@ -83,6 +88,10 @@ class SettingController extends Controller
             'dollar' => $request->input('dollar'),
             'daily_bonus_status' => $request->input('daily_bonus_status'),
             'app_popop_status' => $request->input('app_popop_status'),
+            'app_popup_title' => $request->input('app_popup_title'),
+            'app_popup_message' => $request->input('app_popup_message'),
+            'app_popup_button_text' => $request->input('app_popup_button_text'),
+            'app_popup_url' => $request->input('app_popup_url'),
             'fcm_server_key' => $request->input('fcm_server_key'),
             'updated_date' => now()->format('Y-m-d H:i:s'),
         ];
@@ -93,6 +102,10 @@ class SettingController extends Controller
 
         if ($request->hasFile('usdt_qr_image')) {
             $data['usdt_qr_image'] = $this->storeSettingsUpload($request->file('usdt_qr_image'), 'usdt_qr');
+        }
+
+        if ($request->hasFile('app_popup_image')) {
+            $data['app_popup_image'] = $this->storeSettingsUpload($request->file('app_popup_image'), 'app_popup');
         }
 
         DB::table('tbl_setting')->update($data);

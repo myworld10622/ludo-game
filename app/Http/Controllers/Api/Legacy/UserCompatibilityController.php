@@ -6,15 +6,21 @@ use App\Http\Controllers\Controller;
 use App\Models\Game;
 use App\Models\LegacyOtp;
 use App\Models\User;
+use App\Models\UserRecoveryChannel;
+use App\Models\UserSecurityReminder;
 use App\Models\UserSocialAccount;
 use App\Models\Wallet;
+use App\Models\WalletTransfer;
 use App\Models\WalletTransaction;
 use App\Services\Auth\AuthService;
 use App\Services\Wallet\WalletService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
@@ -74,6 +80,17 @@ class UserCompatibilityController extends Controller
             ]);
         }
 
+        $cooldownOtp = $this->findActiveOtpWithinCooldown($mobile, $type);
+        if ($cooldownOtp) {
+            return response()->json([
+                'message' => 'Please wait before requesting another OTP.',
+                'otp_id' => (string) $cooldownOtp->id,
+                'code' => 429,
+                'retry_after' => $this->otpRetryAfterSeconds($cooldownOtp),
+                'otp' => $this->shouldExposeOtpForTesting() ? (string) $cooldownOtp->otp_code : '',
+            ]);
+        }
+
         $otpId = random_int(100000, 999999);
         $otpCode = (string) random_int(1000, 9999);
 
@@ -92,6 +109,7 @@ class UserCompatibilityController extends Controller
             'otp_id' => $otp->id,
             'code' => 200,
             'otp' => $otpCode,
+            'retry_after' => $this->otpCooldownSeconds(),
         ]);
     }
 
@@ -135,23 +153,28 @@ class UserCompatibilityController extends Controller
 
         $referrer = $referralCode !== ''
             ? $this->resolveReferrer($referralCode)
-            : null;
+            : $this->resolveDefaultReferrer();
 
         $user = DB::transaction(function () use ($mobile, $password, $name, $referrer) {
+            $normalizedFirstName = $this->normalizeProfileFirstName($name, $mobile);
+
             $user = User::query()->create([
                 'uuid' => (string) Str::uuid(),
                 'username' => $this->makeUsername($name, $mobile),
                 'mobile' => $mobile,
                 'password' => Hash::make($password),
-                'referral_code' => strtoupper(Str::random(8)),
                 'referred_by_user_id' => $referrer?->id,
                 'is_active' => true,
                 'is_banned' => false,
                 'mobile_verified_at' => now(),
             ]);
 
+            $user->forceFill([
+                'referral_code' => (string) $user->user_code,
+            ])->save();
+
             $user->profile()->create([
-                'first_name' => $name,
+                'first_name' => $normalizedFirstName,
                 'gender' => 'male',
                 'language' => 'en',
             ]);
@@ -292,16 +315,52 @@ class UserCompatibilityController extends Controller
         }
 
         $profile = $this->ensureProfile($user);
-        $name = (string) $request->input('name', '');
-        $email = (string) $request->input('email', '');
-        $profilePic = (string) $request->input('profile_pic', '');
+        $validator = Validator::make($request->all(), [
+            'name' => ['nullable', 'string', 'max:100'],
+            'email' => ['nullable', 'email', 'max:255', 'unique:users,email,'.$user->id],
+            'gender' => ['nullable', 'in:male,female,other'],
+            'date_of_birth' => ['nullable', 'date'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+        ]);
 
-        if ($name !== '') {
-            $profile->first_name = $name;
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => (string) ($validator->errors()->first() ?: 'Invalid profile details.'),
+                'code' => 406,
+            ]);
         }
 
-        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $name = trim((string) $request->input('name', ''));
+        $email = trim((string) $request->input('email', ''));
+        $gender = trim((string) $request->input('gender', ''));
+        $dateOfBirth = trim((string) $request->input('date_of_birth', ''));
+        $state = trim((string) $request->input('state', ''));
+        $city = trim((string) $request->input('city', ''));
+        $profilePic = (string) $request->input('profile_pic', '');
+
+        if ($request->exists('name')) {
+            $profile->first_name = $name !== '' ? $name : null;
+        }
+
+        if ($request->exists('email') && $email !== '') {
             $user->email = $email;
+        }
+
+        if ($request->exists('gender')) {
+            $profile->gender = $gender !== '' ? $gender : null;
+        }
+
+        if ($request->exists('date_of_birth')) {
+            $profile->date_of_birth = $dateOfBirth !== '' ? Carbon::parse($dateOfBirth)->toDateString() : null;
+        }
+
+        if ($request->exists('state')) {
+            $profile->state = $state !== '' ? $state : null;
+        }
+
+        if ($request->exists('city')) {
+            $profile->city = $city !== '' ? $city : null;
         }
 
         if ($profilePic !== '') {
@@ -476,11 +535,34 @@ class UserCompatibilityController extends Controller
 
         $statement = $transactions->map(function (WalletTransaction $tx) use ($user) {
             $amount = (string) ($tx->direction === 'debit' ? -1 * (float) $tx->amount : (float) $tx->amount);
+            $source = (string) ($tx->description ?: $tx->type);
+
+            if ($tx->description === 'Withdrawal request' && $this->legacyTableExists('tbl_withdrawal_log')) {
+                $withdrawalRow = DB::table('tbl_withdrawal_log')
+                    ->select('status')
+                    ->where('id', $tx->reference_id)
+                    ->first();
+
+                if ($withdrawalRow) {
+                    $statusLabel = match ((int) $withdrawalRow->status) {
+                        0 => 'Pending',
+                        1 => 'Approved',
+                        2 => 'Rejected',
+                        default => 'Pending',
+                    };
+
+                    $source = 'Withdrawal request ('.$statusLabel.')';
+                }
+            }
+
+            if ($tx->description === 'Withdrawal rejected refund') {
+                $source = 'Withdrawal refund (Rejected)';
+            }
 
             return [
                 'id' => (string) $tx->id,
                 'user_id' => (string) $user->user_code,
-                'source' => (string) ($tx->description ?: $tx->type),
+                'source' => $source,
                 'source_id' => (string) ($tx->reference_id ?? $tx->transaction_uuid),
                 'amount' => $amount,
                 'admin_commission' => '0',
@@ -632,7 +714,10 @@ class UserCompatibilityController extends Controller
         }
 
         $legacyUser = $this->resolveLegacyDbUser($user);
-        if (! $legacyUser || ! $this->legacyTableExists('tbl_purchase')) {
+        // Use same fallback ID logic as addCash so IDs always match
+        $lookupId = $legacyUser?->id ?? (int) $user->id;
+
+        if (! $this->legacyTableExists('tbl_purchase')) {
             return response()->json([
                 'message' => 'Success',
                 'purchase_history' => [],
@@ -640,8 +725,12 @@ class UserCompatibilityController extends Controller
             ]);
         }
 
+        // Cover both lookup strategies: PlanCompatibilityController uses tbl_users.id = laravel user id,
+        // while this controller resolves via mobile/email. Include both to catch all deposits.
+        $ids = array_unique(array_filter([$lookupId, (int) $user->id], fn ($v) => $v > 0));
+
         $history = DB::table('tbl_purchase')
-            ->where('user_id', $legacyUser->id)
+            ->whereIn('user_id', $ids)
             ->orderByDesc('id')
             ->get();
 
@@ -989,6 +1078,80 @@ class UserCompatibilityController extends Controller
         ]);
     }
 
+    public function refferLevel(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Invalid User',
+                'refferearnlog' => [],
+                'code' => 411,
+            ]);
+        }
+
+        $legacyUser = $this->resolveLegacyDbUser($user);
+        if (! $legacyUser || ! $this->legacyTableExists('tbl_welcome_ref')) {
+            return response()->json([
+                'message' => 'Success',
+                'refferearnlog' => [],
+                'code' => 200,
+            ]);
+        }
+
+        $requestedLevel = (int) $request->input('level', 0);
+        $lookupIds = array_unique(array_filter(
+            [$legacyUser?->id, (int) $user->id],
+            fn ($value) => $value !== null && $value > 0
+        ));
+
+        $query = DB::table('tbl_welcome_ref')
+            ->select(
+                'tbl_welcome_ref.id',
+                'tbl_welcome_ref.user_id',
+                'tbl_welcome_ref.bonus_user_id',
+                'tbl_welcome_ref.coin',
+                'tbl_welcome_ref.added_date',
+                'tbl_welcome_ref.level',
+                DB::raw("COALESCE(tbl_users.name, '') as name"),
+                DB::raw("COALESCE(tbl_users.mobile, '') as referred_mobile")
+            )
+            ->leftJoin('tbl_users', 'tbl_users.id', '=', 'tbl_welcome_ref.bonus_user_id')
+            ->whereIn('tbl_welcome_ref.user_id', $lookupIds);
+
+        if ($requestedLevel > 0) {
+            $query->where('tbl_welcome_ref.level', $requestedLevel);
+        }
+
+        $logs = $query
+            ->orderByDesc('tbl_welcome_ref.id')
+            ->get()
+            ->map(function ($row) {
+                $displayId = trim((string) ($row->bonus_user_id ?? ''));
+                if ($displayId === '') {
+                    $displayId = trim((string) ($row->referred_mobile ?? ''));
+                }
+
+                return [
+                    'id' => (string) ($row->id ?? ''),
+                    'user_id' => (string) ($row->user_id ?? ''),
+                    'referred_user_id' => $displayId,
+                    'coin' => (string) ($row->coin ?? '0'),
+                    'added_date' => (string) ($row->added_date ?? ''),
+                    'name' => (string) ($row->name ?? ''),
+                    'refer_count' => (string) ($row->level ?? '0'),
+                    'level' => (string) ($row->level ?? '0'),
+                ];
+            })
+            ->values();
+
+        return response()->json([
+            'message' => 'Success',
+            'refferearnlog' => $logs,
+            'code' => 200,
+        ]);
+    }
+
     public function withdrawalLog(Request $request): JsonResponse
     {
         $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
@@ -1002,49 +1165,136 @@ class UserCompatibilityController extends Controller
         }
 
         $legacyUser = $this->resolveLegacyDbUser($user);
-        if (! $legacyUser || ! $this->legacyTableExists('tbl_withdrawal_log') || ! $this->legacyTableExists('tbl_users')) {
-            return response()->json([
-                'message' => 'Success',
-                'data' => [],
-                'code' => 200,
-            ]);
+
+        // If legacy tables missing OR no legacy user, fall back to wallet_transactions withdrawal entries
+        if (! $legacyUser || ! $this->legacyTableExists('tbl_withdrawal_log')) {
+            $walletRows = \App\Models\WalletTransaction::where('user_id', $user->id)
+                ->where('type', 'debit')
+                ->whereIn('reference_type', ['withdrawal', 'withdraw', 'redeem'])
+                ->orderByDesc('id')
+                ->limit(100)
+                ->get()
+                ->map(fn ($tx) => (object) [
+                    'id'           => (string) $tx->id,
+                    'user_id'      => (string) $tx->user_id,
+                    'redeem_id'    => (string) ($tx->reference_id ?? ''),
+                    'coin'         => (string) $tx->amount,
+                    'mobile'       => '',
+                    'status'       => '1',
+                    'created_date' => (string) $tx->created_at,
+                    'updated_date' => (string) $tx->updated_at,
+                    'isDeleted'    => '0',
+                    'user_name'    => $user->username ?? '',
+                    'user_mobile'  => $user->mobile ?? '',
+                    'bank_detail'  => '',
+                    'adhar_card'   => '',
+                    'upi'          => '',
+                ]);
+
+            return response()->json(['message' => 'Success', 'data' => $walletRows, 'code' => 200]);
         }
+
+        // Try both legacy ID and Laravel user ID to cover all save strategies
+        $lookupIds = array_unique(array_filter(
+            [$legacyUser?->id, (int) $user->id],
+            fn ($v) => $v !== null && $v > 0
+        ));
 
         $logs = DB::table('tbl_withdrawal_log')
             ->select(
                 'tbl_withdrawal_log.*',
-                'tbl_users.name as user_name',
-                'tbl_users.mobile as user_mobile',
-                'tbl_users.bank_detail',
-                'tbl_users.adhar_card',
-                'tbl_users.upi',
+                DB::raw("COALESCE(tbl_users.name, '') as user_name"),
+                DB::raw("COALESCE(tbl_users.mobile, '') as user_mobile"),
+                DB::raw("COALESCE(tbl_users.bank_detail, '') as bank_detail"),
+                DB::raw("COALESCE(tbl_users.adhar_card, '') as adhar_card"),
+                DB::raw("COALESCE(tbl_users.upi, '') as upi"),
             )
-            ->join('tbl_users', 'tbl_users.id', '=', 'tbl_withdrawal_log.user_id')
+            ->leftJoin('tbl_users', 'tbl_users.id', '=', 'tbl_withdrawal_log.user_id')
             ->where('tbl_withdrawal_log.isDeleted', 0)
-            ->where('tbl_withdrawal_log.user_id', $legacyUser->id)
+            ->whereIn('tbl_withdrawal_log.user_id', $lookupIds)
             ->orderByDesc('tbl_withdrawal_log.id')
             ->get();
 
+        // Also include wallet_transactions-based withdrawal entries not in tbl_withdrawal_log
+        $walletWithdrawals = \App\Models\WalletTransaction::where('user_id', $user->id)
+            ->where('type', 'debit')
+            ->whereIn('reference_type', ['withdrawal', 'withdraw', 'redeem'])
+            ->whereNotIn('reference_id', $logs->pluck('id')->filter()->map(fn ($id) => (string) $id)->toArray())
+            ->orderByDesc('id')
+            ->limit(100)
+            ->get()
+            ->map(fn ($tx) => (object) [
+                'id'           => 'wt-'.$tx->id,
+                'user_id'      => (string) $tx->user_id,
+                'redeem_id'    => (string) ($tx->reference_id ?? ''),
+                'coin'         => (string) $tx->amount,
+                'mobile'       => '',
+                'status'       => '0',
+                'created_date' => (string) ($tx->created_at ?? ''),
+                'updated_date' => (string) ($tx->updated_at ?? ''),
+                'isDeleted'    => '0',
+                'user_name'    => $user->username ?? '',
+                'user_mobile'  => $user->mobile ?? '',
+                'bank_detail'  => '',
+                'adhar_card'   => '',
+                'upi'          => '',
+            ]);
+
+        $transferRows = collect($this->buildTransferHistoryForViewer($user))
+            ->map(function (array $item) use ($legacyUser) {
+                return (object) [
+                    'id' => 'transfer-'.$item['id'],
+                    'user_id' => (string) $legacyUser->id,
+                    'redeem_id' => 'wallet_transfer',
+                    'coin' => (string) ($item['amount'] ?? '0'),
+                    'mobile' => '',
+                    'status' => (string) ($item['direction'] ?? 'sent'),
+                    'created_date' => (string) ($item['added_date'] ?? ''),
+                    'updated_date' => (string) ($item['added_date'] ?? ''),
+                    'isDeleted' => '0',
+                    'user_name' => (string) ($item['username'] ?? ''),
+                    'user_mobile' => (string) ($item['mobile'] ?? ''),
+                    'bank_detail' => '',
+                    'adhar_card' => '',
+                    'upi' => (string) ($item['user_id'] ?? ''),
+                ];
+            });
+
+        $merged = collect($logs)
+            ->concat($walletWithdrawals)
+            ->concat($transferRows)
+            ->sortByDesc(function ($row) {
+                try {
+                    return Carbon::parse((string) ($row->created_date ?? ''))->timestamp;
+                } catch (\Throwable $exception) {
+                    return 0;
+                }
+            })
+            ->values();
+
         return response()->json([
             'message' => 'Success',
-            'data' => $logs,
+            'data' => $merged,
             'code' => 200,
         ]);
     }
 
     public function redeemList(Request $request): JsonResponse
     {
-        if (! $this->legacyTableExists('tbl_redeem')) {
+        try {
+            $this->setLegacySessionLockTimeouts();
+            $list = DB::table('tbl_redeem')
+                ->where('isDeleted', 0)
+                ->orderByDesc('id')
+                ->get();
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return response()->json([
                 'message' => 'No Redeem Available',
                 'code' => 404,
             ]);
         }
-
-        $list = DB::table('tbl_redeem')
-            ->where('isDeleted', 0)
-            ->orderByDesc('id')
-            ->get();
 
         if ($list->isEmpty()) {
             return response()->json([
@@ -1081,14 +1331,17 @@ class UserCompatibilityController extends Controller
             ]);
         }
 
-        if (! $this->legacyTableExists('tbl_redeem')) {
+        try {
+            $this->setLegacySessionLockTimeouts();
+            $redeem = DB::table('tbl_redeem')->where('id', $redeemId)->first();
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return response()->json([
                 'message' => 'Invalid Redeem ID',
                 'code' => 404,
             ]);
         }
-
-        $redeem = DB::table('tbl_redeem')->where('id', $redeemId)->first();
         if (! $redeem) {
             return response()->json([
                 'message' => 'Invalid Redeem ID',
@@ -1133,15 +1386,15 @@ class UserCompatibilityController extends Controller
 
         if (! $withdrawalId) {
             return response()->json([
-                'message' => 'Something Went Wrong',
-                'code' => 404,
+                'message' => 'Withdrawal request could not be created right now. Please try again.',
+                'code' => 500,
             ]);
         }
 
         $this->applyWithdrawalDebit($user, $legacyUser, (float) $redeem->coin, $withdrawalId);
 
         return response()->json([
-            'message' => 'Thank You Successfully Withdrawn',
+            'message' => 'Withdrawal request submitted successfully. It is pending admin approval.',
             'code' => 200,
         ]);
     }
@@ -1204,15 +1457,15 @@ class UserCompatibilityController extends Controller
 
         if (! $withdrawalId) {
             return response()->json([
-                'message' => 'Something Went Wrong',
-                'code' => 404,
+                'message' => 'Withdrawal request could not be created right now. Please try again.',
+                'code' => 500,
             ]);
         }
 
         $this->applyWithdrawalDebit($user, $legacyUser, $amount, $withdrawalId);
 
         return response()->json([
-            'message' => 'Thank You Successfully Withdrawn',
+            'message' => 'Withdrawal request submitted successfully. It is pending admin approval.',
             'code' => 200,
         ]);
     }
@@ -1291,7 +1544,7 @@ class UserCompatibilityController extends Controller
         $this->applyWithdrawalDebit($user, $legacyUser, $amount, $withdrawalId);
 
         return response()->json([
-            'message' => 'Thank You Successfully Withdrawn',
+            'message' => 'Withdrawal request submitted successfully. It is pending admin approval.',
             'code' => 200,
         ]);
     }
@@ -1380,7 +1633,7 @@ class UserCompatibilityController extends Controller
         $this->applyWithdrawalDebit($user, $legacyUser, $coins, $withdrawalId);
 
         return response()->json([
-            'message' => 'Thank You Successfully Withdrawn',
+            'message' => 'Withdrawal request submitted successfully. It is pending admin approval.',
             'code' => 200,
         ]);
     }
@@ -1412,58 +1665,234 @@ class UserCompatibilityController extends Controller
         ]);
     }
 
-    public function forgotPassword(Request $request): JsonResponse
+    public function transferLookup(Request $request): JsonResponse
     {
-        $mobile = (string) $request->input('mobile');
-        $user = User::query()->where('mobile', $mobile)->first();
+        $user = $this->resolveLegacyUser($request->input('id') ?: $request->input('user_id'), $request->input('token'));
 
         if (! $user) {
             return response()->json([
-                'message' => 'Mobile number not found.',
+                'message' => 'Session expired.',
+                'player' => null,
+                'code' => 411,
+            ]);
+        }
+
+        $query = trim((string) ($request->input('query')
+            ?: $request->input('player_id')
+            ?: $request->input('mobile')
+            ?: $request->input('email')
+            ?: $request->input('username')));
+
+        if ($query === '') {
+            return response()->json([
+                'message' => 'Please enter player ID, mobile, email or username.',
+                'player' => null,
+                'code' => 400,
+            ]);
+        }
+
+        $target = $this->resolveTransferTargetUser($query);
+
+        if (! $target) {
+            return response()->json([
+                'message' => 'Player not found.',
+                'player' => null,
+                'code' => 404,
+            ]);
+        }
+
+        if ($target->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot transfer to your own account.',
+                'player' => null,
+                'code' => 422,
+            ]);
+        }
+
+        $target->loadMissing('profile');
+
+        return response()->json([
+            'message' => 'Player found.',
+            'player' => [
+                'user_id' => (string) $target->user_code,
+                'username' => (string) $target->username,
+                'name' => (string) ($target->profile?->first_name ?: $target->username),
+                'mobile' => $this->maskTransferMobile($target->mobile),
+                'email' => $this->maskTransferEmail($target->email),
+            ],
+            'code' => 200,
+        ]);
+    }
+
+    public function transferWallet(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('id') ?: $request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Session expired.',
+                'transfer' => null,
+                'code' => 411,
+            ]);
+        }
+
+        $amount = (float) $request->input('amount', 0);
+        $receiverInput = trim((string) ($request->input('receiver_user_id')
+            ?: $request->input('receiver_id')
+            ?: $request->input('query')
+            ?: $request->input('player_id')
+            ?: $request->input('mobile')
+            ?: $request->input('email')
+            ?: $request->input('username')));
+
+        if ($receiverInput === '' || $amount <= 0) {
+            return response()->json([
+                'message' => 'Receiver and valid amount are required.',
+                'transfer' => null,
+                'code' => 400,
+            ]);
+        }
+
+        $receiver = $this->resolveTransferTargetUser($receiverInput);
+        if (! $receiver) {
+            return response()->json([
+                'message' => 'Player not found.',
+                'transfer' => null,
+                'code' => 404,
+            ]);
+        }
+
+        if ($receiver->id === $user->id) {
+            return response()->json([
+                'message' => 'You cannot transfer to your own account.',
+                'transfer' => null,
+                'code' => 422,
+            ]);
+        }
+
+        try {
+            $transfer = app(WalletService::class)->transfer(
+                sender: $user,
+                receiver: $receiver,
+                amount: $amount,
+                currency: 'INR',
+                note: trim((string) $request->input('note', '')),
+                meta: [
+                    'source' => 'rox_ludo_legacy_mobile',
+                    'sender_user_code' => (string) $user->user_code,
+                    'receiver_user_code' => (string) $receiver->user_code,
+                ],
+            );
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpException $exception) {
+            return response()->json([
+                'message' => $exception->getMessage(),
+                'transfer' => null,
+                'code' => $exception->getStatusCode(),
+            ]);
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => 'Transfer failed. Please try again.',
+                'transfer' => null,
+                'code' => 500,
+            ]);
+        }
+
+        $updatedWallet = $this->ensureWallets($user);
+
+        return response()->json([
+            'message' => 'Transfer completed successfully.',
+            'transfer' => $this->buildTransferHistoryItem($transfer, $user),
+            'wallet' => (string) $updatedWallet->balance,
+            'code' => 200,
+        ]);
+    }
+
+    public function transferHistory(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('id') ?: $request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'Session expired.',
+                'transfer_history' => [],
+                'code' => 411,
+            ]);
+        }
+
+        $history = $this->buildTransferHistoryForViewer($user);
+
+        return response()->json([
+            'message' => 'Transfer history fetched successfully.',
+            'transfer_history' => $history,
+            'code' => 200,
+        ]);
+    }
+
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = (string) $request->input('channel_value');
+        $mobile = (string) $request->input('mobile');
+
+        if ($channelType === '' && $mobile !== '') {
+            $channelType = 'mobile';
+            $channelValue = $mobile;
+        }
+
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, $channelValue);
+        $user = $this->findUserByRecoveryChannel($channelType, $channelValue);
+
+        if (! $user) {
+            return response()->json([
+                'message' => $channelType === 'email'
+                    ? 'Email address not found or not verified.'
+                    : ($channelType === 'whatsapp'
+                        ? 'WhatsApp number not found or not verified.'
+                        : 'Mobile number not found.'),
                 'otp_id' => '',
                 'code' => 404,
             ]);
         }
 
-        $otpId = random_int(100000, 999999);
-        $otpCode = (string) random_int(1000, 9999);
-
-        LegacyOtp::query()->where('mobile', $mobile)->where('type', 'forgot')->where('is_used', false)->delete();
-
-        $otpRecord = LegacyOtp::query()->create([
-            'id' => $otpId,
-            'mobile' => $mobile,
-            'type' => 'forgot',
-            'otp_code' => $otpCode,
-            'expires_at' => now()->addMinutes(10),
-        ]);
-
-        return response()->json([
-            'message' => 'OTP sent successfully.',
-            'otp_id' => (string) $otpRecord->id,
-            'code' => 200,
-            'otp' => $otpCode,
-        ]);
+        return $this->issueOtpResponse($channelType, $channelValue, 'forgot_password');
     }
 
     public function updatePassword(Request $request): JsonResponse
     {
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = (string) $request->input('channel_value');
         $mobile = (string) $request->input('mobile');
         $otpId = (string) $request->input('otp_id');
         $otp = (string) $request->input('otp');
         $newPassword = (string) $request->input('new_password');
 
-        if (! $this->validateOtp($otpId, $mobile, $otp, ['forgot'])) {
+        if ($channelType === '' && $mobile !== '') {
+            $channelType = 'mobile';
+            $channelValue = $mobile;
+        }
+
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, $channelValue);
+
+        if (! $this->validateOtp($otpId, $channelValue, $otp, ['forgot', 'forgot_password_'.$channelType], $channelType)) {
             return response()->json([
                 'message' => 'Invalid OTP.',
                 'code' => 404,
             ]);
         }
 
-        $user = User::query()->where('mobile', $mobile)->first();
+        if (mb_strlen($newPassword) < 6) {
+            return response()->json([
+                'message' => 'Password must be at least 6 characters.',
+                'code' => 422,
+            ]);
+        }
+
+        $user = $this->findUserByRecoveryChannel($channelType, $channelValue);
         if (! $user) {
             return response()->json([
-                'message' => 'Mobile number not found.',
+                'message' => 'Account not found for this recovery channel.',
                 'code' => 404,
             ]);
         }
@@ -1474,6 +1903,53 @@ class UserCompatibilityController extends Controller
 
         return response()->json([
             'message' => 'Password updated successfully.',
+            'code' => 200,
+        ]);
+    }
+
+    public function forgotUsername(Request $request): JsonResponse
+    {
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, (string) $request->input('channel_value'));
+
+        $user = $this->findUserByRecoveryChannel($channelType, $channelValue);
+        if (! $user) {
+            return response()->json([
+                'message' => 'Account not found for this recovery channel.',
+                'otp_id' => '',
+                'code' => 404,
+            ]);
+        }
+
+        return $this->issueOtpResponse($channelType, $channelValue, 'forgot_username');
+    }
+
+    public function recoverUsername(Request $request): JsonResponse
+    {
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, (string) $request->input('channel_value'));
+        $otpId = (string) $request->input('otp_id');
+        $otp = (string) $request->input('otp');
+
+        if (! $this->validateOtp($otpId, $channelValue, $otp, ['forgot_username_'.$channelType], $channelType)) {
+            return response()->json([
+                'message' => 'Invalid OTP.',
+                'code' => 404,
+            ]);
+        }
+
+        $user = $this->findUserByRecoveryChannel($channelType, $channelValue);
+        if (! $user) {
+            return response()->json([
+                'message' => 'Account not found for this recovery channel.',
+                'code' => 404,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Username recovered successfully.',
+            'username' => (string) $user->username,
+            'user_code' => (string) $user->user_code,
             'code' => 200,
         ]);
     }
@@ -1521,9 +1997,11 @@ class UserCompatibilityController extends Controller
 
     public function setting(Request $request): JsonResponse
     {
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
         return response()->json([
             'message' => 'Settings fetched successfully.',
-            'setting' => $this->settingsPayload(),
+            'setting' => $this->settingsPayload($user),
             'app_banner' => [],
             'notification_image' => '',
             'social_link' => [
@@ -1532,6 +2010,155 @@ class UserCompatibilityController extends Controller
                 'youtube' => '',
                 'facebook' => '',
             ],
+            'code' => 200,
+        ]);
+    }
+
+    public function recoveryStatus(Request $request): JsonResponse
+    {
+        if (! $this->hasRecoveryTables()) {
+            return response()->json([
+                'message' => 'Recovery channels are not configured yet.',
+                'code' => 503,
+            ]);
+        }
+
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json([
+                'message' => 'User session is invalid.',
+                'code' => 401,
+            ]);
+        }
+
+        return response()->json([
+            'message' => 'Recovery status fetched successfully.',
+            'setting' => $this->settingsPayload($user),
+            'code' => 200,
+        ]);
+    }
+
+    public function recoverySendOtp(Request $request): JsonResponse
+    {
+        if (! $this->hasRecoveryTables()) {
+            return response()->json([
+                'message' => 'Recovery channels are not configured yet.',
+                'otp_id' => '',
+                'code' => 503,
+            ]);
+        }
+
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+        if (! $user) {
+            return response()->json([
+                'message' => 'User session is invalid.',
+                'code' => 401,
+            ]);
+        }
+
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, (string) $request->input('channel_value'));
+        $validationError = $this->validateRecoveryChannel($user, $channelType, $channelValue);
+
+        if ($validationError !== null) {
+            return response()->json([
+                'message' => $validationError,
+                'otp_id' => '',
+                'code' => 422,
+            ]);
+        }
+
+        return $this->issueOtpResponse($channelType, $channelValue, 'recovery');
+    }
+
+    public function recoveryVerifyOtp(Request $request): JsonResponse
+    {
+        if (! $this->hasRecoveryTables()) {
+            return response()->json([
+                'message' => 'Recovery channels are not configured yet.',
+                'code' => 503,
+            ]);
+        }
+
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+        if (! $user) {
+            return response()->json([
+                'message' => 'User session is invalid.',
+                'code' => 401,
+            ]);
+        }
+
+        $channelType = strtolower(trim((string) $request->input('channel_type')));
+        $channelValue = $this->normalizeRecoveryChannelValue($channelType, (string) $request->input('channel_value'));
+        $otpId = (string) $request->input('otp_id');
+        $otp = (string) $request->input('otp');
+
+        $validationError = $this->validateRecoveryChannel($user, $channelType, $channelValue);
+        if ($validationError !== null) {
+            return response()->json([
+                'message' => $validationError,
+                'code' => 422,
+            ]);
+        }
+
+        if (! $this->validateOtp($otpId, $channelValue, $otp, ['recovery_'.$channelType], $channelType)) {
+            return response()->json([
+                'message' => 'Invalid OTP.',
+                'code' => 404,
+            ]);
+        }
+
+        if ($channelType === 'email') {
+            if (! empty($user->email) && strcasecmp((string) $user->email, $channelValue) !== 0) {
+                return response()->json([
+                    'message' => 'Another email is already linked to this account.',
+                    'code' => 422,
+                ]);
+            }
+
+            $user->forceFill([
+                'email' => $channelValue,
+                'email_verified_at' => now(),
+            ])->save();
+        }
+
+        $this->upsertRecoveryChannel($user, $channelType, $channelValue, true);
+        $this->markRecoveryReminderCompletedIfReady($user->fresh());
+
+        return response()->json([
+            'message' => ucfirst($channelType).' verified successfully.',
+            'setting' => $this->settingsPayload($user->fresh()),
+            'code' => 200,
+        ]);
+    }
+
+    public function recoveryReminderDismiss(Request $request): JsonResponse
+    {
+        if (! $this->hasRecoveryTables()) {
+            return response()->json([
+                'message' => 'Recovery channels are not configured yet.',
+                'code' => 503,
+            ]);
+        }
+
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+        if (! $user) {
+            return response()->json([
+                'message' => 'User session is invalid.',
+                'code' => 401,
+            ]);
+        }
+
+        $reminder = $this->securityReminderRecord($user);
+        $reminder->forceFill([
+            'last_shown_at' => now(),
+            'dismissed_until' => now()->addDay(),
+        ])->save();
+
+        return response()->json([
+            'message' => 'Recovery reminder dismissed for now.',
+            'setting' => $this->settingsPayload($user),
             'code' => 200,
         ]);
     }
@@ -1600,6 +2227,10 @@ class UserCompatibilityController extends Controller
                 'email' => (string) ($user->email ?? ''),
                 'source' => 'laravel',
                 'gender' => (string) ($user->profile?->gender ?? ''),
+                'date_of_birth' => (string) optional($user->profile?->date_of_birth)->format('Y-m-d'),
+                'state' => (string) ($user->profile?->state ?? ''),
+                'city' => (string) ($user->profile?->city ?? ''),
+                'country_code' => (string) ($user->profile?->country_code ?? ''),
                 'profile_pic' => (string) ($user->profile?->avatar_url ?? ''),
                 'referral_code' => (string) ($user->user_code ?? ''),
                 'referred_by' => (string) ($user->referrer?->user_code ?? ''),
@@ -1649,18 +2280,19 @@ class UserCompatibilityController extends Controller
             'user_kyc' => $kycDetails,
             'user_bank_details' => $bankDetails,
             'avatar' => [],
-            'setting' => $this->settingsPayload(),
+                'setting' => $this->settingsPayload($user),
             'notification_image' => '',
             'app_banner' => [],
             'code' => 200,
         ];
     }
 
-    protected function settingsPayload(): array
+    protected function settingsPayload(?User $user = null): array
     {
         $settings = $this->legacySettingsRow();
         $minRedeem = $settings ? (string) ($settings->min_redeem ?? '0') : '0';
         $dollar = $settings ? (string) ($settings->dollar ?? '1') : '1';
+        $recovery = $this->buildRecoveryState($user);
 
         return [
             'min_redeem' => $minRedeem,
@@ -1676,14 +2308,32 @@ class UserCompatibilityController extends Controller
             'referral_id' => '',
             'maintenance_mode' => config('platform.app.maintenance.enabled', false) ? '1' : '0',
             'maintenance_message' => (string) config('platform.app.maintenance.message', ''),
+            'daily_bonus_status' => (string) ($settings->daily_bonus_status ?? '1'),
+            'app_popop_status' => (string) ($settings->app_popop_status ?? '0'),
+            'app_popup_title' => (string) ($settings->app_popup_title ?? ''),
+            'app_popup_message' => (string) ($settings->app_popup_message ?? ''),
+            'app_popup_button_text' => (string) ($settings->app_popup_button_text ?? 'Open'),
+            'app_popup_url' => (string) ($settings->app_popup_url ?? ''),
+            'app_popup_image' => ! empty($settings->app_popup_image)
+                ? url('data/Settings/'.$settings->app_popup_image)
+                : '',
+            'recovery_has_verified_channel' => $recovery['has_verified_channel'],
+            'recovery_mobile_verified' => $recovery['mobile_verified'],
+            'recovery_email_verified' => $recovery['email_verified'],
+            'recovery_whatsapp_verified' => $recovery['whatsapp_verified'],
+            'recovery_whatsapp_value' => $recovery['whatsapp_value'],
+            'recovery_should_show_reminder' => $recovery['should_show_reminder'],
+            'recovery_reminder_title' => 'Secure Your Account',
+            'recovery_reminder_message' => 'Add WhatsApp or email recovery now so you can recover your username and password later.',
         ];
     }
 
-    protected function validateOtp(string $otpId, string $mobile, string $otp, array $types): bool
+    protected function validateOtp(string $otpId, string $channelValue, string $otp, array $types, ?string $channelType = null): bool
     {
+        $storageKey = $this->otpStorageKey($channelType ?? 'mobile', $channelValue);
         $otpRecord = LegacyOtp::query()
             ->whereKey($otpId)
-            ->where('mobile', $mobile)
+            ->where('mobile', $storageKey)
             ->whereIn('type', $types)
             ->where('is_used', false)
             ->where('expires_at', '>', now())
@@ -1699,6 +2349,496 @@ class UserCompatibilityController extends Controller
         ])->save();
 
         return true;
+    }
+
+    protected function buildRecoveryState(?User $user): array
+    {
+        if (! $user || ! $this->hasRecoveryTables()) {
+            return [
+                'has_verified_channel' => '0',
+                'mobile_verified' => '0',
+                'email_verified' => '0',
+                'whatsapp_verified' => '0',
+                'whatsapp_value' => '',
+                'should_show_reminder' => '0',
+            ];
+        }
+
+        $user->loadMissing('recoveryChannels', 'securityReminder');
+
+        $mobileVerified = ! empty($user->mobile) && $user->mobile_verified_at ? '1' : '0';
+        $emailVerified = ! empty($user->email) && $user->email_verified_at ? '1' : '0';
+        $verifiedWhatsapp = $user->recoveryChannels
+            ->first(function (UserRecoveryChannel $channel) {
+                return $channel->channel_type === 'whatsapp' && $channel->is_verified;
+            });
+
+        $whatsappVerified = $verifiedWhatsapp ? '1' : '0';
+        $hasVerifiedSecondary = $emailVerified === '1' || $whatsappVerified === '1';
+
+        $reminder = $this->securityReminderRecord($user);
+        if ($hasVerifiedSecondary && ! $reminder->is_completed) {
+            $reminder->forceFill([
+                'is_completed' => true,
+                'dismissed_until' => null,
+            ])->save();
+        }
+
+        $shouldShowReminder = ! $hasVerifiedSecondary
+            && ! $reminder->is_completed
+            && (! $reminder->dismissed_until || $reminder->dismissed_until->lte(now()));
+
+        return [
+            'has_verified_channel' => $hasVerifiedSecondary ? '1' : '0',
+            'mobile_verified' => $mobileVerified,
+            'email_verified' => $emailVerified,
+            'whatsapp_verified' => $whatsappVerified,
+            'whatsapp_value' => $verifiedWhatsapp?->channel_value ?? '',
+            'should_show_reminder' => $shouldShowReminder ? '1' : '0',
+        ];
+    }
+
+    protected function securityReminderRecord(User $user): UserSecurityReminder
+    {
+        if (! $this->hasRecoveryTables()) {
+            return new UserSecurityReminder([
+                'user_id' => $user->id,
+                'last_shown_at' => null,
+                'dismissed_until' => null,
+                'is_completed' => false,
+            ]);
+        }
+
+        return UserSecurityReminder::query()->firstOrCreate(
+            ['user_id' => $user->id],
+            [
+                'last_shown_at' => null,
+                'dismissed_until' => null,
+                'is_completed' => false,
+            ]
+        );
+    }
+
+    protected function normalizeRecoveryChannelValue(string $channelType, string $channelValue): string
+    {
+        $value = trim($channelValue);
+
+        if ($channelType === 'email') {
+            return strtolower($value);
+        }
+
+        if ($channelType === 'whatsapp') {
+            return preg_replace('/\D+/', '', $value) ?? '';
+        }
+
+        return $value;
+    }
+
+    protected function validateRecoveryChannel(User $user, string $channelType, string $channelValue): ?string
+    {
+        if (! $this->hasRecoveryTables()) {
+            return 'Recovery channels are not configured yet.';
+        }
+
+        if (! in_array($channelType, ['email', 'whatsapp'], true)) {
+            return 'Unsupported recovery channel.';
+        }
+
+        if ($channelValue === '') {
+            return ucfirst($channelType).' is required.';
+        }
+
+        if ($channelType === 'email') {
+            if (! filter_var($channelValue, FILTER_VALIDATE_EMAIL)) {
+                return 'Please enter a valid email address.';
+            }
+
+            $duplicateEmailUser = User::query()
+                ->where('id', '!=', $user->id)
+                ->whereRaw('LOWER(email) = ?', [strtolower($channelValue)])
+                ->first();
+
+            if ($duplicateEmailUser) {
+                return 'This email is already linked to another account.';
+            }
+
+            return null;
+        }
+
+        if (strlen($channelValue) < 10 || strlen($channelValue) > 15) {
+            return 'Please enter a valid WhatsApp number.';
+        }
+
+        $duplicateWhatsapp = UserRecoveryChannel::query()
+            ->where('user_id', '!=', $user->id)
+            ->where('channel_type', 'whatsapp')
+            ->where('channel_value', $channelValue)
+            ->where('is_verified', true)
+            ->exists();
+
+        if ($duplicateWhatsapp) {
+            return 'This WhatsApp number is already linked to another account.';
+        }
+
+        return null;
+    }
+
+    protected function issueOtpResponse(string $channelType, string $channelValue, string $purpose): JsonResponse
+    {
+        if (! in_array($channelType, ['mobile', 'email', 'whatsapp'], true)) {
+            return response()->json([
+                'message' => 'Unsupported recovery channel.',
+                'otp_id' => '',
+                'code' => 422,
+            ]);
+        }
+
+        $otpType = $purpose.'_'.$channelType;
+        if ($purpose === 'forgot_password' && $channelType === 'mobile') {
+            $otpType = 'forgot';
+        }
+
+        $storageKey = $this->otpStorageKey($channelType, $channelValue);
+        $cooldownOtp = $this->findActiveOtpWithinCooldown($channelValue, $otpType);
+        if ($cooldownOtp) {
+            return response()->json([
+                'message' => 'Please wait before requesting another OTP.',
+                'otp_id' => (string) $cooldownOtp->id,
+                'code' => 429,
+                'retry_after' => $this->otpRetryAfterSeconds($cooldownOtp),
+                'otp' => $this->shouldExposeOtpForTesting() ? (string) $cooldownOtp->otp_code : '',
+            ]);
+        }
+
+        $otpId = random_int(100000, 999999);
+        $otpCode = (string) random_int(1000, 9999);
+
+        LegacyOtp::query()
+            ->where('mobile', $storageKey)
+            ->where('type', $otpType)
+            ->where('is_used', false)
+            ->delete();
+
+        $otpRecord = LegacyOtp::query()->create([
+            'id' => $otpId,
+            'mobile' => $storageKey,
+            'type' => $otpType,
+            'otp_code' => $otpCode,
+            'expires_at' => now()->addMinutes(10),
+        ]);
+
+        $deliveryAttempted = $this->dispatchOtpToChannel($channelType, $channelValue, $otpCode, $purpose);
+
+        return response()->json([
+            'message' => $deliveryAttempted
+                ? 'OTP sent successfully.'
+                : 'OTP generated successfully.',
+            'otp_id' => (string) $otpRecord->id,
+            'code' => 200,
+            'otp' => $this->shouldExposeOtpForTesting() ? $otpCode : '',
+            'retry_after' => $this->otpCooldownSeconds(),
+        ]);
+    }
+
+    protected function dispatchOtpToChannel(string $channelType, string $channelValue, string $otpCode, string $purpose): bool
+    {
+        $message = $this->buildOtpMessage($otpCode, $purpose);
+
+        if ($channelType === 'email') {
+            if (! $this->isRealMailDeliveryConfigured()) {
+                Log::warning('Recovery email OTP skipped due to non-delivery mailer configuration.', [
+                    'mailer' => (string) config('mail.default', env('MAIL_MAILER', 'log')),
+                    'purpose' => $purpose,
+                    'to' => $channelValue,
+                ]);
+
+                return false;
+            }
+
+            try {
+                Mail::raw($message, function ($mail) use ($channelValue, $purpose) {
+                    $mail->to($channelValue)->subject($purpose === 'forgot_username' ? 'Recover your Rox Ludo username' : 'Rox Ludo verification code');
+                });
+
+                return true;
+            } catch (\Throwable $exception) {
+                Log::error('Recovery email OTP failed.', [
+                    'purpose' => $purpose,
+                    'to' => $channelValue,
+                    'error' => $exception->getMessage(),
+                ]);
+
+                return false;
+            }
+        }
+
+        if ($channelType === 'whatsapp') {
+            $endpoint = trim((string) env('AISENSY_API_URL', ''));
+            $apiKey = trim((string) env('AISENSY_API_KEY', ''));
+            $campaignName = trim((string) env('AISENSY_OTP_CAMPAIGN_NAME', ''));
+
+            if ($endpoint === '' || $apiKey === '' || $campaignName === '') {
+                Log::warning('AiSensy OTP skipped due to missing configuration.', [
+                    'endpoint_present' => $endpoint !== '',
+                    'api_key_present' => $apiKey !== '',
+                    'campaign_present' => $campaignName !== '',
+                    'purpose' => $purpose,
+                ]);
+                return false;
+            }
+
+            try {
+                $payload = [
+                    'apiKey' => $apiKey,
+                    'campaignName' => $campaignName,
+                    'destination' => $channelValue,
+                    'userName' => $this->buildAiSensyUserName($channelValue),
+                    'templateParams' => [$otpCode],
+                    'source' => 'rox-ludo recovery',
+                    'media' => new \stdClass(),
+                    'buttons' => [[
+                        'type' => 'button',
+                        'sub_type' => 'url',
+                        'index' => 0,
+                        'parameters' => [[
+                            'type' => 'text',
+                            'text' => $otpCode,
+                        ]],
+                    ]],
+                    'carouselCards' => [],
+                    'location' => new \stdClass(),
+                    'attributes' => [
+                        'purpose' => $purpose,
+                    ],
+                    'paramsFallbackValue' => [
+                        'FirstName' => $otpCode,
+                    ],
+                ];
+
+                $response = Http::timeout(20)
+                    ->acceptJson()
+                    ->asJson()
+                    ->post($endpoint, $payload);
+
+                Log::info('AiSensy OTP response', [
+                    'purpose' => $purpose,
+                    'destination' => $channelValue,
+                    'status' => $response->status(),
+                    'successful' => $response->successful(),
+                    'body' => $response->body(),
+                ]);
+
+                return $response->successful();
+            } catch (\Throwable $exception) {
+                Log::error('AiSensy OTP request failed.', [
+                    'purpose' => $purpose,
+                    'destination' => $channelValue,
+                    'message' => $exception->getMessage(),
+                ]);
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    protected function buildOtpMessage(string $otpCode, string $purpose): string
+    {
+        if ($purpose === 'forgot_username') {
+            return "Your Rox Ludo username recovery OTP is {$otpCode}. It will expire in 10 minutes.";
+        }
+
+        if ($purpose === 'forgot_password') {
+            return "Your Rox Ludo password reset OTP is {$otpCode}. It will expire in 10 minutes.";
+        }
+
+        return "Your Rox Ludo verification OTP is {$otpCode}. It will expire in 10 minutes.";
+    }
+
+    protected function buildAiSensyUserName(string $channelValue): string
+    {
+        $digits = preg_replace('/\D+/', '', $channelValue) ?? '';
+        if ($digits === '') {
+            return 'Rox User';
+        }
+
+        $suffix = substr($digits, -4);
+        return 'Rox'.$suffix;
+    }
+
+    protected function isRealMailDeliveryConfigured(): bool
+    {
+        $mailer = strtolower(trim((string) config('mail.default', env('MAIL_MAILER', 'log'))));
+        if ($mailer === '' || in_array($mailer, ['log', 'array'], true)) {
+            return false;
+        }
+
+        if ($mailer !== 'smtp') {
+            return true;
+        }
+
+        $host = trim((string) env('MAIL_HOST', ''));
+        $port = trim((string) env('MAIL_PORT', ''));
+        $fromAddress = trim((string) env('MAIL_FROM_ADDRESS', ''));
+        $username = trim((string) env('MAIL_USERNAME', ''));
+        $password = trim((string) env('MAIL_PASSWORD', ''));
+
+        return $host !== ''
+            && $port !== ''
+            && $fromAddress !== ''
+            && $username !== ''
+            && strtolower($username) !== 'null'
+            && $password !== ''
+            && strtolower($password) !== 'null';
+    }
+
+    protected function shouldExposeOtpForTesting(): bool
+    {
+        return app()->environment('local')
+            || (bool) config('app.debug')
+            || trim((string) env('AISENSY_API_URL', '')) === ''
+            || trim((string) env('AISENSY_API_KEY', '')) === ''
+            || trim((string) env('AISENSY_OTP_CAMPAIGN_NAME', '')) === ''
+            || config('mail.default') === 'log';
+    }
+
+    protected function otpCooldownSeconds(): int
+    {
+        return 60;
+    }
+
+    protected function findActiveOtpWithinCooldown(string $channelValue, string $otpType): ?LegacyOtp
+    {
+        $channelType = 'mobile';
+        if (str_contains($otpType, '_email')) {
+            $channelType = 'email';
+        } elseif (str_contains($otpType, '_whatsapp')) {
+            $channelType = 'whatsapp';
+        }
+
+        return LegacyOtp::query()
+            ->where('mobile', $this->otpStorageKey($channelType, $channelValue))
+            ->where('type', $otpType)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->where('created_at', '>=', now()->subSeconds($this->otpCooldownSeconds()))
+            ->latest('created_at')
+            ->first();
+    }
+
+    protected function otpStorageKey(string $channelType, string $channelValue): string
+    {
+        $normalizedType = strtolower(trim($channelType));
+        if ($normalizedType === 'email') {
+            return 'em_'.substr(md5(strtolower(trim($channelValue))), 0, 17);
+        }
+
+        if ($normalizedType === 'whatsapp') {
+            $digits = preg_replace('/\D+/', '', $channelValue) ?? '';
+
+            return 'wa_'.$digits;
+        }
+
+        return trim($channelValue);
+    }
+
+    protected function otpRetryAfterSeconds(LegacyOtp $otp): int
+    {
+        if (! $otp->created_at) {
+            return $this->otpCooldownSeconds();
+        }
+
+        return max(
+            1,
+            $this->otpCooldownSeconds() - (int) $otp->created_at->diffInSeconds(now())
+        );
+    }
+
+    protected function findUserByRecoveryChannel(string $channelType, string $channelValue): ?User
+    {
+        if ($channelType === 'mobile') {
+            if ($channelValue === '') {
+                return null;
+            }
+
+            return User::query()->where('mobile', $channelValue)->first();
+        }
+
+        if ($channelType === 'email') {
+            if ($channelValue === '') {
+                return null;
+            }
+
+            return User::query()
+                ->whereRaw('LOWER(email) = ?', [strtolower($channelValue)])
+                ->whereNotNull('email_verified_at')
+                ->first();
+        }
+
+        if ($channelType === 'whatsapp') {
+            if (! $this->hasRecoveryTables() || $channelValue === '') {
+                return null;
+            }
+
+            $channel = UserRecoveryChannel::query()
+                ->where('channel_type', 'whatsapp')
+                ->where('channel_value', $channelValue)
+                ->where('is_verified', true)
+                ->first();
+
+            return $channel?->user;
+        }
+
+        return null;
+    }
+
+    protected function upsertRecoveryChannel(User $user, string $channelType, string $channelValue, bool $verified): UserRecoveryChannel
+    {
+        if (! $this->hasRecoveryTables()) {
+            return new UserRecoveryChannel([
+                'user_id' => $user->id,
+                'channel_type' => $channelType,
+                'channel_value' => $channelValue,
+                'is_verified' => $verified,
+                'verified_at' => $verified ? now() : null,
+                'is_primary' => false,
+            ]);
+        }
+
+        $channel = UserRecoveryChannel::query()->firstOrNew([
+            'user_id' => $user->id,
+            'channel_type' => $channelType,
+        ]);
+
+        $channel->forceFill([
+            'channel_value' => $channelValue,
+            'is_verified' => $verified,
+            'verified_at' => $verified ? now() : null,
+            'is_primary' => $channelType === 'email' && ! empty($user->email) && strcasecmp((string) $user->email, $channelValue) === 0,
+        ])->save();
+
+        return $channel;
+    }
+
+    protected function hasRecoveryTables(): bool
+    {
+        return Schema::hasTable('user_recovery_channels') && Schema::hasTable('user_security_reminders');
+    }
+
+    protected function markRecoveryReminderCompletedIfReady(User $user): void
+    {
+        $state = $this->buildRecoveryState($user);
+        if ($state['has_verified_channel'] !== '1') {
+            return;
+        }
+
+        $reminder = $this->securityReminderRecord($user);
+        if (! $reminder->is_completed) {
+            $reminder->forceFill([
+                'is_completed' => true,
+                'dismissed_until' => null,
+            ])->save();
+        }
     }
 
     protected function makeUsername(string $name, string $mobile): string
@@ -1725,6 +2865,22 @@ class UserCompatibilityController extends Controller
         return Str::limit($candidate, 50, '');
     }
 
+    protected function normalizeProfileFirstName(string $name, string $mobile): string
+    {
+        $trimmed = trim($name);
+        if ($trimmed !== '' && ! preg_match('/^user\d*$/i', $trimmed)) {
+            return $trimmed;
+        }
+
+        $digits = preg_replace('/\D+/', '', $mobile);
+        $lastFour = substr($digits, -4);
+        if ($lastFour === '' || strlen($lastFour) < 4) {
+            $lastFour = str_pad((string) random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+        }
+
+        return 'Rox'.$lastFour;
+    }
+
     protected function resolveReferrer(string $referralCode): ?User
     {
         $normalizedCode = strtoupper(trim($referralCode));
@@ -1738,6 +2894,123 @@ class UserCompatibilityController extends Controller
             ->where('referral_code', $normalizedCode)
             ->orWhere('user_code', $normalizedCode)
             ->first();
+    }
+
+    protected function resolveTransferTargetUser(string $query): ?User
+    {
+        $normalized = trim($query);
+        if ($normalized === '') {
+            return null;
+        }
+
+        return User::query()
+            ->where('user_code', $normalized)
+            ->orWhere('mobile', $normalized)
+            ->orWhere('email', $normalized)
+            ->orWhere('username', $normalized)
+            ->first();
+    }
+
+    protected function maskTransferMobile(?string $mobile): string
+    {
+        $digits = preg_replace('/\D+/', '', (string) $mobile);
+        if ($digits === '' || strlen($digits) < 4) {
+            return '';
+        }
+
+        return str_repeat('*', max(0, strlen($digits) - 4)).substr($digits, -4);
+    }
+
+    protected function maskTransferEmail(?string $email): string
+    {
+        $value = trim((string) $email);
+        if ($value === '' || ! str_contains($value, '@')) {
+            return '';
+        }
+
+        [$name, $domain] = explode('@', $value, 2);
+        if ($name === '') {
+            return '***@'.$domain;
+        }
+
+        $visible = strlen($name) > 2 ? substr($name, 0, 2) : substr($name, 0, 1);
+
+        return $visible.str_repeat('*', max(1, strlen($name) - strlen($visible))).'@'.$domain;
+    }
+
+    protected function buildTransferHistoryItem(WalletTransfer $transfer, User $viewer): array
+    {
+        $isSender = $transfer->sender_user_id === $viewer->id;
+        $counterparty = $isSender ? $transfer->receiver : $transfer->sender;
+
+        return [
+            'id' => (string) $transfer->id,
+            'transfer_id' => (string) $transfer->transfer_uuid,
+            'direction' => $isSender ? 'sent' : 'received',
+            'status' => (string) $transfer->status,
+            'amount' => (string) $transfer->amount,
+            'currency' => (string) $transfer->currency,
+            'user_id' => (string) ($counterparty?->user_code ?? ''),
+            'username' => (string) ($counterparty?->username ?? ''),
+            'mobile' => $this->maskTransferMobile($counterparty?->mobile),
+            'email' => $this->maskTransferEmail($counterparty?->email),
+            'note' => (string) ($transfer->note ?? ''),
+            'added_date' => optional($transfer->processed_at ?: $transfer->created_at)?->toDateTimeString() ?? '',
+        ];
+    }
+
+    protected function buildTransferHistoryForViewer(User $user): array
+    {
+        $history = WalletTransfer::query()
+            ->with(['sender', 'receiver'])
+            ->where(function ($query) use ($user) {
+                $query->where('sender_user_id', $user->id)
+                    ->orWhere('receiver_user_id', $user->id);
+            })
+            ->orderByDesc('processed_at')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (WalletTransfer $transfer) => $this->buildTransferHistoryItem($transfer, $user))
+            ->values()
+            ->all();
+
+        if (! empty($history)) {
+            return $history;
+        }
+
+        return WalletTransaction::query()
+            ->where('user_id', $user->id)
+            ->whereIn('type', ['transfer_sent', 'transfer_received'])
+            ->orderByDesc('processed_at')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->map(fn (WalletTransaction $transaction) => $this->buildTransferHistoryItemFromTransaction($transaction))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    protected function buildTransferHistoryItemFromTransaction(WalletTransaction $transaction): ?array
+    {
+        $meta = is_array($transaction->meta) ? $transaction->meta : [];
+        $direction = $transaction->type === 'transfer_received' ? 'received' : 'sent';
+
+        return [
+            'id' => 'txn-'.$transaction->id,
+            'transfer_id' => (string) ($meta['transfer_uuid'] ?? $transaction->transaction_uuid ?? ''),
+            'direction' => $direction,
+            'status' => (string) ($transaction->status ?? 'completed'),
+            'amount' => (string) $transaction->amount,
+            'currency' => (string) ($transaction->currency ?? 'INR'),
+            'user_id' => (string) ($meta['counterparty_user_code'] ?? ''),
+            'username' => (string) ($meta['counterparty_username'] ?? ''),
+            'mobile' => '',
+            'email' => '',
+            'note' => (string) ($transaction->description ?? ''),
+            'added_date' => optional($transaction->processed_at ?: $transaction->created_at)?->toDateTimeString() ?? '',
+        ];
     }
 
     protected function respondGameLogList(Request $request, string $label, string $mode = 'GENERIC'): JsonResponse
@@ -2031,6 +3304,7 @@ class UserCompatibilityController extends Controller
     {
         return WalletTransaction::query()
             ->where('user_id', $user->id)
+            ->whereNotIn('type', ['transfer_sent', 'transfer_received'])
             ->latest()
             ->limit($limit)
             ->get();
@@ -2139,6 +3413,21 @@ class UserCompatibilityController extends Controller
         }
     }
 
+    protected function setLegacySessionLockTimeouts(): void
+    {
+        try {
+            DB::statement('SET SESSION innodb_lock_wait_timeout = 5');
+        } catch (\Throwable $exception) {
+            // Ignore when the current driver/server does not support this setting.
+        }
+
+        try {
+            DB::statement('SET SESSION lock_wait_timeout = 5');
+        } catch (\Throwable $exception) {
+            // Ignore when the current driver/server does not support this setting.
+        }
+    }
+
     protected function legacySettingsRow(): ?object
     {
         if (! $this->legacyTableExists('tbl_setting')) {
@@ -2206,10 +3495,6 @@ class UserCompatibilityController extends Controller
         float $price,
         ?int $laravelUserId = null
     ): ?int {
-        if (! $this->legacyTableExists('tbl_withdrawal_log')) {
-            return null;
-        }
-
         $transactionId = $laravelUserId
             ? 'ROX-'.$laravelUserId.'-'.Str::upper(Str::random(8))
             : null;
@@ -2233,20 +3518,39 @@ class UserCompatibilityController extends Controller
             'status' => 0,
             'transaction_id' => $transactionId,
             'payout_response' => '',
+            'upi_id' => $bankInfo['upi_id'] ?? '',
             'created_date' => now()->format('Y-m-d H:i:s'),
             'updated_date' => now()->format('Y-m-d H:i:s'),
             'isDeleted' => 0,
         ];
 
-        return (int) DB::table('tbl_withdrawal_log')->insertGetId($payload);
+        $this->setLegacySessionLockTimeouts();
+
+        try {
+            return (int) DB::table('tbl_withdrawal_log')->insertGetId($payload);
+        } catch (\Throwable $exception) {
+            $message = $exception->getMessage();
+
+            if (str_contains($message, 'Unknown column') && str_contains($message, 'upi_id')) {
+                unset($payload['upi_id']);
+
+                return (int) DB::table('tbl_withdrawal_log')->insertGetId($payload);
+            }
+
+            report($exception);
+
+            return null;
+        }
     }
 
     protected function applyWithdrawalDebit(User $user, object $legacyUser, float $amount, int $withdrawalId): void
     {
+        $this->setLegacySessionLockTimeouts();
+
         app(WalletService::class)->debit(
             user: $user,
             amount: $amount,
-            referenceType: WalletTransaction::class,
+            referenceType: 'withdrawal',
             referenceId: $withdrawalId,
             description: 'Withdrawal request',
             currency: 'INR',
@@ -2256,7 +3560,7 @@ class UserCompatibilityController extends Controller
             ],
         );
 
-        if ($this->legacyTableExists('tbl_users')) {
+        try {
             DB::table('tbl_users')
                 ->where('id', $legacyUser->id)
                 ->update([
@@ -2264,6 +3568,8 @@ class UserCompatibilityController extends Controller
                     'winning_wallet' => DB::raw('winning_wallet - '.$amount),
                     'updated_date' => now()->format('Y-m-d H:i:s'),
                 ]);
+        } catch (\Throwable $exception) {
+            report($exception);
         }
     }
 
@@ -2365,70 +3671,126 @@ class UserCompatibilityController extends Controller
 
     protected function resolveLegacyDbUser(User $user): ?object
     {
-        if (! $this->legacyTableExists('tbl_users')) {
-            return null;
-        }
+        try {
+            $this->setLegacySessionLockTimeouts();
 
-        $query = DB::table('tbl_users');
-        $hasCriteria = false;
+            $query = DB::table('tbl_users');
+            $hasCriteria = false;
 
-        if (! empty($user->mobile)) {
-            $query->orWhere('mobile', $user->mobile);
-            $hasCriteria = true;
-        }
+            if (! empty($user->mobile)) {
+                $query->orWhere('mobile', $user->mobile);
+                $hasCriteria = true;
+            }
 
-        if (! empty($user->email)) {
-            $query->orWhere('email', $user->email);
-            $hasCriteria = true;
-        }
+            if (! empty($user->email)) {
+                $query->orWhere('email', $user->email);
+                $hasCriteria = true;
+            }
 
-        if (! $hasCriteria) {
-            if (is_numeric($user->user_code ?? null)) {
-                $legacy = DB::table('tbl_users')
-                    ->where('id', (int) $user->user_code)
-                    ->first();
-                if ($legacy) {
-                    return $legacy;
+            if (! $hasCriteria) {
+                if (is_numeric($user->user_code ?? null)) {
+                    $legacy = DB::table('tbl_users')
+                        ->where('id', (int) $user->user_code)
+                        ->first();
+                    if ($legacy) {
+                        return $legacy;
+                    }
                 }
+
+                return $this->ensureLegacyUserRow($user);
+            }
+
+            $legacy = $query->orderByDesc('id')->first();
+            if ($legacy) {
+                return $this->syncLegacyReferralLink($legacy, $user);
             }
 
             return $this->ensureLegacyUserRow($user);
-        }
+        } catch (\Throwable $exception) {
+            report($exception);
 
-        $legacy = $query->orderByDesc('id')->first();
-        if ($legacy) {
-            return $legacy;
+            return null;
         }
-
-        return $this->ensureLegacyUserRow($user);
     }
 
     protected function ensureLegacyUserRow(User $user): ?object
     {
-        if (! $this->legacyTableExists('tbl_users')) {
+        try {
+            $this->setLegacySessionLockTimeouts();
+
+            $wallet = $this->ensureWallets($user);
+            $name = $user->profile?->first_name ?: $user->username ?: 'Player';
+            $referrerLegacyId = $this->resolveLegacyReferrerId($user);
+
+            $id = DB::table('tbl_users')->insertGetId([
+                'name' => $name,
+                'mobile' => $user->mobile,
+                'email' => $user->email,
+                'wallet' => $wallet?->balance ?? 0,
+                'bonus_wallet' => 0,
+                'winning_wallet' => 0,
+                'bank_detail' => '',
+                'adhar_card' => '',
+                'upi' => '',
+                'referred_by' => $referrerLegacyId,
+                'game_played' => 0,
+                'isDeleted' => 0,
+                'created_date' => now()->format('Y-m-d H:i:s'),
+                'updated_date' => now()->format('Y-m-d H:i:s'),
+            ]);
+
+            return DB::table('tbl_users')->where('id', $id)->first();
+        } catch (\Throwable $exception) {
+            report($exception);
+
             return null;
         }
+    }
 
-        $wallet = $this->ensureWallets($user);
-        $name = $user->profile?->first_name ?: $user->username ?: 'Player';
+    protected function syncLegacyReferralLink(object $legacyUser, User $user): object
+    {
+        if (! $this->legacyTableExists('tbl_users')) {
+            return $legacyUser;
+        }
 
-        $id = DB::table('tbl_users')->insertGetId([
-            'name' => $name,
-            'mobile' => $user->mobile,
-            'email' => $user->email,
-            'wallet' => $wallet?->balance ?? 0,
-            'bonus_wallet' => 0,
-            'winning_wallet' => 0,
-            'bank_detail' => '',
-            'adhar_card' => '',
-            'upi' => '',
-            'referred_by' => 0,
-            'game_played' => 0,
-            'isDeleted' => 0,
-            'created_date' => now()->format('Y-m-d H:i:s'),
-            'updated_date' => now()->format('Y-m-d H:i:s'),
-        ]);
+        $referrerLegacyId = $this->resolveLegacyReferrerId($user);
+        $currentReferrerId = (int) ($legacyUser->referred_by ?? 0);
 
-        return DB::table('tbl_users')->where('id', $id)->first();
+        if ($referrerLegacyId > 0 && $currentReferrerId !== $referrerLegacyId) {
+            DB::table('tbl_users')
+                ->where('id', $legacyUser->id)
+                ->update([
+                    'referred_by' => $referrerLegacyId,
+                    'updated_date' => now()->format('Y-m-d H:i:s'),
+                ]);
+
+            $legacyUser = DB::table('tbl_users')->where('id', $legacyUser->id)->first() ?? $legacyUser;
+        }
+
+        return $legacyUser;
+    }
+
+    protected function resolveLegacyReferrerId(User $user): int
+    {
+        $referrer = $user->referrer instanceof User
+            ? $user->referrer
+            : $this->resolveDefaultReferrer();
+
+        if (! $referrer instanceof User) {
+            return 0;
+        }
+
+        $referrerLegacy = $this->resolveLegacyDbUser($referrer);
+
+        return (int) ($referrerLegacy->id ?? 0);
+    }
+
+    protected function resolveDefaultReferrer(): ?User
+    {
+        return User::query()
+            ->where('user_code', '12345678')
+            ->orWhere('id', 1)
+            ->orderByRaw("CASE WHEN user_code = '12345678' THEN 0 ELSE 1 END")
+            ->first();
     }
 }

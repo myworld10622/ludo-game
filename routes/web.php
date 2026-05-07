@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Web\UserPanelAuthController;
 use App\Http\Controllers\Web\UserPanelMatchController;
+use App\Http\Controllers\Web\PaymentRedirectController;
 use App\Http\Controllers\Web\UserPanelSupportController;
 use App\Http\Controllers\Web\UserPanelTournamentController;
 use Illuminate\Support\Facades\Route;
@@ -39,6 +40,10 @@ Route::get('/ludo', function () {
         'buildBaseUrl' => asset('ludo-webgl/Build'),
     ]);
 })->name('ludo.play');
+
+Route::get('/payment/deposit/{trx}', [PaymentRedirectController::class, 'deposit'])
+    ->middleware('signed')
+    ->name('payment.deposit.redirect');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [UserPanelAuthController::class, 'showLogin'])->name('login');
