@@ -67,7 +67,18 @@
                 <div><label>Type</label><select name="type">@foreach(['public','private'] as $type)<option value="{{ $type }}" {{ old('type', $editing?->type ?? 'public') === $type ? 'selected' : '' }}>{{ ucfirst($type) }}</option>@endforeach</select></div>
                 <div><label>Format</label><select name="format">@foreach(['knockout','round_robin','double_elim','group_knockout'] as $format)<option value="{{ $format }}" {{ old('format', $editing?->format ?? 'knockout') === $format ? 'selected' : '' }}>{{ ucwords(str_replace('_', ' ', $format)) }}</option>@endforeach</select></div>
                 <div><label>Entry Fee</label><input type="number" step="0.01" name="entry_fee" value="{{ old('entry_fee', $editing?->entry_fee ?? 0) }}" required></div>
-                <div><label>Max Players</label><select name="max_players">@foreach([4,8,16,32,64,112] as $max)<option value="{{ $max }}" {{ (int) old('max_players', $editing?->max_players ?? 4) === $max ? 'selected' : '' }}>{{ $max }}</option>@endforeach</select></div>
+                <div>
+                    <label>Max Players</label>
+                    <input
+                        type="number"
+                        name="max_players"
+                        min="4"
+                        max="100000"
+                        step="1"
+                        value="{{ (int) old('max_players', $editing?->max_players ?? 16) }}"
+                        placeholder="Enter player cap up to 100000"
+                    >
+                </div>
                 <div><label>Players Per Match</label><select name="players_per_match">@foreach([2,4] as $ppm)<option value="{{ $ppm }}" {{ (int) old('players_per_match', $editing?->players_per_match ?? 4) === $ppm ? 'selected' : '' }}>{{ $ppm }}</option>@endforeach</select></div>
                 <div><label>Platform Fee %</label><input type="number" step="0.01" name="platform_fee_pct" value="{{ old('platform_fee_pct', $editing?->platform_fee_pct ?? 20) }}"></div>
                 <div><label>Registration Start</label><input type="datetime-local" name="registration_start_at" value="{{ old('registration_start_at') }}" data-utc="{{ $editing?->registration_start_at?->toIso8601String() }}"></div>

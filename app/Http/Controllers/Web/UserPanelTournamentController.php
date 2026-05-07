@@ -305,7 +305,19 @@ class UserPanelTournamentController extends Controller
             'format'                => ['required', 'in:knockout,round_robin,double_elim,group_knockout'],
             'bracket_mode'          => ['nullable', 'in:auto,manual'],
             'entry_fee'             => ['required', 'numeric', 'min:0'],
-            'max_players'           => ['required', 'integer', 'in:4,8,16,32,64,112'],
+            'max_players'           => [
+                'required',
+                'integer',
+                'min:4',
+                'max:100000',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    $playersPerMatch = (int) request()->input('players_per_match', 4);
+
+                    if ($playersPerMatch > 0 && ((int) $value % $playersPerMatch) !== 0) {
+                        $fail('Max players must be a multiple of players per match.');
+                    }
+                },
+            ],
             'players_per_match'     => ['nullable', 'integer', 'in:2,4'],
             'platform_fee_pct'      => ['nullable', 'numeric', 'min:0', 'max:100'],
             'invite_password'       => ['nullable', 'string', 'max:50'],

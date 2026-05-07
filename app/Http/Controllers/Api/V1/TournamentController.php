@@ -99,7 +99,19 @@ class TournamentController extends Controller
             'format'                => ['required', Rule::in(['knockout'])], // only knockout supported; others are draft/future
             'bracket_mode'          => ['sometimes', Rule::in(['auto', 'manual'])],
             'entry_fee'             => 'required|numeric|min:0',
-            'max_players'           => ['required', 'integer', Rule::in([4, 8, 16, 32, 64, 128])],
+            'max_players'           => [
+                'required',
+                'integer',
+                'min:4',
+                'max:100000',
+                function (string $attribute, mixed $value, \Closure $fail) use ($request): void {
+                    $playersPerMatch = (int) $request->input('players_per_match', 2);
+
+                    if ($playersPerMatch > 0 && ((int) $value % $playersPerMatch) !== 0) {
+                        $fail('The max players field must be a multiple of players per match.');
+                    }
+                },
+            ],
             'players_per_match'     => ['sometimes', Rule::in([2, 4])],
             'turn_time_limit'       => 'sometimes|integer|between:15,60',
             'match_timeout'         => 'sometimes|integer|min:600',
