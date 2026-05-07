@@ -2,6 +2,12 @@ using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
+using TMPro;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
 namespace AndroApps
 {
@@ -15,10 +21,13 @@ namespace AndroApps
     /// Attach via AuthManager.Start() with AddComponent + Initialize(this).
     /// Assign 'modelSprite' (Model.png) via Inspector on the AuthManager GameObject.
     /// </summary>
+    [ExecuteAlways]
     public class LoginPageRedesigner : MonoBehaviour
     {
         [Header("Assign Model.png sprite here")]
         public Sprite modelSprite;
+        [Header("Assign shared popup frame sprite here")]
+        public Sprite popupFrameSprite;
 
         private AuthManager    _auth;
         private GameObject     _overlay;
@@ -36,6 +45,22 @@ namespace AndroApps
         public InputField signupPasswordInput;
         public InputField signupReferralInput;
         public Toggle     signupTermsToggle;
+        private GameObject forgotPopup;
+        private GameObject forgotChooseView;
+        private GameObject forgotFormView;
+        private Text forgotTitleText;
+        private Text forgotStatusText;
+        private Text forgotRecoveredText;
+        private Text forgotPasswordLabelText;
+        private GameObject forgotResultPopup;
+        private Text forgotResultText;
+        private InputField forgotValueInput;
+        private InputField forgotOtpInput;
+        private InputField forgotPasswordInput;
+        private string forgotMode = string.Empty;
+        private string forgotChannelType = "email";
+        private string forgotOtpId = string.Empty;
+        private string forgotChannelValue = string.Empty;
 
         private GameObject     _sceneLogoObject;
         private Sprite         _sceneLogoSprite;
@@ -63,6 +88,14 @@ namespace AndroApps
         }
 
 #if UNITY_EDITOR
+        private bool _editorRebuildQueued;
+
+        [ContextMenu("Rebuild Persistent Login UI")]
+        private void RebuildPersistentUiInEditorMenu()
+        {
+            RebuildPersistentUiInEditor();
+        }
+
         public void RebuildPersistentUiInEditor(AuthManager auth = null)
         {
             if (Application.isPlaying)
@@ -99,6 +132,146 @@ namespace AndroApps
             _buildSucceeded = false;
 
             Build();
+            EnsureForgotPopup(GetFont());
+            MarkEditorSceneDirty();
+        }
+
+        private void OnEnable()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            QueueEditorHierarchyEnsure();
+        }
+
+        private void OnValidate()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            QueueEditorHierarchyEnsure();
+        }
+
+        private void OnDisable()
+        {
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
+            EditorApplication.delayCall -= EnsureEditorHierarchyReady;
+            _editorRebuildQueued = false;
+        }
+
+        private void QueueEditorHierarchyEnsure()
+        {
+            if (_editorRebuildQueued)
+            {
+                return;
+            }
+
+            _editorRebuildQueued = true;
+            EditorApplication.delayCall -= EnsureEditorHierarchyReady;
+            EditorApplication.delayCall += EnsureEditorHierarchyReady;
+        }
+
+        private void EnsureEditorHierarchyReady()
+        {
+            _editorRebuildQueued = false;
+            EditorApplication.delayCall -= EnsureEditorHierarchyReady;
+
+            if (this == null || Application.isPlaying || !isActiveAndEnabled)
+            {
+                return;
+            }
+
+            if (!gameObject.scene.IsValid() || !gameObject.scene.isLoaded)
+            {
+                return;
+            }
+
+            _auth = _auth != null ? _auth : GetComponent<AuthManager>() ?? FindObjectOfType<AuthManager>();
+
+            if (_overlay == null)
+            {
+                Transform sceneOverlay = FindDirectChild(gameObject.scene.GetRootGameObjects()
+                    .SelectMany(root => root.GetComponentsInChildren<Transform>(true))
+                    .FirstOrDefault(t => t.name == "Canvas"), OverlayName);
+                if (sceneOverlay != null)
+                {
+                    _overlay = sceneOverlay.gameObject;
+                }
+                else
+                {
+                    GameObject overlayObject = GameObject.Find(OverlayName);
+                    if (overlayObject != null)
+                    {
+                        _overlay = overlayObject;
+                    }
+                }
+            }
+
+            if (_overlay != null)
+            {
+                Transform parent = _overlay.transform.parent;
+                if (parent != null && TryBindExistingOverlay(parent))
+                {
+                    EnsureForgotPopup(GetFont());
+                    MarkEditorSceneDirty();
+                    return;
+                }
+
+                EnsureForgotPopup(GetFont());
+                MarkEditorSceneDirty();
+                return;
+            }
+
+            if (_auth == null || _auth.loginpanel == null)
+            {
+                return;
+            }
+
+            Canvas rootCanvas = ResolveRootCanvas(_auth.loginpanel);
+            if (rootCanvas == null)
+            {
+                return;
+            }
+
+            Transform existingOverlay = FindDirectChild(rootCanvas.transform, OverlayName);
+            if (existingOverlay == null)
+            {
+                RebuildPersistentUiInEditor(_auth);
+                return;
+            }
+
+            if (!TryBindExistingOverlay(rootCanvas.transform))
+            {
+                RebuildPersistentUiInEditor(_auth);
+                return;
+            }
+
+            EnsureForgotPopup(GetFont());
+            MarkEditorSceneDirty();
+        }
+
+        private void MarkEditorSceneDirty()
+        {
+            if (!gameObject.scene.IsValid())
+            {
+                return;
+            }
+
+            EditorUtility.SetDirty(gameObject);
+            if (_overlay != null)
+            {
+                EditorUtility.SetDirty(_overlay);
+            }
+
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
         }
 #endif
 
@@ -129,6 +302,7 @@ namespace AndroApps
 
                 if (TryBindExistingOverlay(rootCanvas.transform))
                 {
+                    EnsureForgotPopup(GetFont());
                     CacheSceneLogo(loginRoot.transform.root);
                     loginRoot.SetActive(false);
                     SetSceneLogoVisible(false);
@@ -423,6 +597,12 @@ namespace AndroApps
             AddLabel(card.transform, font, "Password", 28, FontStyle.Normal, MutedText, 34f);
             pwInput = MakeInput(card.transform, font, "Enter your password", true, 76f, 32);
 
+            var forgotBtn = MakeBtn(card.transform, font, "Forgot Username / Password?", new Color32(0, 0, 0, 0), new Color32(255, 210, 100, 255), 24, 42f);
+            var forgotOutline = forgotBtn.gameObject.AddComponent<Outline>();
+            forgotOutline.effectColor = MidRed;
+            forgotOutline.effectDistance = new Vector2(1f, -1f);
+            forgotBtn.onClick.AddListener(OpenForgotPopup);
+
             Spacer(card.transform, 4f);
 
             // Login button — green, stylish decorated text
@@ -445,6 +625,8 @@ namespace AndroApps
             backOutline.effectColor    = MidRed;
             backOutline.effectDistance = new Vector2(1f, -1f);
             backBtn.onClick.AddListener(ShowLanding);
+
+            EnsureForgotPopup(font);
         }
 
         private void BuildSignupFormPanel()
@@ -568,6 +750,617 @@ namespace AndroApps
             var guestBtn = MakeBtn(footerRow.transform, font, "Play as Guest",
                 new Color32(0, 0, 0, 0), new Color32(235, 215, 220, 220), 36, 60f);
             guestBtn.onClick.AddListener(DoGuestLogin);
+        }
+
+        private void EnsureForgotPopup(Font font)
+        {
+            EnsureOverlayReference();
+
+            if (forgotPopup != null || _overlay == null)
+            {
+                return;
+            }
+
+            if (TryBindExistingForgotPopup())
+            {
+                EnsureForgotResultPopup(font);
+                return;
+            }
+
+            forgotPopup = new GameObject("ForgotPopup",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            forgotPopup.transform.SetParent(_overlay.transform, false);
+            Stretch(forgotPopup.GetComponent<RectTransform>());
+            forgotPopup.GetComponent<Image>().color = new Color32(0, 0, 0, 180);
+
+            var panel = new GameObject("ForgotPanel",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Outline));
+            panel.transform.SetParent(forgotPopup.transform, false);
+            var pr = panel.GetComponent<RectTransform>();
+            pr.anchorMin = new Vector2(0.5f, 0.5f);
+            pr.anchorMax = new Vector2(0.5f, 0.5f);
+            pr.pivot = new Vector2(0.5f, 0.5f);
+            pr.sizeDelta = new Vector2(820f, 1020f);
+            ApplyForgotPanelFrame(panel.GetComponent<Image>());
+            var panelOutline = panel.GetComponent<Outline>();
+            panelOutline.effectColor = new Color32(255, 186, 92, 110);
+            panelOutline.effectDistance = new Vector2(2f, -2f);
+
+            var titleBar = new GameObject("TitleBar",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            titleBar.transform.SetParent(panel.transform, false);
+            var titleBarRect = titleBar.GetComponent<RectTransform>();
+            titleBarRect.anchorMin = new Vector2(0f, 1f);
+            titleBarRect.anchorMax = new Vector2(1f, 1f);
+            titleBarRect.pivot = new Vector2(0.5f, 1f);
+            titleBarRect.sizeDelta = new Vector2(0f, 108f);
+            titleBarRect.anchoredPosition = Vector2.zero;
+            titleBar.GetComponent<Image>().color = new Color32(118, 18, 28, 255);
+
+            forgotTitleText = AddLabel(titleBar.transform, font, "Forgot Access", 42, FontStyle.Bold, Color.white, 76f);
+            forgotTitleText.gameObject.name = "Title";
+            forgotTitleText.alignment = TextAnchor.MiddleLeft;
+            var titleRect = forgotTitleText.GetComponent<RectTransform>();
+            titleRect.anchorMin = new Vector2(0f, 0f);
+            titleRect.anchorMax = new Vector2(1f, 1f);
+            titleRect.offsetMin = new Vector2(28f, 0f);
+            titleRect.offsetMax = new Vector2(-84f, 0f);
+
+            var closeBtn = new GameObject("CloseButton",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image), typeof(Button)).GetComponent<Button>();
+            closeBtn.transform.SetParent(titleBar.transform, false);
+            var closeRect = closeBtn.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1f, 0.5f);
+            closeRect.anchorMax = new Vector2(1f, 0.5f);
+            closeRect.pivot = new Vector2(1f, 0.5f);
+            closeRect.sizeDelta = new Vector2(72f, 72f);
+            closeRect.anchoredPosition = new Vector2(-18f, 0f);
+            closeBtn.GetComponent<Image>().color = new Color32(165, 36, 47, 255);
+            var closeLabel = AddLabel(closeBtn.transform, font, "X", 34, FontStyle.Bold, Color.white, 72f);
+            closeLabel.gameObject.name = "CloseLabel";
+            closeLabel.alignment = TextAnchor.MiddleCenter;
+            var closeLabelRect = closeLabel.GetComponent<RectTransform>();
+            closeLabelRect.anchorMin = Vector2.zero;
+            closeLabelRect.anchorMax = Vector2.one;
+            closeLabelRect.offsetMin = Vector2.zero;
+            closeLabelRect.offsetMax = Vector2.zero;
+            closeBtn.onClick.AddListener(CloseForgotPopup);
+
+            var body = new GameObject("Body",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(VerticalLayoutGroup));
+            body.transform.SetParent(panel.transform, false);
+            var bodyRect = body.GetComponent<RectTransform>();
+            bodyRect.anchorMin = new Vector2(0f, 0f);
+            bodyRect.anchorMax = new Vector2(1f, 1f);
+            bodyRect.offsetMin = new Vector2(44f, 36f);
+            bodyRect.offsetMax = new Vector2(-44f, -122f);
+            var bodyLayout = body.GetComponent<VerticalLayoutGroup>();
+            bodyLayout.padding = new RectOffset(8, 8, 12, 8);
+            bodyLayout.spacing = 24f;
+            bodyLayout.childControlWidth = true;
+            bodyLayout.childControlHeight = true;
+            bodyLayout.childForceExpandWidth = true;
+            bodyLayout.childForceExpandHeight = false;
+            bodyLayout.childAlignment = TextAnchor.MiddleCenter;
+
+            forgotChooseView = new GameObject("ChooseView", typeof(RectTransform), typeof(CanvasRenderer), typeof(VerticalLayoutGroup));
+            forgotChooseView.transform.SetParent(body.transform, false);
+            var chooseLayout = forgotChooseView.GetComponent<VerticalLayoutGroup>();
+            chooseLayout.spacing = 26f;
+            chooseLayout.childControlWidth = true;
+            chooseLayout.childControlHeight = true;
+            chooseLayout.childForceExpandWidth = true;
+            chooseLayout.childForceExpandHeight = false;
+            chooseLayout.childAlignment = TextAnchor.MiddleCenter;
+            var chooseLayoutElement = forgotChooseView.AddComponent<LayoutElement>();
+            chooseLayoutElement.flexibleHeight = 1f;
+
+            var chooseText = AddLabel(forgotChooseView.transform, font, "Choose what you want to recover.", 38, FontStyle.Normal, MutedText, 88f);
+            chooseText.gameObject.name = "ChooseText";
+            chooseText.alignment = TextAnchor.MiddleCenter;
+
+            var forgotUserBtn = MakeBtn(forgotChooseView.transform, font, "Forgot Username", AccentGold, new Color32(30, 10, 0, 255), 38, 108f);
+            forgotUserBtn.onClick.AddListener(() => BeginForgotFlow("username"));
+
+            var forgotPassBtn = MakeBtn(forgotChooseView.transform, font, "Forgot Password", new Color32(34, 170, 80, 255), Color.white, 38, 108f);
+            forgotPassBtn.onClick.AddListener(() => BeginForgotFlow("password"));
+
+            forgotFormView = new GameObject("FormView", typeof(RectTransform), typeof(CanvasRenderer), typeof(VerticalLayoutGroup));
+            forgotFormView.transform.SetParent(body.transform, false);
+            var formLayout = forgotFormView.GetComponent<VerticalLayoutGroup>();
+            formLayout.spacing = 20f;
+            formLayout.childControlWidth = true;
+            formLayout.childControlHeight = true;
+            formLayout.childForceExpandWidth = true;
+            formLayout.childForceExpandHeight = false;
+            formLayout.childAlignment = TextAnchor.UpperCenter;
+            var formLayoutElement = forgotFormView.AddComponent<LayoutElement>();
+            formLayoutElement.flexibleHeight = 1f;
+
+            var channelRow = new GameObject("ChannelRow", typeof(RectTransform), typeof(CanvasRenderer), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            channelRow.transform.SetParent(forgotFormView.transform, false);
+            channelRow.GetComponent<LayoutElement>().preferredHeight = 104f;
+            var channelLayout = channelRow.GetComponent<HorizontalLayoutGroup>();
+            channelLayout.spacing = 22f;
+            channelLayout.childControlWidth = true;
+            channelLayout.childControlHeight = true;
+            channelLayout.childForceExpandWidth = true;
+            channelLayout.childForceExpandHeight = false;
+
+            var emailBtn = MakeBtn(channelRow.transform, font, "Email", MidRed, Color.white, 30, 82f);
+            emailBtn.onClick.AddListener(() => SelectForgotChannel("email"));
+            var whatsappBtn = MakeBtn(channelRow.transform, font, "WhatsApp", MidRed, Color.white, 30, 82f);
+            whatsappBtn.onClick.AddListener(() => SelectForgotChannel("whatsapp"));
+
+            forgotValueInput = MakeInput(forgotFormView.transform, font, "Enter email or WhatsApp number", false, 96f, 36);
+            forgotValueInput.gameObject.name = "ValueInput";
+            var sendOtpBtn = MakeBtn(forgotFormView.transform, font, "Send OTP", AccentRed, Color.white, 34, 94f);
+            sendOtpBtn.onClick.AddListener(SendForgotOtpAsync);
+            forgotOtpInput = MakeInput(forgotFormView.transform, font, "Enter OTP", false, 96f, 36);
+            forgotOtpInput.gameObject.name = "OtpInput";
+
+            forgotPasswordLabelText = AddLabel(forgotFormView.transform, font, "New Password", 34, FontStyle.Normal, MutedText, 52f);
+            forgotPasswordLabelText.gameObject.name = "PasswordLabel";
+            forgotPasswordInput = MakeInput(forgotFormView.transform, font, "Enter new password", true, 96f, 36);
+            forgotPasswordInput.gameObject.name = "PasswordInput";
+
+            var submitBtn = MakeBtn(forgotFormView.transform, font, "Submit", new Color32(34, 170, 80, 255), Color.white, 36, 96f);
+            submitBtn.onClick.AddListener(SubmitForgotFlowAsync);
+            var backBtn = MakeBtn(forgotFormView.transform, font, "Back", new Color32(0, 0, 0, 0), new Color32(255, 210, 100, 255), 32, 70f);
+            var backOutline = backBtn.gameObject.AddComponent<Outline>();
+            backOutline.effectColor = AccentGold;
+            backOutline.effectDistance = new Vector2(1f, -1f);
+            backBtn.onClick.AddListener(ResetForgotState);
+
+            forgotStatusText = AddLabel(forgotFormView.transform, font, "", 30, FontStyle.Normal, Color.white, 120f);
+            forgotStatusText.gameObject.name = "StatusText";
+            forgotStatusText.alignment = TextAnchor.MiddleCenter;
+            forgotStatusText.resizeTextForBestFit = true;
+            forgotStatusText.resizeTextMaxSize = 30;
+            forgotStatusText.resizeTextMinSize = 24;
+
+            forgotRecoveredText = AddLabel(forgotFormView.transform, font, "", 34, FontStyle.Bold, Color.white, 116f);
+            forgotRecoveredText.gameObject.name = "RecoveredText";
+            forgotRecoveredText.alignment = TextAnchor.MiddleCenter;
+            forgotRecoveredText.gameObject.SetActive(false);
+
+            EnsureForgotResultPopup(font);
+
+            forgotPopup.SetActive(false);
+            forgotFormView.SetActive(false);
+        }
+
+        private void EnsureForgotResultPopup(Font font)
+        {
+            if (forgotPopup == null)
+            {
+                return;
+            }
+
+            if (forgotResultPopup != null)
+            {
+                return;
+            }
+
+            forgotResultPopup = new GameObject("ResultPopup",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            forgotResultPopup.transform.SetParent(forgotPopup.transform, false);
+            var resultOverlayRect = forgotResultPopup.GetComponent<RectTransform>();
+            Stretch(resultOverlayRect);
+            forgotResultPopup.GetComponent<Image>().color = new Color32(8, 6, 10, 190);
+
+            var resultPanel = new GameObject("ResultPanel",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            resultPanel.transform.SetParent(forgotResultPopup.transform, false);
+            var resultPanelRect = resultPanel.GetComponent<RectTransform>();
+            resultPanelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            resultPanelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            resultPanelRect.pivot = new Vector2(0.5f, 0.5f);
+            resultPanelRect.sizeDelta = new Vector2(620f, 360f);
+            ApplyForgotPanelFrame(resultPanel.GetComponent<Image>());
+
+            var resultTitleBar = new GameObject("TitleBar",
+                typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            resultTitleBar.transform.SetParent(resultPanel.transform, false);
+            var resultTitleBarRect = resultTitleBar.GetComponent<RectTransform>();
+            resultTitleBarRect.anchorMin = new Vector2(0.5f, 1f);
+            resultTitleBarRect.anchorMax = new Vector2(0.5f, 1f);
+            resultTitleBarRect.pivot = new Vector2(0.5f, 1f);
+            resultTitleBarRect.sizeDelta = new Vector2(560f, 62f);
+            resultTitleBarRect.anchoredPosition = new Vector2(0f, -22f);
+            resultTitleBar.GetComponent<Image>().color = new Color32(72, 16, 34, 220);
+
+            var resultTitle = AddLabel(resultTitleBar.transform, font, "Recovered Details", 30, FontStyle.Bold, Color.white, 54f);
+            resultTitle.gameObject.name = "Title";
+            resultTitle.alignment = TextAnchor.MiddleCenter;
+
+            forgotResultText = AddLabel(resultPanel.transform, font, "", 30, FontStyle.Bold, Color.white, 140f);
+            forgotResultText.gameObject.name = "ResultText";
+            forgotResultText.alignment = TextAnchor.MiddleCenter;
+            var resultTextRect = forgotResultText.transform as RectTransform;
+            if (resultTextRect != null)
+            {
+                resultTextRect.anchorMin = new Vector2(0.5f, 0.5f);
+                resultTextRect.anchorMax = new Vector2(0.5f, 0.5f);
+                resultTextRect.pivot = new Vector2(0.5f, 0.5f);
+                resultTextRect.sizeDelta = new Vector2(500f, 140f);
+                resultTextRect.anchoredPosition = new Vector2(0f, 20f);
+            }
+
+            var copyBtn = MakeBtn(resultPanel.transform, font, "Copy Details", AccentGold, new Color32(30, 10, 0, 255), 28, 74f);
+            copyBtn.name = "CopyDetailsBtn";
+            var copyRect = copyBtn.transform as RectTransform;
+            if (copyRect != null)
+            {
+                copyRect.anchorMin = new Vector2(0.5f, 0.5f);
+                copyRect.anchorMax = new Vector2(0.5f, 0.5f);
+                copyRect.pivot = new Vector2(0.5f, 0.5f);
+                copyRect.sizeDelta = new Vector2(230f, 74f);
+                copyRect.anchoredPosition = new Vector2(-128f, -108f);
+            }
+            copyBtn.onClick.AddListener(CopyForgotRecoveredDetails);
+
+            var resultOkBtn = MakeBtn(resultPanel.transform, font, "OK", new Color32(34, 170, 80, 255), Color.white, 28, 74f);
+            resultOkBtn.name = "OkBtn";
+            var resultOkRect = resultOkBtn.transform as RectTransform;
+            if (resultOkRect != null)
+            {
+                resultOkRect.anchorMin = new Vector2(0.5f, 0.5f);
+                resultOkRect.anchorMax = new Vector2(0.5f, 0.5f);
+                resultOkRect.pivot = new Vector2(0.5f, 0.5f);
+                resultOkRect.sizeDelta = new Vector2(180f, 74f);
+                resultOkRect.anchoredPosition = new Vector2(112f, -108f);
+            }
+            resultOkBtn.onClick.AddListener(HideForgotResultPopup);
+            forgotResultPopup.SetActive(false);
+        }
+
+        private bool TryBindExistingForgotPopup()
+        {
+            if (_overlay == null)
+            {
+                return false;
+            }
+
+            forgotPopup = FindByPath(_overlay.transform, "ForgotPopup")?.gameObject;
+            if (forgotPopup == null)
+            {
+                return false;
+            }
+
+            forgotChooseView = FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/ChooseView")?.gameObject;
+            forgotFormView = FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView")?.gameObject;
+            forgotValueInput = FindComponent<InputField>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ValueInput");
+            forgotOtpInput = FindComponent<InputField>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/OtpInput");
+            forgotPasswordInput = FindComponent<InputField>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/PasswordInput");
+            forgotTitleText = FindComponent<Text>(_overlay.transform, "ForgotPopup/ForgotPanel/TitleBar/Title");
+            forgotPasswordLabelText = FindComponent<Text>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/PasswordLabel");
+            forgotStatusText = FindComponent<Text>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/StatusText");
+            forgotRecoveredText = FindComponent<Text>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/RecoveredText");
+            forgotResultPopup = FindByPath(_overlay.transform, "ForgotPopup/ResultPopup")?.gameObject;
+            forgotResultText = FindComponent<Text>(_overlay.transform, "ForgotPopup/ResultPopup/ResultPanel/ResultText");
+            Image forgotPanelImage = FindComponent<Image>(_overlay.transform, "ForgotPopup/ForgotPanel");
+            ApplyForgotPanelFrame(forgotPanelImage);
+            NormalizeForgotPopupLayout();
+            Transform mobileBtnTransform = FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow/MobileBtn");
+            if (mobileBtnTransform != null)
+            {
+                mobileBtnTransform.gameObject.SetActive(false);
+            }
+
+            Button closeButton = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/TitleBar/CloseButton");
+            if (closeButton != null)
+            {
+                closeButton.onClick.RemoveAllListeners();
+                closeButton.onClick.AddListener(CloseForgotPopup);
+            }
+
+            Button forgotUserBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/ChooseView/Forgot UsernameBtn");
+            if (forgotUserBtn != null)
+            {
+                forgotUserBtn.onClick.RemoveAllListeners();
+                forgotUserBtn.onClick.AddListener(() => BeginForgotFlow("username"));
+            }
+
+            Button forgotPassBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/ChooseView/Forgot PasswordBtn");
+            if (forgotPassBtn != null)
+            {
+                forgotPassBtn.onClick.RemoveAllListeners();
+                forgotPassBtn.onClick.AddListener(() => BeginForgotFlow("password"));
+            }
+
+            Button emailBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow/EmailBtn");
+            if (emailBtn != null)
+            {
+                emailBtn.onClick.RemoveAllListeners();
+                emailBtn.onClick.AddListener(() => SelectForgotChannel("email"));
+            }
+
+            Button whatsappBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow/WhatsAppBtn");
+            if (whatsappBtn != null)
+            {
+                whatsappBtn.onClick.RemoveAllListeners();
+                whatsappBtn.onClick.AddListener(() => SelectForgotChannel("whatsapp"));
+            }
+
+            Button sendOtpBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/Send OTPBtn");
+            if (sendOtpBtn != null)
+            {
+                sendOtpBtn.onClick.RemoveAllListeners();
+                sendOtpBtn.onClick.AddListener(SendForgotOtpAsync);
+            }
+
+            Button submitBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/SubmitBtn");
+            if (submitBtn != null)
+            {
+                submitBtn.onClick.RemoveAllListeners();
+                submitBtn.onClick.AddListener(SubmitForgotFlowAsync);
+            }
+
+            Button backBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/BackBtn");
+            if (backBtn != null)
+            {
+                backBtn.onClick.RemoveAllListeners();
+                backBtn.onClick.AddListener(ResetForgotState);
+            }
+
+            Button copyDetailsBtn = FindButton(_overlay.transform, "ForgotPopup/ResultPopup/ResultPanel/CopyDetailsBtn");
+            if (copyDetailsBtn != null)
+            {
+                copyDetailsBtn.onClick.RemoveAllListeners();
+                copyDetailsBtn.onClick.AddListener(CopyForgotRecoveredDetails);
+            }
+
+            Button resultOkBtn = FindButton(_overlay.transform, "ForgotPopup/ResultPopup/ResultPanel/OkBtn");
+            if (resultOkBtn != null)
+            {
+                resultOkBtn.onClick.RemoveAllListeners();
+                resultOkBtn.onClick.AddListener(HideForgotResultPopup);
+            }
+
+            return forgotChooseView != null
+                && forgotFormView != null
+                && forgotValueInput != null
+                && forgotOtpInput != null
+                && forgotPasswordInput != null
+                && forgotTitleText != null
+                && forgotPasswordLabelText != null
+                && forgotStatusText != null
+                && forgotRecoveredText != null;
+        }
+
+        private void ApplyForgotPanelFrame(Image panelImage)
+        {
+            if (panelImage == null)
+            {
+                return;
+            }
+
+            if (popupFrameSprite != null)
+            {
+                panelImage.sprite = popupFrameSprite;
+                panelImage.type = Image.Type.Simple;
+                panelImage.preserveAspect = false;
+                panelImage.color = Color.white;
+                return;
+            }
+
+            if (panelImage.sprite != null)
+            {
+                panelImage.type = Image.Type.Simple;
+                panelImage.preserveAspect = false;
+                panelImage.color = Color.white;
+                return;
+            }
+
+            panelImage.sprite = null;
+            panelImage.color = new Color32(44, 10, 18, 245);
+        }
+
+        private void NormalizeForgotPopupLayout()
+        {
+            if (_overlay == null)
+            {
+                return;
+            }
+
+            RectTransform panelRect = FindComponent<RectTransform>(_overlay.transform, "ForgotPopup/ForgotPanel");
+            if (panelRect != null)
+            {
+                panelRect.sizeDelta = new Vector2(820f, 1020f);
+            }
+
+            RectTransform titleBarRect = FindComponent<RectTransform>(_overlay.transform, "ForgotPopup/ForgotPanel/TitleBar");
+            if (titleBarRect != null)
+            {
+                titleBarRect.sizeDelta = new Vector2(0f, 108f);
+            }
+
+            RectTransform bodyRect = FindComponent<RectTransform>(_overlay.transform, "ForgotPopup/ForgotPanel/Body");
+            if (bodyRect != null)
+            {
+                bodyRect.offsetMin = new Vector2(44f, 36f);
+                bodyRect.offsetMax = new Vector2(-44f, -122f);
+            }
+
+            VerticalLayoutGroup bodyLayout = FindComponent<VerticalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body");
+            if (bodyLayout != null)
+            {
+                bodyLayout.spacing = 24f;
+                bodyLayout.childAlignment = TextAnchor.MiddleCenter;
+            }
+
+            VerticalLayoutGroup chooseLayout = FindComponent<VerticalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/ChooseView");
+            if (chooseLayout != null)
+            {
+                chooseLayout.spacing = 26f;
+                chooseLayout.childAlignment = TextAnchor.MiddleCenter;
+            }
+
+            VerticalLayoutGroup formLayout = FindComponent<VerticalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView");
+            if (formLayout != null)
+            {
+                formLayout.spacing = 20f;
+            }
+
+            HorizontalLayoutGroup channelLayout = FindComponent<HorizontalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow");
+            if (channelLayout != null)
+            {
+                channelLayout.spacing = 22f;
+            }
+
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow"), 104f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/EmailBtn"), 82f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/WhatsAppBtn"), 82f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ValueInput"), 96f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/Send OTPBtn"), 94f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/OtpInput"), 96f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/PasswordInput"), 96f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/SubmitBtn"), 96f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/BackBtn"), 70f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/StatusText"), 120f);
+            SetLayoutHeight(FindByPath(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/RecoveredText"), 116f);
+            EnsureFlexibleHeight("ForgotPopup/ForgotPanel/Body/ChooseView");
+            EnsureFlexibleHeight("ForgotPopup/ForgotPanel/Body/FormView");
+
+            if (forgotTitleText != null)
+            {
+                forgotTitleText.fontSize = 42;
+            }
+
+            if (forgotStatusText != null)
+            {
+                forgotStatusText.fontSize = 30;
+                forgotStatusText.resizeTextMaxSize = 30;
+                forgotStatusText.resizeTextMinSize = 24;
+            }
+
+            if (forgotRecoveredText != null)
+            {
+                forgotRecoveredText.fontSize = 34;
+                forgotRecoveredText.gameObject.SetActive(false);
+            }
+
+            if (forgotPasswordLabelText != null)
+            {
+                forgotPasswordLabelText.fontSize = 34;
+            }
+
+            if (forgotValueInput != null)
+            {
+                StyleInput(forgotValueInput, 36, 96f);
+            }
+
+            if (forgotOtpInput != null)
+            {
+                StyleInput(forgotOtpInput, 36, 96f);
+            }
+
+            if (forgotPasswordInput != null)
+            {
+                StyleInput(forgotPasswordInput, 36, 96f);
+            }
+
+            Button emailBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow/EmailBtn");
+            if (emailBtn != null)
+            {
+                ApplyGenericButtonSize(emailBtn, 30, 82f);
+            }
+
+            Button whatsappBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/ChannelRow/WhatsAppBtn");
+            if (whatsappBtn != null)
+            {
+                ApplyGenericButtonSize(whatsappBtn, 30, 82f);
+            }
+
+            Button sendOtpBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/Send OTPBtn");
+            if (sendOtpBtn != null)
+            {
+                ApplyGenericButtonSize(sendOtpBtn, 34, 94f);
+            }
+
+            Button submitBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/SubmitBtn");
+            if (submitBtn != null)
+            {
+                ApplyGenericButtonSize(submitBtn, 36, 96f);
+            }
+
+            Button backBtn = FindButton(_overlay.transform, "ForgotPopup/ForgotPanel/Body/FormView/BackBtn");
+            if (backBtn != null)
+            {
+                ApplyGenericButtonSize(backBtn, 32, 70f);
+            }
+
+            SetForgotBodyAlignment(string.IsNullOrEmpty(forgotMode));
+        }
+
+        private void EnsureFlexibleHeight(string path)
+        {
+            Transform target = FindByPath(_overlay.transform, path);
+            if (target == null)
+            {
+                return;
+            }
+
+            LayoutElement layoutElement = target.GetComponent<LayoutElement>();
+            if (layoutElement == null)
+            {
+                layoutElement = target.gameObject.AddComponent<LayoutElement>();
+            }
+
+            layoutElement.flexibleHeight = 1f;
+        }
+
+        private void SetForgotBodyAlignment(bool centerChooseView)
+        {
+            if (_overlay == null)
+            {
+                return;
+            }
+
+            VerticalLayoutGroup bodyLayout = FindComponent<VerticalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body");
+            if (bodyLayout != null)
+            {
+                bodyLayout.childAlignment = centerChooseView ? TextAnchor.MiddleCenter : TextAnchor.UpperCenter;
+            }
+
+            VerticalLayoutGroup chooseLayout = FindComponent<VerticalLayoutGroup>(_overlay.transform, "ForgotPopup/ForgotPanel/Body/ChooseView");
+            if (chooseLayout != null)
+            {
+                chooseLayout.childAlignment = TextAnchor.MiddleCenter;
+            }
+        }
+
+        private void EnsureOverlayReference()
+        {
+            if (_overlay != null)
+            {
+                return;
+            }
+
+            if (_auth == null)
+            {
+                _auth = GetComponent<AuthManager>() ?? FindObjectOfType<AuthManager>();
+            }
+
+            Canvas rootCanvas = ResolveRootCanvas(_auth != null ? _auth.loginpanel : null);
+            if (rootCanvas != null)
+            {
+                Transform overlayTransform = FindDirectChild(rootCanvas.transform, OverlayName);
+                if (overlayTransform != null)
+                {
+                    _overlay = overlayTransform.gameObject;
+                }
+            }
+
+            if (_overlay == null)
+            {
+                GameObject globalOverlay = GameObject.Find(OverlayName);
+                if (globalOverlay != null)
+                {
+                    _overlay = globalOverlay;
+                }
+            }
         }
 
         private void ApplyResponsiveAuthLayout()
@@ -1137,6 +1930,304 @@ namespace AndroApps
             _auth.OnClickSignUp();
         }
 
+        public void OpenForgotPopup()
+        {
+            EnsureOverlayReference();
+            if (forgotPopup == null)
+            {
+                EnsureForgotPopup(GetFont());
+            }
+
+            if (forgotPopup == null)
+            {
+                if (_auth != null) _auth.showtoastmessage("Forgot popup is not available.");
+                return;
+            }
+
+            ResetForgotState();
+            forgotPopup.SetActive(true);
+            forgotPopup.transform.SetAsLastSibling();
+        }
+
+        private void ResetForgotState()
+        {
+            if (forgotTitleText != null) forgotTitleText.text = "Forgot Access";
+            forgotMode = string.Empty;
+            forgotChannelType = "email";
+            forgotOtpId = string.Empty;
+            forgotChannelValue = string.Empty;
+
+            if (forgotChooseView != null) forgotChooseView.SetActive(true);
+            if (forgotFormView != null) forgotFormView.SetActive(false);
+            if (forgotStatusText != null) forgotStatusText.text = string.Empty;
+            if (forgotRecoveredText != null) forgotRecoveredText.text = string.Empty;
+            HideForgotResultPopup();
+            if (forgotValueInput != null) forgotValueInput.text = string.Empty;
+            if (forgotOtpInput != null) forgotOtpInput.text = string.Empty;
+            if (forgotPasswordInput != null) forgotPasswordInput.text = string.Empty;
+            if (forgotPasswordLabelText != null) forgotPasswordLabelText.gameObject.SetActive(false);
+            if (forgotPasswordInput != null) forgotPasswordInput.gameObject.SetActive(false);
+            SetForgotBodyAlignment(true);
+        }
+
+        private void CloseForgotPopup()
+        {
+            HideForgotResultPopup();
+            if (forgotPopup != null)
+            {
+                forgotPopup.SetActive(false);
+            }
+        }
+
+        private void BeginForgotFlow(string mode)
+        {
+            forgotMode = mode;
+            forgotOtpId = string.Empty;
+            forgotChannelValue = string.Empty;
+
+            if (forgotChooseView != null) forgotChooseView.SetActive(false);
+            if (forgotFormView != null) forgotFormView.SetActive(true);
+            if (forgotTitleText != null)
+            {
+                forgotTitleText.text = mode == "username" ? "Forgot Username" : "Forgot Password";
+            }
+            if (forgotRecoveredText != null) forgotRecoveredText.text = string.Empty;
+            if (forgotStatusText != null)
+            {
+                forgotStatusText.text = mode == "username"
+                    ? "Choose a recovery channel, request OTP, then recover your username."
+                    : "Choose a recovery channel, request OTP, then set a new password.";
+                forgotStatusText.color = Color.white;
+            }
+            if (forgotOtpInput != null) forgotOtpInput.text = string.Empty;
+            if (forgotPasswordInput != null) forgotPasswordInput.text = string.Empty;
+            SelectForgotChannel("email");
+            SetForgotBodyAlignment(false);
+        }
+
+        private void SelectForgotChannel(string channelType)
+        {
+            forgotChannelType = channelType;
+            if (forgotValueInput == null) return;
+
+            forgotValueInput.text = string.Empty;
+            forgotValueInput.contentType = channelType == "email" ? InputField.ContentType.EmailAddress : InputField.ContentType.Standard;
+            forgotValueInput.characterValidation = channelType == "email" ? InputField.CharacterValidation.EmailAddress : InputField.CharacterValidation.None;
+            Text placeholder = forgotValueInput.placeholder as Text;
+            if (placeholder != null)
+            {
+                placeholder.text = channelType == "email"
+                    ? "Enter your verified email"
+                    : "Enter your verified WhatsApp number";
+            }
+            forgotValueInput.ForceLabelUpdate();
+
+            if (forgotPasswordLabelText != null)
+            {
+                forgotPasswordLabelText.gameObject.SetActive(forgotMode == "password");
+            }
+            if (forgotPasswordInput != null) forgotPasswordInput.gameObject.SetActive(forgotMode == "password");
+        }
+
+        private async void SendForgotOtpAsync()
+        {
+            if (forgotValueInput == null) return;
+
+            string value = NormalizeForgotValue(forgotChannelType, forgotValueInput.text);
+            string validationError = ValidateForgotValue(forgotChannelType, value);
+            if (!string.IsNullOrWhiteSpace(validationError))
+            {
+                SetForgotStatus(validationError, true);
+                return;
+            }
+
+            string endpoint = forgotMode == "username" ? Configuration.ForgotUsername : Configuration.Forgot;
+            var formData = new Dictionary<string, string>
+            {
+                { "channel_type", forgotChannelType },
+                { "channel_value", value },
+            };
+
+            OTP response = await APIManager.Instance.Post<OTP>(Configuration.Url + endpoint, formData);
+            if (response == null)
+            {
+                SetForgotStatus("OTP request failed. Please try again.", true);
+                return;
+            }
+
+            if (response.code == 429)
+            {
+                SetForgotStatus(
+                    response.retry_after > 0
+                        ? $"Please wait {response.retry_after}s before requesting another OTP."
+                        : (string.IsNullOrWhiteSpace(response.message) ? "Please wait before requesting another OTP." : response.message),
+                    true
+                );
+                return;
+            }
+
+            if (response.code != 200 || string.IsNullOrWhiteSpace(response.otp_id))
+            {
+                SetForgotStatus(string.IsNullOrWhiteSpace(response.message) ? "OTP request failed." : response.message, true);
+                return;
+            }
+
+            forgotOtpId = response.otp_id;
+            forgotChannelValue = value;
+            SetForgotStatus(string.IsNullOrWhiteSpace(response.message) ? "OTP sent successfully." : response.message, false);
+        }
+
+        private async void SubmitForgotFlowAsync()
+        {
+            if (string.IsNullOrWhiteSpace(forgotOtpId) || string.IsNullOrWhiteSpace(forgotChannelValue))
+            {
+                SetForgotStatus("Send OTP first.", true);
+                return;
+            }
+
+            if (forgotOtpInput == null || string.IsNullOrWhiteSpace(forgotOtpInput.text))
+            {
+                SetForgotStatus("Please enter OTP.", true);
+                return;
+            }
+
+            if (forgotMode == "password")
+            {
+                if (forgotPasswordInput == null || string.IsNullOrWhiteSpace(forgotPasswordInput.text))
+                {
+                    SetForgotStatus("Please enter new password.", true);
+                    return;
+                }
+
+                if (forgotPasswordInput.text.Length < 6)
+                {
+                    SetForgotStatus("Password must be at least 6 characters.", true);
+                    return;
+                }
+
+                var formData = new Dictionary<string, string>
+                {
+                    { "channel_type", forgotChannelType },
+                    { "channel_value", forgotChannelValue },
+                    { "otp_id", forgotOtpId },
+                    { "otp", forgotOtpInput.text.Trim() },
+                    { "new_password", forgotPasswordInput.text },
+                };
+
+                messageprint response = await APIManager.Instance.Post<messageprint>(Configuration.Url + Configuration.UpdatePassword, formData);
+                if (response == null)
+                {
+                    SetForgotStatus("Password reset failed. Please try again.", true);
+                    return;
+                }
+
+                if (response.code != 200)
+                {
+                    SetForgotStatus(string.IsNullOrWhiteSpace(response.message) ? "Password reset failed." : response.message, true);
+                    return;
+                }
+
+                CommonUtil.ShowStyledMessage(
+                    string.IsNullOrWhiteSpace(response.message) ? "Password reset successfully." : response.message,
+                    "Password Reset",
+                    isError: false
+                );
+                CloseForgotPopup();
+                return;
+            }
+
+            var usernameData = new Dictionary<string, string>
+            {
+                { "channel_type", forgotChannelType },
+                { "channel_value", forgotChannelValue },
+                { "otp_id", forgotOtpId },
+                { "otp", forgotOtpInput.text.Trim() },
+            };
+
+            RecoveredUsernameResponse recovered = await APIManager.Instance.Post<RecoveredUsernameResponse>(Configuration.Url + Configuration.RecoverUsername, usernameData);
+            if (recovered == null)
+            {
+                SetForgotStatus("Username recovery failed. Please try again.", true);
+                return;
+            }
+
+            if (recovered.code != 200)
+            {
+                SetForgotStatus(string.IsNullOrWhiteSpace(recovered.message) ? "Username recovery failed." : recovered.message, true);
+                return;
+            }
+
+            SetForgotStatus(string.IsNullOrWhiteSpace(recovered.message) ? "Username recovered successfully." : recovered.message, false);
+            ShowForgotRecoveredResult(recovered.username, recovered.user_code);
+        }
+
+        private void ShowForgotRecoveredResult(string username, string userCode)
+        {
+            string safeUsername = string.IsNullOrWhiteSpace(username) ? "-" : username.Trim();
+            string safeUserCode = string.IsNullOrWhiteSpace(userCode) ? "-" : userCode.Trim();
+
+            if (forgotResultText != null)
+            {
+                forgotResultText.text = $"Username: {safeUsername}\nUser ID: {safeUserCode}";
+            }
+
+            if (forgotResultPopup != null)
+            {
+                forgotResultPopup.SetActive(true);
+                forgotResultPopup.transform.SetAsLastSibling();
+            }
+        }
+
+        private void HideForgotResultPopup()
+        {
+            if (forgotResultPopup != null)
+            {
+                forgotResultPopup.SetActive(false);
+            }
+        }
+
+        private void CopyForgotRecoveredDetails()
+        {
+            if (forgotResultText == null || string.IsNullOrWhiteSpace(forgotResultText.text))
+            {
+                return;
+            }
+
+            GUIUtility.systemCopyBuffer = forgotResultText.text.Trim();
+            CommonUtil.ShowStyledMessage("Recovered details copied.", "Copied", isError: false);
+        }
+
+        private void SetForgotStatus(string message, bool isError)
+        {
+            if (forgotStatusText == null) return;
+            forgotStatusText.text = message;
+            forgotStatusText.color = isError ? new Color32(255, 170, 170, 255) : new Color32(210, 255, 190, 255);
+        }
+
+        private static string NormalizeForgotValue(string channelType, string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+            if (channelType == "email") return input.Trim().ToLowerInvariant();
+
+            char[] digits = input.Where(char.IsDigit).ToArray();
+            return new string(digits);
+        }
+
+        private static string ValidateForgotValue(string channelType, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return channelType == "email" ? "Please enter email." : "Please enter valid number.";
+            }
+
+            if (channelType == "email")
+            {
+                return value.Contains("@") && value.Contains(".") ? string.Empty : "Please enter valid email.";
+            }
+
+            return value.Length < 10 || value.Length > 15 ? "Please enter valid number." : string.Empty;
+        }
+
         /// <summary>
         /// Clears all input fields in the redesigned UI.
         /// </summary>
@@ -1233,16 +2324,49 @@ namespace AndroApps
             }
 
             Button guestLoginBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Play as GuestBtn");
+            if (guestLoginBtn == null)
+            {
+                guestLoginBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Popup/Bottom/Play as Guest");
+            }
             if (guestLoginBtn != null)
             {
-                guestLoginBtn.onClick.RemoveAllListeners();
+                guestLoginBtn.onClick = new Button.ButtonClickedEvent();
                 guestLoginBtn.onClick.AddListener(DoGuestLogin);
             }
 
+            Button forgotBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/ForgotBtn");
+            if (forgotBtn == null)
+            {
+                forgotBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Popup/Bottom/Forgot");
+            }
+            if (forgotBtn == null)
+            {
+                forgotBtn = FindButtonByDisplayedText(
+                    FindByPath(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Popup/Bottom"),
+                    "Forgot"
+                );
+            }
+            if (forgotBtn != null)
+            {
+                forgotBtn.onClick.RemoveAllListeners();
+                forgotBtn.onClick.AddListener(OpenForgotPopup);
+
+                Image forgotGraphic = forgotBtn.targetGraphic as Image;
+                if (forgotGraphic != null)
+                {
+                    forgotGraphic.enabled = true;
+                    forgotGraphic.raycastTarget = true;
+                }
+            }
+
             Button backBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/← BackBtn");
+            if (backBtn == null)
+            {
+                backBtn = FindButton(_overlay.transform, "LoginFormPanel/RightPanel/LoginCard/Popup/Bottom/BackBtn");
+            }
             if (backBtn != null)
             {
-                backBtn.onClick.RemoveAllListeners();
+                backBtn.onClick = new Button.ButtonClickedEvent();
                 backBtn.onClick.AddListener(ShowLanding);
             }
 
@@ -1447,6 +2571,31 @@ namespace AndroApps
         private static Button FindButton(Transform root, string path)
         {
             return FindByPath(root, path)?.GetComponent<Button>();
+        }
+
+        private static Button FindButtonByDisplayedText(Transform root, string label)
+        {
+            if (root == null || string.IsNullOrWhiteSpace(label))
+            {
+                return null;
+            }
+
+            foreach (Button button in root.GetComponentsInChildren<Button>(true))
+            {
+                Text legacyText = button.GetComponentInChildren<Text>(true);
+                if (legacyText != null && string.Equals(legacyText.text?.Trim(), label, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return button;
+                }
+
+                TMP_Text tmpText = button.GetComponentInChildren<TMP_Text>(true);
+                if (tmpText != null && string.Equals(tmpText.text?.Trim(), label, System.StringComparison.OrdinalIgnoreCase))
+                {
+                    return button;
+                }
+            }
+
+            return null;
         }
 
         private static T FindComponent<T>(Transform root, string path) where T : Component

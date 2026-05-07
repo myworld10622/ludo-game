@@ -992,11 +992,16 @@ namespace AndroApps
             }
             else
             {
-                bool isAgreed = logintoggle != null ? logintoggle.isOn : true;
+                bool shouldEnforceLoginTerms = logintoggle != null && logintoggle.gameObject.activeInHierarchy;
+                bool isAgreed = shouldEnforceLoginTerms ? logintoggle.isOn : true;
+                Debug.Log($"[Auth] Login terms check: enforce={shouldEnforceLoginTerms}, isAgreed={isAgreed}, processing={isprossesing}");
                 if (isAgreed)
                     LogInId(Password, Mobile);
                 else
+                {
+                    Debug.LogWarning("[Auth] Login blocked because terms toggle is off.");
                     showtoastmessage("Please agree with our terms & conditions to continue");
+                }
             }
         }
 
@@ -1007,54 +1012,87 @@ namespace AndroApps
         }
 
         private bool isprossesing = false;
+        private DateTime _loginRequestStartedAt = DateTime.MinValue;
+        private static readonly TimeSpan LoginRequestStaleAfter = TimeSpan.FromSeconds(25);
 
         public async void LogInId(string Password, string Mobile) //string Token)
         {
             if (isprossesing)
-                return;
-            isprossesing = true;
-            CommonUtil.CheckLog("Login");
-
-            string Url = Configuration.Url + Configuration.LogIn;
-
-            var formData = new Dictionary<string, string>
             {
-                { "mobile", Mobile },
-                { "password", Password },
-            };
-            newLogInOutputs LogInOutput = new newLogInOutputs();
-            LogInOutput = await APIManager.Instance.Post<newLogInOutputs>(Url, formData);
-
-            if (LogInOutput.code == 200)
-            {
-                CommonUtil.CheckLog("RES_Check + Profile Data : " + LogInOutput.user_data[0]);
-                PlayerPrefs.SetString("id", LogInOutput.user_data[0].id);
-                PlayerPrefs.SetString("token", LogInOutput.user_data[0].token);
-                PlayerPrefs.SetString("wallet", LogInOutput.user_data[0].wallet);
-                PlayerPrefs.SetString("profile_pic", LogInOutput.user_data[0].profile_pic);
-                PlayerPrefs.SetString("name", LogInOutput.user_data[0].name);
-                PlayerPrefs.SetString("MyEmail", LogInOutput.user_data[0].email);
-                PlayerPrefs.Save();
-                if (LogInDetail != null)
+                if (_loginRequestStartedAt != DateTime.MinValue
+                    && DateTime.UtcNow - _loginRequestStartedAt > LoginRequestStaleAfter)
                 {
-                    if (LogInDetail.LogInPnl != null) LogInDetail.LogInPnl.SetActive(false);
-                    if (LogInDetail.PasswordInputfield != null) LogInDetail.PasswordInputfield.text = string.Empty;
-                    if (LogInDetail.MobileInputfield != null) LogInDetail.MobileInputfield.text = string.Empty;
+                    Debug.LogWarning("[Auth] Stale login processing flag detected. Resetting and retrying.");
+                    isprossesing = false;
                 }
-
-                // Clear Redesigner fields if present
-                LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
-                if (redesign != null) redesign.ClearAllFields();
-
-                GetProfileImage(LogInOutput.user_data[0].profile_pic);
-                //util.instance.LoadScene("DNT");
             }
-            else
+
+            if (isprossesing)
             {
-                CommonUtil.CheckLog("error" + LogInOutput.message);
-                ShowAuthErrorMessage(GetLoginErrorMessage(LogInOutput.message), "Login Error");
+                Debug.LogWarning("[Auth] LogInId ignored because a login request is already processing.");
+                ShowAuthErrorMessage(
+                    "A previous login request is still stuck. Please wait a few seconds and try again.",
+                    "Login Busy"
+                );
+                return;
             }
-            isprossesing = false;
+            isprossesing = true;
+            _loginRequestStartedAt = DateTime.UtcNow;
+            try
+            {
+                CommonUtil.CheckLog("Login");
+
+                string Url = Configuration.Url + Configuration.LogIn;
+                Debug.Log($"[Auth] Sending login request to {Url} with login={Mobile}");
+
+                var formData = new Dictionary<string, string>
+                {
+                    { "mobile", Mobile },
+                    { "password", Password },
+                };
+                newLogInOutputs LogInOutput = new newLogInOutputs();
+                LogInOutput = await APIManager.Instance.Post<newLogInOutputs>(Url, formData);
+
+                Debug.Log($"[Auth] Login response code={LogInOutput.code}, message={LogInOutput.message}");
+
+                if (LogInOutput.code == 200)
+                {
+                    CommonUtil.CheckLog("RES_Check + Profile Data : " + LogInOutput.user_data[0]);
+                    PlayerPrefs.SetString("id", LogInOutput.user_data[0].id);
+                    PlayerPrefs.SetString("token", LogInOutput.user_data[0].token);
+                    PlayerPrefs.SetString("wallet", LogInOutput.user_data[0].wallet);
+                    PlayerPrefs.SetString("profile_pic", LogInOutput.user_data[0].profile_pic);
+                    PlayerPrefs.SetString("name", LogInOutput.user_data[0].name);
+                    PlayerPrefs.SetString("MyEmail", LogInOutput.user_data[0].email);
+                    PlayerPrefs.Save();
+                    if (LogInDetail != null)
+                    {
+                        if (LogInDetail.LogInPnl != null) LogInDetail.LogInPnl.SetActive(false);
+                        if (LogInDetail.PasswordInputfield != null) LogInDetail.PasswordInputfield.text = string.Empty;
+                        if (LogInDetail.MobileInputfield != null) LogInDetail.MobileInputfield.text = string.Empty;
+                    }
+
+                    LoginPageRedesigner redesign = GetComponent<LoginPageRedesigner>();
+                    if (redesign != null) redesign.ClearAllFields();
+
+                    GetProfileImage(LogInOutput.user_data[0].profile_pic);
+                }
+                else
+                {
+                    CommonUtil.CheckLog("error" + LogInOutput.message);
+                    ShowAuthErrorMessage(GetLoginErrorMessage(LogInOutput.message), "Login Error");
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError("[Auth] Login request crashed: " + ex);
+                ShowAuthErrorMessage("Login request failed. Please try again.", "Login Error");
+            }
+            finally
+            {
+                isprossesing = false;
+                _loginRequestStartedAt = DateTime.MinValue;
+            }
         }
         #endregion
 
@@ -1216,8 +1254,8 @@ namespace AndroApps
                 }
 
                 Mobile = mobileText;
-                // Auto-generate name from mobile number (Name field is hidden)
-                Name = "User" + mobileText.Substring(mobileText.Length - 4);
+                // Auto-generate display name from mobile number (Name field is hidden)
+                Name = "Rox" + mobileText.Substring(mobileText.Length - 4);
 
                 Debug.Log($"[Auth] Calling PostDirectSignup for mobile: {Mobile}");
                 PostDirectSignup(Name, Mobile, Password, Referral, Application.productName);

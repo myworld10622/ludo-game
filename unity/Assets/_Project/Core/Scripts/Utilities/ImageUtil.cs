@@ -352,7 +352,7 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        if (name == "usdt_screenshort")
+        else if (name == "usdt_screenshort")
         {
             spriteimg.sprite = sprite;
             SpriteManager.Instance.base64forimgeforusdt = imgUrl;

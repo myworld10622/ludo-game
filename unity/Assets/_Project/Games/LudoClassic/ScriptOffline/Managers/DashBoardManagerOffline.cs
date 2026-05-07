@@ -20,6 +20,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         public SocketNumberEventReceiverOffline socketNumberEventReceiver;
         public LudoNumberGsNewOffline ludoNumberGsNew;
         public static DashBoardManagerOffline instance;
+        public static DashBoardManagerOffline Instance => instance;
         public string baseUrl;
 
         [Header("GamePlay Header")]
@@ -94,7 +95,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         [SerializeField]
         Image player2ButtonOnline,
             player4ButtonOnline;
-        private GameObject passNPlayPlayerCountPopup;
+        internal GameObject passNPlayPlayerCountPopup;
         private int selectedPassNPlayPlayerCount = 2;
         public GameObject twoPlayerLobby,
             fourPlayerLobby;
@@ -2082,12 +2083,305 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
         }
 
+        // ── Private Table: JOIN button clicked (Index=1 view) ───────────────────
+        private void JoinPrivateTableByCode()
+        {
+            if (passNPlayPlayerCountPopup == null) return;
+            string code = "";
+            Transform tf = FindChildTransform(passNPlayPlayerCountPopup.transform, "TxtCode");
+            if (tf != null)
+            {
+                InputField inp = tf.GetComponent<InputField>();
+                if (inp != null) code = inp.text.Trim().ToUpper();
+            }
+            if (string.IsNullOrEmpty(code) || code.Length != 6)
+            {
+                ShowPrivateTableError("Invalid Code", "Please enter a valid 6-character game code.");
+                return;
+            }
+            HidePassNPlayPlayerCountPopup();
+            StartCoroutine(JoinPrivateTableRequest(code));
+        }
+
+        // ── Switch to create view (Index=4) ──────────────────────────────────
+        private void SwitchToCreateView()
+        {
+            SwitchPrivateTableMode(4);
+        }
+
+        // ── Switch back to join view (Index=1) ────────────────────────────────
+        private void SwitchToJoinView()
+        {
+            SwitchPrivateTableMode(1);
+        }
+
+        private void SwitchPrivateTableMode(int newIndex)
+        {
+            // SetActive(false) triggers OnDisable (resets Index=0), then we set our index
+            if (passNPlayPlayerCountPopup != null)
+                passNPlayPlayerCountPopup.SetActive(false);
+            PassNPlayPopup.Index = newIndex;
+            ShowPassNPlayPlayerCountPopup();
+        }
+
+        // ── CREATE: player count selected in create view (Index=4) ───────────
+        private void StartPrivateTableFlow(int playerCount)
+        {
+            if (passNPlayPlayerCountPopup == null) return;
+            int fee = 0;
+            Transform feeTf = FindChildTransform(passNPlayPlayerCountPopup.transform, "TxtFee");
+            if (feeTf != null)
+            {
+                InputField feeInp = feeTf.GetComponent<InputField>();
+                if (feeInp != null && !string.IsNullOrEmpty(feeInp.text))
+                {
+                    if (!int.TryParse(feeInp.text, out fee) || fee < 0)
+                    {
+                        ShowPrivateTableError("Invalid Fee", "Please enter a valid fee (0 or more).");
+                        return;
+                    }
+                }
+            }
+            HidePassNPlayPlayerCountPopup();
+            StartCoroutine(CreatePrivateTableRequest(playerCount, fee));
+        }
+
+        // Show error using the popup (Index=3) — truncate to avoid UI mesh overflow
+        private void ShowPrivateTableError(string title, string message)
+        {
+            PassNPlayPopup.ErrorTitle = title;
+            PassNPlayPopup.ErrorMessage = message != null && message.Length > 200
+                ? message.Substring(0, 200) + "..."
+                : message ?? "Unknown error.";
+            PassNPlayPopup.Index = 3;
+            ShowPassNPlayPlayerCountPopup();
+        }
+
+        // Kept for backward compat (called from socket handler)
+        public void HidePrivateTablePopup() => HidePassNPlayPlayerCountPopup();
+
+        private IEnumerator JoinPrivateTableRequest(string code)
+        {
+            string url = Configuration.PrivateTableJoinUrl;
+            string token = Configuration.GetToken();
+            string body = JsonConvert.SerializeObject(new { code = code });
+
+            using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
+            {
+                byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
+                req.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("Content-Type", "application/json");
+                req.SetRequestHeader("Authorization", "Bearer " + token);
+
+                yield return req.SendWebRequest();
+
+                string errMsg = ParseErrorMessage(req, "Failed to join table. Please try again.");
+                if (errMsg != null)
+                {
+                    // "Already joined" = player re-entering their own waiting room → rejoin
+                    if (errMsg.ToLower().Contains("already joined"))
+                    {
+                        Debug.Log($"[PrivateTable] Already in table — rejoining waiting room for {code}");
+                        StartCoroutine(RejoinPrivateTableWaiting(code));
+                        yield break;
+                    }
+                    ShowPrivateTableError("Error", errMsg);
+                    yield break;
+                }
+
+                var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(req.downloadHandler.text);
+                if (resp == null || resp.data == null || !resp.success)
+                {
+                    ShowPrivateTableError("Error", resp?.message ?? "Server error.");
+                    yield break;
+                }
+
+                Debug.Log($"[PrivateTable] Joined! Code: {resp.data.code}");
+                EnterPrivateTableBoard(resp.data.code, resp.data.max_players, resp.data.table_id,
+                    fee: resp.data.fee_amount, currentPlayers: resp.data.current_players, isCreator: false);
+            }
+        }
+
+        // Re-enter waiting room without paying again (user already in DB as joined)
+        private IEnumerator RejoinPrivateTableWaiting(string code)
+        {
+            string url = Configuration.PrivateTableInfoUrl + code.ToUpper();
+            using (UnityWebRequest req = UnityWebRequest.Get(url))
+            {
+                req.SetRequestHeader("Authorization", "Bearer " + Configuration.GetToken());
+                yield return req.SendWebRequest();
+
+                Debug.Log($"[PrivateTable] Rejoin {url} → {req.result} ({req.responseCode})");
+                if (req.result != UnityWebRequest.Result.Success)
+                {
+                    string body = req.downloadHandler.text;
+                    // Extract JSON message if available, else generic error
+                    string errMsg = "Could not reconnect to table. Try again.";
+                    try { var e = JsonConvert.DeserializeObject<PrivateTableInfoResponse>(body); if (e?.message != null) errMsg = e.message; } catch { }
+                    ShowPrivateTableError("Error", errMsg);
+                    yield break;
+                }
+
+                var info = JsonConvert.DeserializeObject<PrivateTableInfoResponse>(req.downloadHandler.text);
+                if (info == null || info.data == null || !info.success)
+                {
+                    ShowPrivateTableError("Error", info?.message ?? "Table not found.");
+                    yield break;
+                }
+
+                if (info.data.status == "completed" || info.data.status == "in_progress")
+                {
+                    ShowPrivateTableError("Table Ended", "This table is no longer waiting for players.");
+                    yield break;
+                }
+
+                bool amCreator = info.data.creator_id.ToString() == Configuration.GetId();
+                Debug.Log($"[PrivateTable] Rejoined: {info.data.code} ({info.data.current_players}/{info.data.max_players}) isCreator={amCreator}");
+                EnterPrivateTableBoard(info.data.code, info.data.max_players, info.data.table_id,
+                    fee: info.data.fee_amount, currentPlayers: info.data.current_players, isCreator: amCreator);
+            }
+        }
+
+        private IEnumerator CreatePrivateTableRequest(int playerCount, int fee)
+        {
+            string url = Configuration.PrivateTableCreateUrl;
+            string token = Configuration.GetToken();
+            string body = JsonConvert.SerializeObject(new { fee_amount = fee, max_players = playerCount });
+
+            using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
+            {
+                byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
+                req.uploadHandler = new UploadHandlerRaw(bodyRaw);
+                req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("Content-Type", "application/json");
+                req.SetRequestHeader("Authorization", "Bearer " + token);
+
+                yield return req.SendWebRequest();
+
+                string errMsg = ParseErrorMessage(req, "Failed to create table. Please try again.");
+                if (errMsg != null) { ShowPrivateTableError("Error", errMsg); yield break; }
+
+                var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(req.downloadHandler.text);
+                if (resp == null || resp.data == null || !resp.success)
+                {
+                    ShowPrivateTableError("Error", resp?.message ?? "Server error.");
+                    yield break;
+                }
+
+                Debug.Log($"[PrivateTable] Created! Code: {resp.data.code}");
+                ShowPrivateTableCreatedPopup(resp.data.code, playerCount, resp.data.fee_amount);
+            }
+        }
+
+        // ── Private Table fields ─────────────────────────────────────────────
+        private bool _privateTableBoardActive = false;
+        private int _privateTableEntryFee = 0;
+        private int _privateTableId = 0;
+
+        // Step 1 — Table just created: show code popup so user can copy & share.
+        // No game board yet. User joins later using the code (even the creator).
+        private void ShowPrivateTableCreatedPopup(string code, int maxPlayers, int fee)
+        {
+            int prize = Mathf.RoundToInt(fee * maxPlayers * 0.80f);
+            PassNPlayPopup.WaitingCode = code;
+            PassNPlayPopup.WaitingPrizeInfo = fee > 0 ? $"Prize: {prize} coins (80%)" : "Free Table";
+            PassNPlayPopup.WaitingMaxPlayers = maxPlayers;
+            PassNPlayPopup.WaitingCurrentPlayers = 1;
+            PassNPlayPopup.WaitingIsCreator = true;
+            PassNPlayPopup.Index = 2;
+            GUIUtility.systemCopyBuffer = code;
+            ShowPassNPlayPlayerCountPopup();
+        }
+
+        // Step 2 — Player (including creator) joins via code → go straight to game board.
+        // Seat fills on the board; waiting message shows "Code: XX  Waiting for N more..."
+        // When all seats fill → ludo v2 socket fires ludo.room.starting → game begins.
+        private void EnterPrivateTableBoard(string code, int maxPlayers, int tableId,
+            int fee = 0, int currentPlayers = 1, bool isCreator = false)
+        {
+            _privateTableBoardActive = true;
+            _privateTableEntryFee = fee;
+            _privateTableId = tableId;
+            HidePassNPlayPlayerCountPopup();
+
+            var bridge = ResolveLudoV2Bridge();
+            if (bridge != null && bridge.TryStartPrivateTableMatchmaking(tableId, maxPlayers, fee, code))
+                Debug.Log($"[PrivateTable] Entering board — Code: {code}, tableId: {tableId}");
+            else
+            {
+                Debug.LogWarning("[PrivateTable] LudoV2 not available — showing wait popup");
+                _privateTableBoardActive = false;
+                ShowPrivateTableWaitingUI(code, fee, maxPlayers, currentPlayers, isCreator);
+            }
+        }
+
+        public void OnPrivateTableAllPlayersReady(int maxPlayers, int tableId) { }
+
+        private void ShowPrivateTableWaitingUI(string code, int fee, int maxPlayers, int currentPlayers, bool isCreator)
+        {
+            int prize = Mathf.RoundToInt(fee * maxPlayers * 0.80f);
+            PassNPlayPopup.WaitingCode = code;
+            PassNPlayPopup.WaitingPrizeInfo = fee > 0 ? $"Prize: {prize} coins (80%)" : "Free Table";
+            PassNPlayPopup.WaitingMaxPlayers = maxPlayers;
+            PassNPlayPopup.WaitingCurrentPlayers = currentPlayers;
+            PassNPlayPopup.WaitingIsCreator = isCreator;
+            PassNPlayPopup.Index = 2;
+            ShowPassNPlayPlayerCountPopup();
+            PrivateTableSocketHandler.StartWaiting(code, maxPlayers, this);
+        }
+
+        // Called from PrivateTableSocketHandler when a player joins the room
+        public void OnPrivateTablePlayerJoined(int current, int max)
+        {
+            PassNPlayPopup.WaitingCurrentPlayers = current;
+            if (passNPlayPlayerCountPopup != null && passNPlayPlayerCountPopup.activeSelf)
+            {
+                var comp = passNPlayPlayerCountPopup.GetComponent<PassNPlayPopup>();
+                if (comp != null) comp.RefreshWaitingMessage();
+            }
+        }
+
+        // ── Helper: parse error from UnityWebRequest (returns null if success) ──
+        private static string ParseErrorMessage(UnityWebRequest req, string defaultMsg)
+        {
+            if (req.result == UnityWebRequest.Result.Success) return null;
+            try
+            {
+                var err = JsonConvert.DeserializeObject<PrivateTableApiResponse>(req.downloadHandler.text);
+                if (err != null && !string.IsNullOrEmpty(err.message)) return err.message;
+            }
+            catch { }
+            return defaultMsg;
+        }
+
+        public void StartPrivateTableMatch(int playerCount, int tableId)
+        {
+            selectedPassNPlayPlayerCount = Mathf.Clamp(playerCount, 2, 4);
+
+            if (socketNumberEventReceiver != null
+                && socketNumberEventReceiver.joinTableResponse != null
+                && socketNumberEventReceiver.joinTableResponse.data != null)
+            {
+                socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount = selectedPassNPlayPlayerCount;
+            }
+
+            backButton.SetActive(false);
+            lobbySelectPanal.SetActive(false);
+            IsPassAndPlay = true;
+            dashBordPanal.SetActive(false);
+            SetLobbyUiBlocking(false);
+            ChangeLobbyId();
+            socketNumberEventReceiver.PlayerJoinData();
+        }
+
         private void ShowPassNPlayPlayerCountPopup()
         {
             EnsurePassNPlayPlayerCountPopup();
             if (passNPlayPlayerCountPopup != null)
             {
                 AttachPassNPlayPopupToActiveCanvas();
+                // Wire buttons BEFORE SetActive — OnEnable sets UI state, WireButtons sets listeners
                 WirePassNPlayPlayerCountPopupButtons();
                 passNPlayPlayerCountPopup.SetActive(true);
             }
@@ -2471,31 +2765,60 @@ public class DashBoardManagerOffline : MonoBehaviour
                 return;
             }
 
-            Button twoPlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "2PlayersButton");
+            Button twoPlayerButton   = FindChildButton(passNPlayPlayerCountPopup.transform, "2PlayersButton");
             Button threePlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "3PlayersButton");
-            Button fourPlayerButton = FindChildButton(passNPlayPlayerCountPopup.transform, "4PlayersButton");
-            Button cancelButton = FindChildButton(passNPlayPlayerCountPopup.transform, "CancelButton");
-            Button closeButton = FindChildButton(passNPlayPlayerCountPopup.transform, "CloseButton");
+            Button fourPlayerButton  = FindChildButton(passNPlayPlayerCountPopup.transform, "4PlayersButton");
+            Button cancelButton      = FindChildButton(passNPlayPlayerCountPopup.transform, "CancelButton");
+            Button closeButton       = FindChildButton(passNPlayPlayerCountPopup.transform, "CloseButton");
 
+            int idx = PassNPlayPopup.Index;
+
+            // ── Player / action buttons ───────────────────────────────────────
             if (twoPlayerButton != null)
             {
                 twoPlayerButton.onClick.RemoveAllListeners();
-                twoPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(2));
+                if      (idx == 0) twoPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(2));
+                else if (idx == 1) twoPlayerButton.onClick.AddListener(JoinPrivateTableByCode);   // "JOIN TABLE"
+                else if (idx == 4) twoPlayerButton.onClick.AddListener(() => StartPrivateTableFlow(2));
             }
             if (threePlayerButton != null)
             {
                 threePlayerButton.onClick.RemoveAllListeners();
-                threePlayerButton.onClick.AddListener(() => StartPassNPlayMatch(3));
+                if      (idx == 0) threePlayerButton.onClick.AddListener(() => StartPassNPlayMatch(3));
+                else if (idx == 1) threePlayerButton.onClick.AddListener(SwitchToCreateView);     // "CREATE TABLE"
+                else if (idx == 4) threePlayerButton.onClick.AddListener(() => StartPrivateTableFlow(3));
             }
             if (fourPlayerButton != null)
             {
                 fourPlayerButton.onClick.RemoveAllListeners();
-                fourPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(4));
+                if      (idx == 0) fourPlayerButton.onClick.AddListener(() => StartPassNPlayMatch(4));
+                else if (idx == 4) fourPlayerButton.onClick.AddListener(() => StartPrivateTableFlow(4));
+                // idx==1: button is hidden by OnEnable
             }
+
+            // ── Cancel button ─────────────────────────────────────────────────
             if (cancelButton != null)
             {
                 cancelButton.onClick.RemoveAllListeners();
-                cancelButton.onClick.AddListener(HidePassNPlayPlayerCountPopup);
+                if (idx == 2) // waiting — copy code then close
+                {
+                    string code = PassNPlayPopup.WaitingCode;
+                    bool isCreator = PassNPlayPopup.WaitingIsCreator;
+                    cancelButton.onClick.AddListener(() =>
+                    {
+                        if (isCreator) GUIUtility.systemCopyBuffer = code;
+                        PrivateTableSocketHandler.Disconnect();
+                        HidePassNPlayPlayerCountPopup();
+                    });
+                }
+                else if (idx == 4) // create view — "Back" returns to join view
+                {
+                    cancelButton.onClick.AddListener(SwitchToJoinView);
+                }
+                else
+                {
+                    cancelButton.onClick.AddListener(HidePassNPlayPlayerCountPopup);
+                }
             }
             if (closeButton != null)
             {
@@ -2509,6 +2832,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             Transform child = FindChildTransform(root, childName);
             return child != null ? child.GetComponent<Button>() : null;
         }
+
+        public static Transform FindChildTransformPublic(Transform root, string childName) => FindChildTransform(root, childName);
 
         private static Transform FindChildTransform(Transform root, string childName)
         {
@@ -2903,6 +3228,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         #region ResetGame
         public void ResetGame()
         {
+            _privateTableBoardActive = false;
+            PrivateTableSocketHandler.Disconnect();
             CloseTournamentPanel();
             // HideTournamentClassicTab();
             GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
@@ -2917,5 +3244,46 @@ public class DashBoardManagerOffline : MonoBehaviour
             SetLobbyUiBlocking(true);
         }
         #endregion
+
+        [System.Serializable]
+        private class PrivateTableApiResponse
+        {
+            public bool success;
+            public string message;
+            public PrivateTableData data;
+        }
+
+        [System.Serializable]
+        private class PrivateTableData
+        {
+            public int table_id;
+            public string code;
+            public int fee_amount;
+            public int max_players;
+            public int current_players;
+            public string status;
+        }
+
+        [System.Serializable]
+        private class PrivateTableInfoResponse
+        {
+            public bool success;
+            public string message;
+            public PrivateTableInfoData data;
+        }
+
+        [System.Serializable]
+        private class PrivateTableInfoData
+        {
+            public int table_id;
+            public string code;
+            public int creator_id;
+            public int fee_amount;
+            public int max_players;
+            public int current_players;
+            public int prize_pool;
+            public int winner_prize;
+            public string status;
+        }
     }
 }

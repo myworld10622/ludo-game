@@ -16,7 +16,12 @@ using UnityEngine.Networking;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using LudoClassicOffline;
+#if UNITY_EDITOR
+using UnityEditor;
+using UnityEditor.SceneManagement;
+#endif
 
+[ExecuteAlways]
 public class Profile : MonoBehaviour
 {
     [Header("User Detiails")]
@@ -36,6 +41,18 @@ public class Profile : MonoBehaviour
         phonenumber;
     public Texture2D texture2d;
 
+    [Header("Persistent Profile Editor")]
+    [SerializeField] private RectTransform profileEditorRoot;
+    [SerializeField] private InputField profileNameEditor;
+    [SerializeField] private InputField profileEmailEditor;
+    [SerializeField] private InputField profilePhoneEditor;
+    [SerializeField] private InputField profileGenderEditor;
+    [SerializeField] private InputField profileDobEditor;
+    [SerializeField] private InputField profileStateEditor;
+    [SerializeField] private InputField profileCityEditor;
+    [SerializeField] private Text profileEditorStatus;
+    private float lastProfileEditorNormalizeAt = -10f;
+
     [Header("Update Password")]
     public InputField oldpassword;
     public InputField newpassword;
@@ -45,6 +62,7 @@ public class Profile : MonoBehaviour
     public InputField account_number;
     public InputField account_holder_name;
     public InputField bank_name;
+    public InputField upi_id;
     public GameObject passbook_logo_img;
     public Image passbook_img;
     public GameObject bank_selected;
@@ -111,6 +129,12 @@ public class Profile : MonoBehaviour
         if (obj.name == "Profile")
         {
             profilesettingpic2.sprite = profilepic.sprite;
+            PopUpUtil.ButtonClick(obj);
+            EnsureProfileEditorBindings(true);
+            ApplyProfileDataToEditor();
+            if (Application.isPlaying)
+                StartCoroutine(RefreshProfileEditorVisualsDelayed());
+            return;
         }
         else if (obj.name == "Bank Details")
         {
@@ -125,6 +149,7 @@ public class Profile : MonoBehaviour
             // account_holder_name.text = string.Empty;
             // account_number.text = string.Empty;
             // bank_name.text = string.Empty;
+            EnsureBankDetailBindings();
         }
         PopUpUtil.ButtonClick(obj);
     }
@@ -164,19 +189,40 @@ public class Profile : MonoBehaviour
 
     void Awake()
     {
-        profilepic.sprite = SpriteManager.Instance.profile_image;
+        if (!Application.isPlaying)
+        {
+#if UNITY_EDITOR
+            EditorApplication.delayCall -= EnsureProfileEditorInEditor;
+            EditorApplication.delayCall += EnsureProfileEditorInEditor;
+#endif
+            return;
+        }
+
+        if (SpriteManager.Instance != null && profilepic != null)
+        {
+            profilepic.sprite = SpriteManager.Instance.profile_image;
+        }
         selection = this.GetComponent<GameSelection>();
+        EnsureBankDetailBindings();
         HideNonLudoGamesImmediately();
     }
 
     async void OnEnable()
     {
+        if (!Application.isPlaying)
+        {
+            EnsureProfileEditorBindings(true);
+            ApplyProfileDataToEditor();
+            return;
+        }
+
         // #if UNITY_WEBGL
         //         allgames.Find(game => game.name == "color_prediction_vertical").SetActive(false);
         //         GridLayoutGroup layoutGroup = gridlayoutgroup.GetComponent<GridLayoutGroup>();
         //         layoutGroup.constraintCount = 4;
         // #endif
         HideNonLudoGamesImmediately();
+        EnsureBankDetailBindings();
         SetUserProfileDetails();
         //AudioManager._instance.StopBackgroundAudio();
         await UpdateData(Configuration.GetId(), Configuration.GetToken());
@@ -184,6 +230,78 @@ public class Profile : MonoBehaviour
         await ShowGamesAsync(0);
 
     }
+
+    private void LateUpdate()
+    {
+        if (!Application.isPlaying || ProfilePopup == null || !ProfilePopup.activeInHierarchy)
+            return;
+
+        if (Time.unscaledTime - lastProfileEditorNormalizeAt < 0.2f)
+            return;
+
+        if (NeedsProfileEditorRefresh())
+        {
+            EnsureProfileEditorBindings(true);
+            lastProfileEditorNormalizeAt = Time.unscaledTime;
+        }
+    }
+
+#if UNITY_EDITOR
+    private void OnValidate()
+    {
+        if (Application.isPlaying)
+            return;
+
+        EditorApplication.delayCall -= EnsureProfileEditorInEditor;
+        EditorApplication.delayCall += EnsureProfileEditorInEditor;
+    }
+
+    private void EnsureProfileEditorInEditor()
+    {
+        if (this == null || gameObject == null)
+            return;
+
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+
+        if (gameObject.scene.IsValid())
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+    }
+
+    private void Reset()
+    {
+        if (Application.isPlaying)
+            return;
+
+        EditorApplication.delayCall -= EnsureProfileEditorInEditor;
+        EditorApplication.delayCall += EnsureProfileEditorInEditor;
+    }
+
+    [ContextMenu("Rebuild Persistent Profile Editor")]
+    private void RebuildPersistentProfileEditor()
+    {
+        if (profileEditorRoot != null)
+        {
+            Undo.DestroyObjectImmediate(profileEditorRoot.gameObject);
+        }
+
+        profileEditorRoot = null;
+        profileNameEditor = null;
+        profileEmailEditor = null;
+        profilePhoneEditor = null;
+        profileGenderEditor = null;
+        profileDobEditor = null;
+        profileStateEditor = null;
+        profileCityEditor = null;
+        profileEditorStatus = null;
+
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+
+        if (gameObject.scene.IsValid())
+            EditorSceneManager.MarkSceneDirty(gameObject.scene);
+    }
+#endif
     /// <summary>
     /// Start is called on the frame when a script is enabled just before
     /// any of the Update methods is called the first time.
@@ -398,33 +516,44 @@ public class Profile : MonoBehaviour
     #region update basic details
     public void UpdateProfileDetails()
     {
-        if (string.IsNullOrWhiteSpace(entername.text))
+        EnsureProfileEditorBindings(true);
+
+        string enteredName = GetProfileEditorValue(profileNameEditor, entername);
+        string enteredGenderRaw = GetProfileEditorValue(profileGenderEditor, null);
+        string enteredGender = NormalizeGender(enteredGenderRaw);
+        string enteredDob = GetProfileEditorValue(profileDobEditor, null);
+
+        if (string.IsNullOrWhiteSpace(enteredName))
         {
-            LoaderUtil.instance.ShowToast("Please Enter Name");
+            ShowToastSafe("Please Enter Name");
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(EmailAddressInputField.text))
+        if (!string.IsNullOrWhiteSpace(enteredGenderRaw) && string.IsNullOrWhiteSpace(enteredGender))
         {
-            LoaderUtil.instance.ShowToast("Please Enter Email Id");
+            ShowToastSafe("Please Enter Gender as male, female, or other");
             return;
         }
 
-        if (!IsValidEmail(EmailAddressInputField.text))
+        if (!string.IsNullOrWhiteSpace(enteredDob) && !DateTime.TryParse(enteredDob, out _))
         {
-            LoaderUtil.instance.ShowToast("Please Enter Valid Email Address");
+            ShowToastSafe("Please Enter Date Of Birth in valid format");
             return;
         }
 
-        PlayerPrefs.SetString("name", entername.text);
+        PlayerPrefs.SetString("name", enteredName);
 
         SetProfileDetails();
     }
 
     private void SaveProfileDetails()
     {
-        PlayerPrefs.SetString("name", entername.text);
-        PlayerPrefs.SetString("MyEmail", EmailAddressInputField.text);
+        string profileName = GetProfileEditorValue(profileNameEditor, entername);
+        string profileEmail = GetStoredEmail();
+
+        PlayerPrefs.SetString("name", profileName);
+        PlayerPrefs.SetString("MyEmail", profileEmail);
+        PlayerPrefs.SetString("email", profileEmail);
     }
 
     private void UpdateUI()
@@ -468,8 +597,12 @@ public class Profile : MonoBehaviour
         {
             { "user_id", Configuration.GetId() },
             { "token", Configuration.GetToken() },
-            { "email", EmailAddressInputField.text },
-            { "name", Configuration.GetName() },
+            { "email", GetStoredEmail() },
+            { "name", GetProfileEditorValue(profileNameEditor, entername) },
+            { "gender", NormalizeGender(GetProfileEditorValue(profileGenderEditor, null)) },
+            { "date_of_birth", NormalizeDateForApi(GetProfileEditorValue(profileDobEditor, null)) },
+            { "state", GetProfileEditorValue(profileStateEditor, null) },
+            { "city", GetProfileEditorValue(profileCityEditor, null) },
             { "profile_pic", SpriteManager.Instance.base64forimgrofile },
         };
         UpdateProfileOutputs details = new UpdateProfileOutputs();
@@ -478,14 +611,26 @@ public class Profile : MonoBehaviour
 
         if (details.code == 200)
         {
-            string masked_email = MaskEmail(EmailAddressInputField.text);
-            EmailAddressInputField.text = masked_email;
+            string actualEmail = GetStoredEmail();
+            string actualName = GetProfileEditorValue(profileNameEditor, entername);
+            string actualGender = NormalizeGender(GetProfileEditorValue(profileGenderEditor, null));
+            string actualDob = NormalizeDateForApi(GetProfileEditorValue(profileDobEditor, null));
+            string actualState = GetProfileEditorValue(profileStateEditor, null);
+            string actualCity = GetProfileEditorValue(profileCityEditor, null);
+
+            if (entername != null) entername.text = actualName;
+            if (EmailAddressInputField != null) EmailAddressInputField.text = actualEmail;
             SaveProfileDetails();
+            CacheProfileData(actualName, actualEmail, actualGender, actualDob, actualState, actualCity);
             UpdateUI();
             PopUpPanelClose(ProfilePopup);
             ResetFieldUpdatePassword();
-            LoaderUtil.instance.ShowToast("Profile Updated Successfully");
+            ShowToastSafe("Profile Updated Successfully");
             selectedavatar = null;
+        }
+        else if (!string.IsNullOrWhiteSpace(details.message))
+        {
+            ShowToastSafe(details.message);
         }
     }
 
@@ -558,11 +703,11 @@ public class Profile : MonoBehaviour
     {
         if (oldpassword.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill old password details");
+            ShowToastSafe("Please fill old password details");
         }
         else if (newpassword.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill new password details");
+            ShowToastSafe("Please fill new password details");
         }
         else
         {
@@ -589,25 +734,23 @@ public class Profile : MonoBehaviour
 
     public async void OnUpdateBankDetails()
     {
+        EnsureBankDetailBindings();
+
         if (bank_name.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill bank details");
+            ShowToastSafe("Please fill bank details");
         }
         else if (account_number.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill account number");
+            ShowToastSafe("Please fill account number");
         }
         else if (account_holder_name.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill account holder name");
+            ShowToastSafe("Please fill account holder name");
         }
         else if (IFSCCode.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill IFSC Code");
-        }
-        else if (SpriteManager.Instance.base64forimgpassbook.Length == 0)
-        {
-            LoaderUtil.instance.ShowToast("Please upload passbook image");
+            ShowToastSafe("Please fill IFSC Code");
         }
         else
         {
@@ -616,7 +759,8 @@ public class Profile : MonoBehaviour
                 account_holder_name.text,
                 bank_name.text,
                 account_number.text,
-                SpriteManager.Instance.base64forimgpassbook
+                GetSelectedPassbookBase64(),
+                upi_id != null ? upi_id.text : string.Empty
             );
         }
     }
@@ -641,15 +785,15 @@ public class Profile : MonoBehaviour
     {
         if (crypto_address.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill crypto address");
+            ShowToastSafe("Please fill crypto address");
         }
         else if (crypto_wallet_type.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill crypto wallet");
+            ShowToastSafe("Please fill crypto wallet");
         }
         else if (SpriteManager.Instance.base64forimgcrypto.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please upload crypto image");
+            ShowToastSafe("Please upload crypto image");
         }
         else
         {
@@ -699,19 +843,19 @@ public class Profile : MonoBehaviour
     {
         if (aadhar_no.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill your aadhar number");
+            ShowToastSafe("Please fill your aadhar number");
         }
         else if (SpriteManager.Instance.base64forimgaadhar.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please upload your aadhar photo");
+            ShowToastSafe("Please upload your aadhar photo");
         }
         else if (pan_no.text.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please fill your pan number");
+            ShowToastSafe("Please fill your pan number");
         }
         else if (SpriteManager.Instance.base64forimgpan.Length == 0)
         {
-            LoaderUtil.instance.ShowToast("Please upload your pan image");
+            ShowToastSafe("Please upload your pan image");
         }
         else
         {
@@ -882,18 +1026,21 @@ public class Profile : MonoBehaviour
 
     public void SetBankDetails()
     {
+        EnsureBankDetailBindings();
         if (LogInOutput.user_bank_details.Count == 1)
         {
-            IFSCCode.text = LogInOutput.user_bank_details[0].ifsc_code;
-            account_holder_name.text = LogInOutput.user_bank_details[0].acc_holder_name;
-            account_number.text = LogInOutput.user_bank_details[0].acc_no;
-            bank_name.text = LogInOutput.user_bank_details[0].bank_name;
+            if (IFSCCode != null) IFSCCode.text = LogInOutput.user_bank_details[0].ifsc_code;
+            if (account_holder_name != null) account_holder_name.text = LogInOutput.user_bank_details[0].acc_holder_name;
+            if (account_number != null) account_number.text = LogInOutput.user_bank_details[0].acc_no;
+            if (bank_name != null) bank_name.text = LogInOutput.user_bank_details[0].bank_name;
+            if (upi_id != null) upi_id.text = LogInOutput.user_bank_details[0].upi_id;
             DownloadPassbookImage();
         }
     }
 
     public async void DownloadPassbookImage()
     {
+        EnsureBankDetailBindings();
         if (LogInOutput.user_bank_details[0].passbook_img != "")
         {
             string passbook_image_url =
@@ -901,9 +1048,15 @@ public class Profile : MonoBehaviour
             SpriteManager.Instance.passbook_image = await ImageUtil.Instance.GetSpriteFromURLAsync(
                 passbook_image_url
             );
-            passbook_img.transform.parent.gameObject.SetActive(true);
-            passbook_img.sprite = SpriteManager.Instance.passbook_image;
-            passbook_logo_img.SetActive(false);
+            if (passbook_img != null)
+            {
+                passbook_img.transform.parent.gameObject.SetActive(true);
+                passbook_img.sprite = SpriteManager.Instance.passbook_image;
+            }
+            if (passbook_logo_img != null)
+            {
+                passbook_logo_img.SetActive(false);
+            }
         }
     }
 
@@ -935,15 +1088,16 @@ public class Profile : MonoBehaviour
     public void SetUserProfileDetails()
     {
         // Populate UI elements after updatedata is completed
-        wallet.text = Configuration.GetWallet();
-        profilewallet.text = Configuration.GetWallet();
-        id.text = new StringBuilder().Append("ID :").Append(Configuration.GetId()).ToString();
-        profileid.text = new StringBuilder()
-            .Append("ID :")
-            .Append(Configuration.GetId())
-            .ToString();
-        name.text = Configuration.GetName();
-        profilename.text = Configuration.GetName();
+        string currentWallet = Configuration.GetWallet();
+        string currentId = new StringBuilder().Append("ID :").Append(Configuration.GetId()).ToString();
+        string currentName = Configuration.GetName();
+
+        if (wallet != null) wallet.text = currentWallet;
+        if (profilewallet != null) profilewallet.text = currentWallet;
+        if (id != null) id.text = currentId;
+        if (profileid != null) profileid.text = currentId;
+        if (name != null) name.text = currentName;
+        if (profilename != null) profilename.text = currentName;
         if (SpriteManager.Instance != null && SpriteManager.Instance.profile_image != null)
         {
             if (profilepic != null)         profilepic.sprite         = SpriteManager.Instance.profile_image;
@@ -951,11 +1105,601 @@ public class Profile : MonoBehaviour
             if (profilesettingpic2 != null) profilesettingpic2.sprite = SpriteManager.Instance.profile_image;
         }
 
-        entername.text = Configuration.GetName();
-        string masked_email = MaskEmail(Configuration.getemail());
-        string masked_mobile = MaskMobile(Configuration.getmobile());
-        EmailAddressInputField.text = masked_email;
-        phonenumber.text = masked_mobile;
+        if (entername != null) entername.text = currentName;
+        if (EmailAddressInputField != null) EmailAddressInputField.text = GetStoredEmail();
+        if (phonenumber != null) phonenumber.text = GetStoredMobile();
+
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+    }
+
+    private void CacheProfileData(string profileName, string email, string gender, string dob, string stateValue, string cityValue)
+    {
+        if (LogInOutput != null && LogInOutput.user_data != null && LogInOutput.user_data.Count > 0)
+        {
+            UserDatum user = LogInOutput.user_data[0];
+            user.name = profileName;
+            user.email = email;
+            user.gender = gender;
+            user.date_of_birth = dob;
+            user.state = stateValue;
+            user.city = cityValue;
+        }
+    }
+
+    private string GetStoredEmail()
+    {
+        string email = PlayerPrefs.GetString("MyEmail", string.Empty);
+        if (string.IsNullOrWhiteSpace(email))
+            email = PlayerPrefs.GetString("email", string.Empty);
+        if (string.IsNullOrWhiteSpace(email) && LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0)
+            email = LogInOutput.user_data[0].email ?? string.Empty;
+        return email.Trim();
+    }
+
+    private string GetStoredMobile()
+    {
+        string mobile = Configuration.getmobile();
+        if (string.IsNullOrWhiteSpace(mobile) && LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0)
+            mobile = LogInOutput.user_data[0].mobile ?? string.Empty;
+        return (mobile ?? string.Empty).Trim();
+    }
+
+    private string GetStoredGender()
+    {
+        return NormalizeGender(LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0
+            ? LogInOutput.user_data[0].gender
+            : string.Empty);
+    }
+
+    private string GetStoredDateOfBirth()
+    {
+        return LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0
+            ? NormalizeDateForApi(LogInOutput.user_data[0].date_of_birth)
+            : string.Empty;
+    }
+
+    private string GetStoredState()
+    {
+        return LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0
+            ? (LogInOutput.user_data[0].state ?? string.Empty).Trim()
+            : string.Empty;
+    }
+
+    private string GetStoredCity()
+    {
+        return LogInOutput?.user_data != null && LogInOutput.user_data.Count > 0
+            ? (LogInOutput.user_data[0].city ?? string.Empty).Trim()
+            : string.Empty;
+    }
+
+    private string NormalizeGender(string gender)
+    {
+        string normalized = (gender ?? string.Empty).Trim().ToLowerInvariant();
+        switch (normalized)
+        {
+            case "m":
+            case "male":
+                return "male";
+            case "f":
+            case "female":
+                return "female";
+            case "other":
+                return "other";
+            default:
+                return string.Empty;
+        }
+    }
+
+    private string NormalizeDateForApi(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+        if (DateTime.TryParse(value, out DateTime parsed))
+            return parsed.ToString("yyyy-MM-dd");
+        return value.Trim();
+    }
+
+    private string GetProfileEditorValue(InputField editorField, InputField fallbackField)
+    {
+        if (editorField != null)
+            return (editorField.text ?? string.Empty).Trim();
+        if (fallbackField != null)
+            return (fallbackField.text ?? string.Empty).Trim();
+        return string.Empty;
+    }
+
+    private void ApplyProfileDataToEditor()
+    {
+        EnsureProfileEditorBindings(true);
+        if (profileNameEditor != null) profileNameEditor.text = Configuration.GetName();
+        if (profileGenderEditor != null) profileGenderEditor.text = GetStoredGender();
+        if (profileDobEditor != null) profileDobEditor.text = GetStoredDateOfBirth();
+        if (profileStateEditor != null) profileStateEditor.text = GetStoredState();
+        if (profileCityEditor != null) profileCityEditor.text = GetStoredCity();
+        if (profileEditorStatus != null) profileEditorStatus.text = "Update your profile details here.";
+    }
+
+    private IEnumerator RefreshProfileEditorVisualsDelayed()
+    {
+        yield return null;
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+        yield return new WaitForEndOfFrame();
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+    }
+
+    private void EnsureProfileEditorBindings(bool allowCreate)
+    {
+        if (ProfilePopup == null)
+            return;
+
+        if (profileEditorRoot == null)
+            profileEditorRoot = ProfilePopup.transform.Find("ProfileDetailsRuntime") as RectTransform;
+        if (profileEditorRoot != null && allowCreate)
+        {
+            bool hasLegacyFields =
+                profileEditorRoot.Find("EmailField") != null
+                || profileEditorRoot.Find("PhoneField") != null
+                || profileEditorRoot.Find("EmailFieldBlock") != null
+                || profileEditorRoot.Find("PhoneFieldBlock") != null;
+            bool missingNewRows =
+                profileEditorRoot.Find("GenderDobRow") == null
+                || profileEditorRoot.Find("CityStateRow") == null;
+
+            if (hasLegacyFields || missingNewRows)
+            {
+#if UNITY_EDITOR
+                if (!Application.isPlaying)
+                    Undo.DestroyObjectImmediate(profileEditorRoot.gameObject);
+                else
+                    Destroy(profileEditorRoot.gameObject);
+#else
+                Destroy(profileEditorRoot.gameObject);
+#endif
+                profileEditorRoot = null;
+                profileNameEditor = null;
+                profileEmailEditor = null;
+                profilePhoneEditor = null;
+                profileGenderEditor = null;
+                profileDobEditor = null;
+                profileStateEditor = null;
+                profileCityEditor = null;
+                profileEditorStatus = null;
+            }
+        }
+        if (profileEditorRoot == null && allowCreate)
+            profileEditorRoot = BuildProfileEditor();
+        if (profileEditorRoot == null)
+            return;
+
+        if (profileNameEditor == null) profileNameEditor = profileEditorRoot.Find("NameField")?.GetComponent<InputField>();
+        if (profileGenderEditor == null) profileGenderEditor = profileEditorRoot.Find("GenderField")?.GetComponent<InputField>();
+        if (profileDobEditor == null) profileDobEditor = profileEditorRoot.Find("DobField")?.GetComponent<InputField>();
+        if (profileStateEditor == null) profileStateEditor = profileEditorRoot.Find("StateField")?.GetComponent<InputField>();
+        if (profileCityEditor == null) profileCityEditor = profileEditorRoot.Find("CityField")?.GetComponent<InputField>();
+        if (profileEditorStatus == null) profileEditorStatus = profileEditorRoot.Find("HintText")?.GetComponent<Text>();
+
+        NormalizeProfileEditorLayout();
+        if (Application.isPlaying)
+            lastProfileEditorNormalizeAt = Time.unscaledTime;
+    }
+
+    private bool NeedsProfileEditorRefresh()
+    {
+        return ProfileFieldNeedsRefresh(profileNameEditor, 96f, 56)
+            || ProfileFieldNeedsRefresh(profileGenderEditor, 96f, 56)
+            || ProfileFieldNeedsRefresh(profileDobEditor, 96f, 56)
+            || ProfileFieldNeedsRefresh(profileCityEditor, 96f, 56)
+            || ProfileFieldNeedsRefresh(profileStateEditor, 96f, 56);
+    }
+
+    private bool ProfileFieldNeedsRefresh(InputField field, float expectedHeight, int expectedTextSize)
+    {
+        if (field == null)
+            return false;
+
+        LayoutElement layout = field.GetComponent<LayoutElement>();
+        if (layout != null && layout.minHeight < expectedHeight - 1f)
+            return true;
+
+        RectTransform rect = field.GetComponent<RectTransform>();
+        if (rect != null && rect.sizeDelta.y < expectedHeight - 1f)
+            return true;
+
+        Text text = field.textComponent;
+        if (text != null && text.fontSize < expectedTextSize)
+            return true;
+
+        return false;
+    }
+
+    private RectTransform BuildProfileEditor()
+    {
+        if (ProfilePopup == null)
+            return null;
+
+        RectTransform popupRect = ProfilePopup.GetComponent<RectTransform>();
+        if (popupRect == null)
+            return null;
+
+        if (popupRect.sizeDelta.y < 760f)
+            popupRect.sizeDelta = new Vector2(popupRect.sizeDelta.x, 760f);
+
+        Font font = entername != null && entername.textComponent != null && entername.textComponent.font != null
+            ? entername.textComponent.font
+            : Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying && popupRect.gameObject.scene.IsValid())
+        {
+            Undo.RegisterFullObjectHierarchyUndo(ProfilePopup, "Build Profile Editor");
+        }
+#endif
+        GameObject root = new GameObject("ProfileDetailsRuntime", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        root.transform.SetParent(popupRect, false);
+        RectTransform rootRect = root.GetComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(0f, 0f);
+        rootRect.anchorMax = new Vector2(1f, 1f);
+        rootRect.offsetMin = new Vector2(90f, 96f);
+        rootRect.offsetMax = new Vector2(-90f, -300f);
+
+        VerticalLayoutGroup layout = root.GetComponent<VerticalLayoutGroup>();
+        layout.spacing = 18f;
+        layout.padding = new RectOffset(0, 0, 18, 0);
+        layout.childAlignment = TextAnchor.UpperCenter;
+        layout.childControlHeight = false;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        ContentSizeFitter fitter = root.GetComponent<ContentSizeFitter>();
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+        fitter.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+        CreateProfileEditorField(rootRect, font, "Name", "Full Name", "NameField", false);
+
+        RectTransform genderDobRow = CreateProfileEditorRow(rootRect, "GenderDobRow");
+        CreateProfileEditorField(genderDobRow, font, "Gender", "male / female / other", "GenderField", false);
+        CreateProfileEditorField(genderDobRow, font, "DOB", "yyyy-mm-dd", "DobField", false);
+
+        RectTransform cityStateRow = CreateProfileEditorRow(rootRect, "CityStateRow");
+        CreateProfileEditorField(cityStateRow, font, "City", "City", "CityField", false);
+        CreateProfileEditorField(cityStateRow, font, "State", "State", "StateField", false);
+
+        Text hint = CreateRuntimeText(rootRect, font, "HintText", 28, FontStyle.Normal, TextAnchor.MiddleLeft, new Color32(255, 235, 180, 255), 76f);
+        hint.text = "Update your profile details here.";
+        hint.horizontalOverflow = HorizontalWrapMode.Wrap;
+        hint.verticalOverflow = VerticalWrapMode.Overflow;
+
+#if UNITY_EDITOR
+        if (!Application.isPlaying && root.scene.IsValid())
+            EditorSceneManager.MarkSceneDirty(root.scene);
+#endif
+        return rootRect;
+    }
+
+    private RectTransform CreateProfileEditorRow(RectTransform parent, string objectName)
+    {
+        GameObject rowObject = new GameObject(objectName, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+        rowObject.transform.SetParent(parent, false);
+        RectTransform rowRect = rowObject.GetComponent<RectTransform>();
+        rowRect.sizeDelta = new Vector2(0f, 132f);
+
+        LayoutElement rowLayout = rowObject.GetComponent<LayoutElement>();
+        rowLayout.minHeight = 132f;
+        rowLayout.preferredHeight = 132f;
+
+        HorizontalLayoutGroup layout = rowObject.GetComponent<HorizontalLayoutGroup>();
+        layout.spacing = 16f;
+        layout.padding = new RectOffset(0, 0, 0, 0);
+        layout.childAlignment = TextAnchor.UpperLeft;
+        layout.childControlHeight = true;
+        layout.childControlWidth = true;
+        layout.childForceExpandHeight = false;
+        layout.childForceExpandWidth = true;
+
+        return rowRect;
+    }
+
+    private InputField CreateProfileEditorField(RectTransform parent, Font font, string labelText, string placeholder, string objectName, bool readOnly)
+    {
+        GameObject blockObject = new GameObject(objectName + "Block", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(LayoutElement));
+        blockObject.transform.SetParent(parent, false);
+        RectTransform blockRect = blockObject.GetComponent<RectTransform>();
+        blockRect.sizeDelta = new Vector2(0f, 132f);
+
+        LayoutElement blockLayout = blockObject.GetComponent<LayoutElement>();
+        blockLayout.minHeight = 132f;
+        blockLayout.preferredHeight = 132f;
+        blockLayout.flexibleWidth = 1f;
+
+        VerticalLayoutGroup blockGroup = blockObject.GetComponent<VerticalLayoutGroup>();
+        blockGroup.spacing = 10f;
+        blockGroup.padding = new RectOffset(0, 0, 0, 0);
+        blockGroup.childAlignment = TextAnchor.UpperLeft;
+        blockGroup.childControlHeight = false;
+        blockGroup.childControlWidth = true;
+        blockGroup.childForceExpandHeight = false;
+        blockGroup.childForceExpandWidth = true;
+
+        Text label = CreateRuntimeText(blockRect, font, objectName + "Label", 26, FontStyle.Bold, TextAnchor.MiddleLeft, Color.white, 40f);
+        label.text = labelText;
+
+        GameObject fieldObject = new GameObject(objectName, typeof(RectTransform), typeof(Image), typeof(InputField), typeof(LayoutElement));
+        fieldObject.transform.SetParent(blockRect, false);
+        RectTransform fieldRect = fieldObject.GetComponent<RectTransform>();
+        fieldRect.sizeDelta = new Vector2(0f, 96f);
+
+        LayoutElement layout = fieldObject.GetComponent<LayoutElement>();
+        layout.minHeight = 96f;
+        layout.preferredHeight = 96f;
+        layout.flexibleWidth = 1f;
+
+        Image bg = fieldObject.GetComponent<Image>();
+        bg.color = new Color32(92, 20, 32, 255);
+
+        InputField field = fieldObject.GetComponent<InputField>();
+        field.readOnly = readOnly;
+        field.lineType = InputField.LineType.SingleLine;
+        field.characterValidation = InputField.CharacterValidation.None;
+
+        GameObject placeholderObject = new GameObject("Placeholder", typeof(RectTransform), typeof(Text));
+        placeholderObject.transform.SetParent(fieldObject.transform, false);
+        RectTransform placeholderRect = placeholderObject.GetComponent<RectTransform>();
+        placeholderRect.anchorMin = Vector2.zero;
+        placeholderRect.anchorMax = Vector2.one;
+        placeholderRect.offsetMin = new Vector2(22f, 12f);
+        placeholderRect.offsetMax = new Vector2(-22f, -12f);
+        Text placeholderText = placeholderObject.GetComponent<Text>();
+        placeholderText.font = font;
+        placeholderText.fontSize = 34;
+        placeholderText.fontStyle = FontStyle.Italic;
+        placeholderText.alignment = TextAnchor.MiddleLeft;
+        placeholderText.color = new Color32(220, 200, 200, 180);
+        placeholderText.text = placeholder;
+
+        GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(Text));
+        textObject.transform.SetParent(fieldObject.transform, false);
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(22f, 12f);
+        textRect.offsetMax = new Vector2(-22f, -12f);
+        Text text = textObject.GetComponent<Text>();
+        text.font = font;
+        text.fontSize = 56;
+        text.fontStyle = FontStyle.Normal;
+        text.alignment = TextAnchor.MiddleLeft;
+        text.color = Color.white;
+
+        field.textComponent = text;
+        field.placeholder = placeholderText;
+
+        return field;
+    }
+
+    private void NormalizeProfileEditorLayout()
+    {
+        if (profileEditorRoot == null)
+            return;
+
+        RectTransform popupRect = ProfilePopup != null ? ProfilePopup.GetComponent<RectTransform>() : null;
+        if (popupRect != null && popupRect.sizeDelta.y < 760f)
+            popupRect.sizeDelta = new Vector2(popupRect.sizeDelta.x, 760f);
+
+        profileEditorRoot.offsetMin = new Vector2(90f, 96f);
+        profileEditorRoot.offsetMax = new Vector2(-90f, -300f);
+
+        VerticalLayoutGroup rootGroup = profileEditorRoot.GetComponent<VerticalLayoutGroup>();
+        if (rootGroup != null)
+        {
+            rootGroup.spacing = 18f;
+            rootGroup.padding = new RectOffset(0, 0, 18, 0);
+            rootGroup.childAlignment = TextAnchor.UpperCenter;
+        }
+
+        Image referenceImage = profileEditorRoot.Find("NameField")?.GetComponent<Image>();
+        Sprite referenceSprite = referenceImage != null ? referenceImage.sprite : null;
+        Image.Type referenceType = referenceImage != null ? referenceImage.type : Image.Type.Simple;
+        Color referenceColor = referenceImage != null ? referenceImage.color : new Color32(92, 20, 32, 255);
+
+        ApplyFieldBlockLayout("NameFieldBlock", 154f);
+        ApplyFieldLayout("NameField", 96f, 34, 56, referenceSprite, referenceType, referenceColor, true, TextAnchor.MiddleCenter);
+        NormalizeInputFieldVisual(profileNameEditor, 96f, 34, 56, referenceSprite, referenceType, referenceColor, true, TextAnchor.MiddleCenter);
+
+        ApplyRowLayout("GenderDobRow", 140f, 18f);
+        ApplyFieldBlockLayout("GenderFieldBlock", 136f);
+        ApplyFieldBlockLayout("DobFieldBlock", 136f);
+        ApplyFieldLayout("GenderField", 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        ApplyFieldLayout("DobField", 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        NormalizeInputFieldVisual(profileGenderEditor, 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        NormalizeInputFieldVisual(profileDobEditor, 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+
+        ApplyRowLayout("CityStateRow", 140f, 18f);
+        ApplyFieldBlockLayout("CityFieldBlock", 136f);
+        ApplyFieldBlockLayout("StateFieldBlock", 136f);
+        ApplyFieldLayout("CityField", 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        ApplyFieldLayout("StateField", 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        NormalizeInputFieldVisual(profileCityEditor, 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+        NormalizeInputFieldVisual(profileStateEditor, 96f, 34, 56, referenceSprite, referenceType, referenceColor, false, TextAnchor.MiddleLeft);
+
+        if (profileEditorStatus != null)
+        {
+            profileEditorStatus.fontSize = 28;
+            profileEditorStatus.resizeTextForBestFit = false;
+        }
+    }
+
+    private void ApplyRowLayout(string rowName, float height, float spacing)
+    {
+        RectTransform rowRect = profileEditorRoot.Find(rowName) as RectTransform;
+        if (rowRect == null)
+            return;
+
+        rowRect.sizeDelta = new Vector2(0f, height);
+        LayoutElement rowLayout = rowRect.GetComponent<LayoutElement>();
+        if (rowLayout != null)
+        {
+            rowLayout.minHeight = height;
+            rowLayout.preferredHeight = height;
+        }
+
+        HorizontalLayoutGroup rowGroup = rowRect.GetComponent<HorizontalLayoutGroup>();
+        if (rowGroup != null)
+            rowGroup.spacing = spacing;
+    }
+
+    private void ApplyFieldBlockLayout(string blockName, float height)
+    {
+        RectTransform blockRect = profileEditorRoot.Find(blockName) as RectTransform;
+        if (blockRect == null)
+            return;
+
+        blockRect.sizeDelta = new Vector2(0f, height);
+        LayoutElement blockLayout = blockRect.GetComponent<LayoutElement>();
+        if (blockLayout != null)
+        {
+            blockLayout.minHeight = height;
+            blockLayout.preferredHeight = height;
+            blockLayout.flexibleWidth = 1f;
+        }
+
+        VerticalLayoutGroup blockGroup = blockRect.GetComponent<VerticalLayoutGroup>();
+        if (blockGroup != null)
+            blockGroup.spacing = 10f;
+    }
+
+    private void ApplyFieldLayout(string fieldName, float fieldHeight, int placeholderFontSize, int textFontSize, Sprite sprite, Image.Type imageType, Color imageColor, bool centerPlaceholder, TextAnchor textAlignment)
+    {
+        RectTransform fieldRect = profileEditorRoot.Find(fieldName) as RectTransform;
+        if (fieldRect == null)
+            return;
+
+        fieldRect.sizeDelta = new Vector2(0f, fieldHeight);
+
+        LayoutElement layout = fieldRect.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minHeight = fieldHeight;
+            layout.preferredHeight = fieldHeight;
+            layout.flexibleWidth = 1f;
+        }
+
+        Image bg = fieldRect.GetComponent<Image>();
+        if (bg != null)
+        {
+            bg.sprite = sprite;
+            bg.type = imageType;
+            bg.color = imageColor;
+        }
+
+        Text placeholder = fieldRect.Find("Placeholder")?.GetComponent<Text>();
+        if (placeholder != null)
+        {
+            placeholder.fontSize = placeholderFontSize;
+            placeholder.alignment = centerPlaceholder ? TextAnchor.MiddleCenter : TextAnchor.MiddleLeft;
+        }
+
+        Text text = fieldRect.Find("Text")?.GetComponent<Text>();
+        if (text != null)
+        {
+            text.fontSize = textFontSize;
+            text.alignment = textAlignment;
+        }
+
+        RectTransform placeholderRect = fieldRect.Find("Placeholder") as RectTransform;
+        if (placeholderRect != null)
+        {
+            placeholderRect.offsetMin = new Vector2(18f, 10f);
+            placeholderRect.offsetMax = new Vector2(-18f, -10f);
+        }
+
+        RectTransform textRect = fieldRect.Find("Text") as RectTransform;
+        if (textRect != null)
+        {
+            textRect.offsetMin = new Vector2(18f, 10f);
+            textRect.offsetMax = new Vector2(-18f, -10f);
+        }
+    }
+
+    private void NormalizeInputFieldVisual(InputField field, float fieldHeight, int placeholderFontSize, int textFontSize, Sprite sprite, Image.Type imageType, Color imageColor, bool centerPlaceholder, TextAnchor textAlignment)
+    {
+        if (field == null)
+            return;
+
+        RectTransform fieldRect = field.GetComponent<RectTransform>();
+        if (fieldRect != null)
+            fieldRect.sizeDelta = new Vector2(0f, fieldHeight);
+
+        LayoutElement layout = field.GetComponent<LayoutElement>();
+        if (layout != null)
+        {
+            layout.minHeight = fieldHeight;
+            layout.preferredHeight = fieldHeight;
+            layout.flexibleWidth = 1f;
+        }
+
+        Image bg = field.GetComponent<Image>();
+        if (bg != null)
+        {
+            bg.sprite = sprite != null ? sprite : bg.sprite;
+            bg.type = imageType;
+            bg.color = imageColor;
+        }
+
+        if (field.placeholder is Text placeholderText)
+        {
+            placeholderText.fontSize = placeholderFontSize;
+            placeholderText.resizeTextForBestFit = false;
+            placeholderText.alignment = centerPlaceholder ? TextAnchor.MiddleCenter : TextAnchor.MiddleLeft;
+
+            RectTransform placeholderRect = placeholderText.GetComponent<RectTransform>();
+            if (placeholderRect != null)
+            {
+                placeholderRect.offsetMin = new Vector2(18f, 10f);
+                placeholderRect.offsetMax = new Vector2(-18f, -10f);
+            }
+        }
+
+        Text inputText = field.textComponent;
+        if (inputText != null)
+        {
+            inputText.fontSize = textFontSize;
+            inputText.resizeTextForBestFit = false;
+            inputText.alignment = textAlignment;
+            inputText.horizontalOverflow = HorizontalWrapMode.Overflow;
+            inputText.verticalOverflow = VerticalWrapMode.Truncate;
+            inputText.supportRichText = false;
+
+            RectTransform textRect = inputText.GetComponent<RectTransform>();
+            if (textRect != null)
+            {
+                textRect.offsetMin = new Vector2(18f, 10f);
+                textRect.offsetMax = new Vector2(-18f, -10f);
+            }
+        }
+    }
+
+    private Text CreateRuntimeText(RectTransform parent, Font font, string objectName, int fontSize, FontStyle fontStyle, TextAnchor alignment, Color color, float height)
+    {
+        GameObject textObject = new GameObject(objectName, typeof(RectTransform), typeof(Text), typeof(LayoutElement));
+        textObject.transform.SetParent(parent, false);
+        RectTransform rect = textObject.GetComponent<RectTransform>();
+        rect.sizeDelta = new Vector2(0f, height);
+
+        LayoutElement layout = textObject.GetComponent<LayoutElement>();
+        layout.minHeight = height;
+        layout.preferredHeight = height;
+
+        Text text = textObject.GetComponent<Text>();
+        text.font = font;
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.alignment = alignment;
+        text.color = color;
+        return text;
     }
 
     #endregion
@@ -1370,7 +2114,10 @@ public class Profile : MonoBehaviour
         }
         else
         {
-            LoaderUtil.instance.ShowToast(LogInOutput.message);
+            if (LoaderUtil.instance != null)
+                ShowToastSafe(LogInOutput.message);
+            else
+                CommonUtil.ShowToast(LogInOutput.message);
         }
     }
 
@@ -1435,11 +2182,11 @@ public class Profile : MonoBehaviour
         {
             PopUpPanelClose(ProfilePopup);
             ResetFieldUpdatePassword();
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            ShowToastSafe(BankOutput.message);
         }
         else if (BankOutput.code == 406)
         {
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            ShowToastSafe(BankOutput.message);
         }
     }
 
@@ -1448,7 +2195,8 @@ public class Profile : MonoBehaviour
         string acc_holder_name,
         string bank_name,
         string acc_no,
-        string base64forimgpassbook
+        string base64forimgpassbook,
+        string upiId
     )
     {
         if (acc_no.Length < 9)
@@ -1463,17 +2211,151 @@ public class Profile : MonoBehaviour
             { "acc_holder_name", acc_holder_name },
             { "bank_name", bank_name },
             { "acc_no", acc_no },
+            { "upi_id", upiId ?? string.Empty },
             { "user_id", Configuration.GetId() },
             { "token", Configuration.GetToken() },
-            { "passbook_img", base64forimgpassbook },
         };
+        if (!string.IsNullOrWhiteSpace(base64forimgpassbook))
+        {
+            formData.Add("passbook_img", base64forimgpassbook);
+        }
         BankOutputs BankOutput = new BankOutputs();
         BankOutput = await APIManager.Instance.Post<BankOutputs>(Url, formData);
         if (BankOutput.code == 200)
         {
-            PopUpPanelClose(account_holder_name.transform.parent.parent.parent.parent.gameObject);
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            GameObject bankPopup = account_holder_name != null
+                && account_holder_name.transform != null
+                && account_holder_name.transform.parent != null
+                && account_holder_name.transform.parent.parent != null
+                && account_holder_name.transform.parent.parent.parent != null
+                && account_holder_name.transform.parent.parent.parent.parent != null
+                ? account_holder_name.transform.parent.parent.parent.parent.gameObject
+                : bank_panel;
+            if (bankPopup != null)
+            {
+                PopUpPanelClose(bankPopup);
+            }
+            ShowToastSafe(BankOutput.message);
         }
+    }
+
+    private void EnsureBankDetailBindings()
+    {
+        if (bank_panel == null)
+        {
+            bank_panel = FindDeepChild(transform, "Bank Details");
+        }
+
+        if (upi_id == null)
+        {
+            GameObject upiObject = GameObject.Find("UPI ID InputField (Legacy)");
+            if (upiObject != null)
+            {
+                upi_id = upiObject.GetComponent<InputField>();
+            }
+        }
+
+        if (bank_panel != null && upi_id == null)
+        {
+            InputField[] bankInputs = bank_panel.GetComponentsInChildren<InputField>(true);
+            upi_id = bankInputs.FirstOrDefault(input =>
+                input != null &&
+                input.gameObject.name.IndexOf("UPI", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        if (passbook_img == null)
+        {
+            Image[] images = bank_panel != null ? bank_panel.GetComponentsInChildren<Image>(true) : GetComponentsInChildren<Image>(true);
+            passbook_img = images.FirstOrDefault(img =>
+                img != null &&
+                img.gameObject.name.IndexOf("passbook", StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        if (passbook_logo_img == null && passbook_img != null && passbook_img.transform.parent != null)
+        {
+            foreach (Transform child in passbook_img.transform.parent)
+            {
+                if (child != null && child.gameObject != passbook_img.gameObject)
+                {
+                    passbook_logo_img = child.gameObject;
+                    break;
+                }
+            }
+        }
+
+        ConfigureUpiInputField();
+    }
+
+    private void ConfigureUpiInputField()
+    {
+        if (upi_id == null)
+            return;
+
+        upi_id.contentType = InputField.ContentType.Standard;
+        upi_id.characterValidation = InputField.CharacterValidation.None;
+        upi_id.characterLimit = 0;
+        upi_id.lineType = InputField.LineType.SingleLine;
+        upi_id.keyboardType = TouchScreenKeyboardType.Default;
+    }
+
+    private bool HasExistingOrSelectedPassbook()
+    {
+        string selectedBase64 = GetSelectedPassbookBase64();
+        if (!string.IsNullOrWhiteSpace(selectedBase64))
+            return true;
+
+        return LogInOutput != null
+            && LogInOutput.user_bank_details != null
+            && LogInOutput.user_bank_details.Count > 0
+            && !string.IsNullOrWhiteSpace(LogInOutput.user_bank_details[0].passbook_img);
+    }
+
+    private string GetSelectedPassbookBase64()
+    {
+        return SpriteManager.Instance != null ? (SpriteManager.Instance.base64forimgpassbook ?? string.Empty) : string.Empty;
+    }
+
+    private static void ShowToastSafe(string message)
+    {
+        bool isError = IsErrorStyleMessage(message);
+        CommonUtil.ShowStyledMessage(
+            message,
+            isError ? "Error" : "Success",
+            isError
+        );
+    }
+
+    private static bool IsErrorStyleMessage(string message)
+    {
+        if (string.IsNullOrWhiteSpace(message))
+            return false;
+
+        string lowered = message.Trim().ToLowerInvariant();
+        return lowered.Contains("please ")
+            || lowered.Contains("invalid")
+            || lowered.Contains("failed")
+            || lowered.Contains("error")
+            || lowered.Contains("unable")
+            || lowered.Contains("required");
+    }
+
+    private static GameObject FindDeepChild(Transform root, string childName)
+    {
+        if (root == null)
+            return null;
+
+        for (int i = 0; i < root.childCount; i++)
+        {
+            Transform child = root.GetChild(i);
+            if (child.name == childName)
+                return child.gameObject;
+
+            GameObject found = FindDeepChild(child, childName);
+            if (found != null)
+                return found;
+        }
+
+        return null;
     }
 
     public async Task PostUpdateCryptoDetails(
@@ -1496,7 +2378,7 @@ public class Profile : MonoBehaviour
         if (BankOutput.code == 200)
         {
             PopUpPanelClose(crypto_address.transform.parent.parent.parent.gameObject);
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            ShowToastSafe(BankOutput.message);
         }
     }
 
@@ -1535,11 +2417,11 @@ public class Profile : MonoBehaviour
         if (BankOutput.code == 200)
         {
             PopUpPanelClose(aadhar_no.transform.parent.parent.parent.gameObject);
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            ShowToastSafe(BankOutput.message);
         }
         else
         {
-            LoaderUtil.instance.ShowToast(BankOutput.message);
+            ShowToastSafe(BankOutput.message);
         }
     }
 

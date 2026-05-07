@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin\Web;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Models\WalletTransaction;
+use App\Services\Wallet\WalletService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -47,16 +49,44 @@ class WithdrawalController extends Controller
             return response()->json(['msg' => 'Invalid request', 'class' => 'error']);
         }
 
-        $updated = DB::table('tbl_withdrawal_log')
-            ->where('id', $id)
-            ->update([
-                'status' => (int) $status,
-                'updated_date' => now()->format('Y-m-d H:i:s'),
+        $row = DB::table('tbl_withdrawal_log')->where('id', $id)->first();
+        if (! $row) {
+            return response()->json(['msg' => 'Withdrawal not found', 'class' => 'error']);
+        }
+
+        $targetStatus = (int) $status;
+        $currentStatus = (int) ($row->status ?? 0);
+
+        if ($currentStatus === 2 && $targetStatus !== 2 && $this->hasRefundLedger($row->id)) {
+            return response()->json([
+                'msg' => 'Rejected withdrawal already refunded. Create a new request instead.',
+                'class' => 'error',
             ]);
+        }
+
+        try {
+            DB::transaction(function () use ($row, $targetStatus) {
+                DB::table('tbl_withdrawal_log')
+                    ->where('id', $row->id)
+                    ->update([
+                        'status' => $targetStatus,
+                        'updated_date' => now()->format('Y-m-d H:i:s'),
+                    ]);
+
+                if ($targetStatus === 2) {
+                    $this->refundRejectedWithdrawal($row);
+                }
+            });
+        } catch (\Throwable $exception) {
+            return response()->json([
+                'msg' => 'Status update failed: '.$exception->getMessage(),
+                'class' => 'error',
+            ]);
+        }
 
         return response()->json([
-            'msg' => $updated ? 'Status Change Successfully' : 'Something went to wrong',
-            'class' => $updated ? 'success' : 'error',
+            'msg' => 'Status Change Successfully',
+            'class' => 'success',
         ]);
     }
 
@@ -76,7 +106,11 @@ class WithdrawalController extends Controller
         $betzonoUrl = (string) env('BETZONO_WITHDRAW_URL', '');
         $betzonoMerchantId = (string) env('BETZONO_MERCHANT_ID', '');
         $betzonoProxyUserId = (string) env('BETZONO_PROXY_USER_ID', '');
-        $callbackBase = rtrim((string) env('BETZONO_CALLBACK_URL_BASE', ''), '/');
+        $callbackBase = rtrim((string) (
+            env('BETZONO_CALLBACK_URL_BASE')
+            ?: config('app.url')
+            ?: env('APP_URL', '')
+        ), '/');
 
         if ($betzonoUrl === '' || $betzonoMerchantId === '' || $betzonoProxyUserId === '' || $callbackBase === '') {
             return response()->json(['msg' => 'Betzono gateway env missing', 'class' => 'error']);
@@ -328,6 +362,85 @@ class WithdrawalController extends Controller
         return 'ROX-'.$resolved.'-'.Str::upper(Str::random(8));
     }
 
+    protected function hasRefundLedger(int $withdrawalId): bool
+    {
+        return WalletTransaction::query()
+            ->where('reference_type', WalletTransaction::class)
+            ->where('reference_id', $withdrawalId)
+            ->where('description', 'Withdrawal rejected refund')
+            ->exists();
+    }
+
+    protected function refundRejectedWithdrawal(object $row): void
+    {
+        if ($this->hasRefundLedger((int) $row->id)) {
+            return;
+        }
+
+        if (! $this->legacyTableExists('tbl_users')) {
+            return;
+        }
+
+        $legacyUser = DB::table('tbl_users')->where('id', $row->user_id)->first();
+        if (! $legacyUser) {
+            return;
+        }
+
+        $laravelUser = $this->resolveLaravelUserFromLegacy($legacyUser);
+        if (! $laravelUser) {
+            return;
+        }
+
+        $amount = (float) ($row->coin ?? 0);
+        if ($amount <= 0) {
+            return;
+        }
+
+        app(WalletService::class)->credit(
+            user: $laravelUser,
+            amount: $amount,
+            referenceType: WalletTransaction::class,
+            referenceId: (int) $row->id,
+            description: 'Withdrawal rejected refund',
+            currency: 'INR',
+            meta: [
+                'legacy' => true,
+                'legacy_table' => 'tbl_withdrawal_log',
+                'legacy_withdrawal_status' => 'rejected',
+            ],
+        );
+
+        DB::table('tbl_users')
+            ->where('id', $legacyUser->id)
+            ->update([
+                'wallet' => DB::raw('wallet + '.$amount),
+                'winning_wallet' => DB::raw('winning_wallet + '.$amount),
+                'updated_date' => now()->format('Y-m-d H:i:s'),
+            ]);
+    }
+
+    protected function resolveLaravelUserFromLegacy(object $legacyUser): ?User
+    {
+        $query = User::query();
+        $hasCriteria = false;
+
+        if (! empty($legacyUser->mobile)) {
+            $query->orWhere('mobile', $legacyUser->mobile);
+            $hasCriteria = true;
+        }
+
+        if (! empty($legacyUser->email)) {
+            $query->orWhere('email', $legacyUser->email);
+            $hasCriteria = true;
+        }
+
+        if ($hasCriteria) {
+            return $query->first();
+        }
+
+        return null;
+    }
+
     protected function buildAccountDetails(object $row): array
     {
         $reqType = (int) $row->type === 0 ? 'bank' : 'crypto';
@@ -342,6 +455,7 @@ class WithdrawalController extends Controller
             $details['accountNumber'] = (string) ($row->acc_no ?? '');
             $details['ifsc'] = (string) ($row->ifsc_code ?? '');
             $details['bankName'] = (string) ($row->bank_name ?? '');
+            $details['upiId'] = (string) ($row->upi_id ?? '');
             $details['mobileNumber'] = (string) ($row->mobile ?? '');
         } else {
             $details['cryptoAddress'] = (string) ($row->crypto_address ?? '');

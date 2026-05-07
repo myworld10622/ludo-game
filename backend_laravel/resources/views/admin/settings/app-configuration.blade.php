@@ -103,11 +103,17 @@
                 </div>
                 <div>
                     <label>Daily Bonus Status</label>
-                    <input type="text" name="daily_bonus_status" value="{{ old('daily_bonus_status', $setting->daily_bonus_status ?? '') }}" required>
+                    <select name="daily_bonus_status" required>
+                        <option value="0" {{ old('daily_bonus_status', $setting->daily_bonus_status ?? '1') == '0' ? 'selected' : '' }}>Off</option>
+                        <option value="1" {{ old('daily_bonus_status', $setting->daily_bonus_status ?? '1') == '1' ? 'selected' : '' }}>On</option>
+                    </select>
                 </div>
                 <div>
-                    <label>App Popup Status</label>
-                    <input type="text" name="app_popop_status" value="{{ old('app_popop_status', $setting->app_popop_status ?? '') }}" required>
+                    <label>Promotion Popup Status</label>
+                    <select name="app_popop_status" required>
+                        <option value="0" {{ old('app_popop_status', $setting->app_popop_status ?? '0') == '0' ? 'selected' : '' }}>Off</option>
+                        <option value="1" {{ old('app_popop_status', $setting->app_popop_status ?? '0') == '1' ? 'selected' : '' }}>On</option>
+                    </select>
                 </div>
                 <div>
                     <label>FCM Server Key</label>
@@ -143,6 +149,36 @@
                         <div class="muted" style="margin-top:8px;">Current: {{ $setting->usdt_qr_image }}</div>
                         <img src="{{ url('data/Settings/'.$setting->usdt_qr_image) }}" style="width: 120px; border-radius: 12px; margin-top:8px;">
                     @endif
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:16px;">
+                <div style="font-weight:800; margin-bottom:12px;">Startup Promotion Popup</div>
+                <div class="split-2">
+                    <div>
+                        <label>Popup Title</label>
+                        <input type="text" name="app_popup_title" value="{{ old('app_popup_title', $setting->app_popup_title ?? '') }}" placeholder="Tournament Alert">
+                    </div>
+                    <div>
+                        <label>Button Text</label>
+                        <input type="text" name="app_popup_button_text" value="{{ old('app_popup_button_text', $setting->app_popup_button_text ?? '') }}" placeholder="Join Now">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label>Popup Message</label>
+                        <textarea name="app_popup_message" rows="4" placeholder="Add tournament or offer text here.">{{ old('app_popup_message', $setting->app_popup_message ?? '') }}</textarea>
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label>Button URL</label>
+                        <input type="text" name="app_popup_url" value="{{ old('app_popup_url', $setting->app_popup_url ?? '') }}" placeholder="https://... or telegram link">
+                    </div>
+                    <div style="grid-column: 1 / -1;">
+                        <label>Popup Banner Image</label>
+                        <input type="file" name="app_popup_image" accept="image/*">
+                        @if (!empty($setting->app_popup_image))
+                            <div class="muted" style="margin-top:8px;">Current: {{ $setting->app_popup_image }}</div>
+                            <img src="{{ url('data/Settings/'.$setting->app_popup_image) }}" style="width: 220px; border-radius: 12px; margin-top:8px;">
+                        @endif
+                    </div>
                 </div>
             </div>
 

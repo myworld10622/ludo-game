@@ -375,9 +375,11 @@ module.exports = function (namespace) {
         messages: Array.isArray(messages) ? messages : [],
       });
     } catch (error) {
-      console.error(error.message);
-      socket.emit(socketEvents.server.ERROR, {
-        message: "Unable to fetch room chat history.",
+      console.error('[Chat] Unable to fetch room chat history:', error.message);
+      // Send empty history instead of error — chat failure should not disrupt the game
+      socket.emit(socketEvents.server.CHAT_HISTORY, {
+        room_id: room.roomId,
+        messages: [],
       });
     }
   }

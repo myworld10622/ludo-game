@@ -9,12 +9,12 @@ using static System.Net.WebRequestMethods;
 public class Configuration : MonoBehaviour
 {
 
-    // public const string BaseUrl = "http://localhost:8000/";
-    // public const string Website = "http://localhost:8000/";
-    // public const string BaseSocketUrl = "http://localhost:3002";
-    public const string BaseUrl = "https://roxludo.com/";
-    public const string Website = "https://roxludo.com/";
-    public const string BaseSocketUrl = "https://socket.betzono.tech/";
+    public const string BaseUrl = "http://localhost:8000/";
+    public const string Website = "http://localhost:8000/";
+    public const string BaseSocketUrl = "http://localhost:3002";
+    // public const string BaseUrl = "https://roxludo.com/";
+    // public const string Website = "https://roxludo.com/";
+    // public const string BaseSocketUrl = "https://socket.betzono.tech/";
     public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string LudoTournamentInfoUrl = BaseUrl + "api/v1/tournaments/";
 
@@ -29,6 +29,11 @@ public class Configuration : MonoBehaviour
     public const string TournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string TournamentClaimRoomUrl = BaseUrl + "api/v1/tournaments/";
     public const string LudoV2SocketNamespace = "/ludo_v2";
+
+    public const string PrivateTableCreateUrl = BaseUrl + "api/v1/ludo/private-table/create";
+    public const string PrivateTableJoinUrl = BaseUrl + "api/v1/ludo/private-table/join";
+    public const string PrivateTableInfoUrl = BaseUrl + "api/v1/ludo/private-table/";
+    public const string PrivateTableSocketNamespace = "/ludo";
 
     //A1P
     public const string paymentgateway = BaseUrl + "api/plan/Place_Order_blinkpe";
@@ -92,6 +97,10 @@ public class Configuration : MonoBehaviour
     public const string purchasehistory = Url + "User/purchase_history";
     public const string addcashgetQR = Url + "Plan/get_qr";
     public const string USDT_Get_QR = Url + "Plan/get_usdt_qr";
+    public const string AutomaticPaymentStatus = Url + "Plan/payment_status";
+    public const string WalletTransferLookup = Url + "User/transfer_lookup";
+    public const string WalletTransfer = Url + "User/transfer_wallet";
+    public const string WalletTransferHistory = Url + "User/transfer_history";
 
     #endregion
     public const string salarystatement = Url + "User/salary_bonus_log";
@@ -114,6 +123,8 @@ public class Configuration : MonoBehaviour
     public const string AviatorCancelBet = BaseSocketUrl + "/api/aviator/cancelBet";
     public const string AviatorRedeem = BaseSocketUrl + "/api/aviator/redeem";
     public const string Forgot = "User/forgot_password";
+    public const string ForgotUsername = "User/forgot_username";
+    public const string RecoverUsername = "User/recover_username";
     public const string guest_register = "user/guest_register";
     public const string UpdatePassword = "User/update_password";
     public const string Plan = "Plan";
@@ -149,6 +160,10 @@ public class Configuration : MonoBehaviour
     public const string GameStatement = "User/getStatement";
     public const string Usersetting = "user/setting";
     public const string Usersendotp = "User/send_otp";
+    public const string UserRecoveryStatus = "User/recovery_status";
+    public const string UserRecoverySendOtp = "User/recovery_send_otp";
+    public const string UserRecoveryVerifyOtp = "User/recovery_verify_otp";
+    public const string UserRecoveryReminderDismiss = "User/recovery_reminder_dismiss";
 
     // Roulette
     //public const string RoulettePlaceBet = "Roulette/place_bet";
@@ -344,6 +359,8 @@ public class Configuration : MonoBehaviour
     public const string TermsAndCondititon = BaseUrl + "terms-conditions";
     public const string ContactUs = BaseUrl + "contact-us";
     public const string DeleteAccount = BaseUrl + "delete-account";
+    public const string TelegramSupportHandle = "John_bz1122";
+    public const string TelegramSupportUrl = "https://t.me/John_bz1122";
     public const string VCPmindetails = Url + "ColorPrediction/get_bet_details";
     public const string VCP1mindetails = Url + "ColorPrediction1Min/get_bet_details";
     public const string VCP3mindetails = Url + "ColorPrediction3Min/get_bet_details";

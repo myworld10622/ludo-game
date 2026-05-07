@@ -62,8 +62,25 @@ public class OrderDetails
     public string Total_Amount;
     public string intent_url;
     public string intentData;
+    public string transaction_id;
+    public string gateway_transaction_id;
     public string message;
     public int code;
+}
+
+[Serializable]
+public class AutomaticPaymentStatusResponse
+{
+    public int code;
+    public string message;
+    public int order_id;
+    public string transaction_id;
+    public string gateway_transaction_id;
+    public string status;
+    public string status_label;
+    public bool is_terminal;
+    public string amount;
+    public string updated_date;
 }
 
 [Serializable]
@@ -121,5 +138,57 @@ public class PurchaseHistoryResponse
 {
     public string message;
     public PurchaseHistoryItem[] purchase_history;
+    public int code;
+}
+
+[Serializable]
+public class TransferPlayer
+{
+    public string user_id;
+    public string username;
+    public string name;
+    public string mobile;
+    public string email;
+}
+
+[Serializable]
+public class TransferLookupResponse
+{
+    public string message;
+    public TransferPlayer player;
+    public int code;
+}
+
+[Serializable]
+public class TransferHistoryEntry
+{
+    public string id;
+    public string transfer_id;
+    public string direction;
+    public string status;
+    public string amount;
+    public string currency;
+    public string user_id;
+    public string username;
+    public string mobile;
+    public string email;
+    public string note;
+    public string added_date;
+}
+
+[Serializable]
+public class TransferHistoryResponse
+{
+    public string message;
+    public TransferHistoryEntry[] transfer_history;
+    public int code;
+}
+
+[Serializable]
+public class TransferWalletResponse
+{
+    public string message;
+    public TransferHistoryEntry transfer;
+    public string wallet;
     public int code;
 }

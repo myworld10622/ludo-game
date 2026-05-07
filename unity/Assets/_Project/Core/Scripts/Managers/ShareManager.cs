@@ -50,29 +50,12 @@ public class ShareManager : MonoBehaviour
     private void ShareToTelegram(string message)
     {
         string encodedMessage = WWW.EscapeURL(message);
-
         string telegramAppUrl = $"tg://msg?text={encodedMessage}";
         string telegramWebUrl = $"https://t.me/share/url?url={encodedMessage}";
 
-        CommonUtil.CheckLog("Telegram URL " + telegramWebUrl);
-
-
-#if UNITY_ANDROID
-        if (IsAppInstalled("org.telegram.messenger"))
-        {
-            CommonUtil.CheckLog(" Telegram URL android app");
-
-            Application.OpenURL(telegramAppUrl);
-        }
-        else
-        {
-            CommonUtil.CheckLog("Telegram app not found. Opening web URL.");
-            Application.OpenURL(telegramWebUrl);
-        }
-#else
-        CommonUtil.CheckLog(" Telegram URL Web");
-        Application.OpenURL(telegramWebUrl);
-#endif
+        // Try the deep-link first; Android will fall back to browser if Telegram isn't installed
+        Application.OpenURL(telegramAppUrl);
+        CommonUtil.CheckLog("Telegram share URL: " + telegramWebUrl);
     }
 
     private void ShareToEmail(string subject, string body)
@@ -86,24 +69,4 @@ public class ShareManager : MonoBehaviour
         //#endif
     }
 
-    private bool IsAppInstalled(string bundleId)
-    {
-#if UNITY_ANDROID
-        AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
-        AndroidJavaObject currentActivity = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
-        AndroidJavaObject packageManager = currentActivity.Call<AndroidJavaObject>("getPackageManager");
-
-        try
-        {
-            packageManager.Call<AndroidJavaObject>("getPackageInfo", bundleId, 0);
-            return true;
-        }
-        catch
-        {
-            return false;
-        }
-#else
-        return false;
-#endif
-    }
 }

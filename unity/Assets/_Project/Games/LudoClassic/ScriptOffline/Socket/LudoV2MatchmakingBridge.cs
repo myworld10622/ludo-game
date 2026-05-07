@@ -30,6 +30,8 @@ namespace LudoClassicOffline
         private bool isIntentionalDisconnect;
         private bool hasReportedMatchCompletion;
         private bool isTournamentMode;
+        private bool isPrivateTableMode;
+        private string privateTableCode;
         private bool isClaimingNextTournamentRound;
         private const float NextTournamentClaimDelaySeconds = 0.5f;
         private string activeTournamentUuid;
@@ -134,6 +136,7 @@ namespace LudoClassicOffline
             hasEnteredWaitingBoard = false;
             hasReportedMatchCompletion = false;
             isTournamentMode = false;
+            isPrivateTableMode = false;
             activeTournamentUuid = null;
             activeTournamentEntryUuid = null;
             lastAnnouncedSeatCount = 0;
@@ -151,6 +154,55 @@ namespace LudoClassicOffline
 #endif
 
             QueueAndConnectAsync(entryFee, maxPlayers);
+            return true;
+        }
+
+        public bool TryStartPrivateTableMatchmaking(int tableId, int maxPlayers, int entryFee, string code = null)
+        {
+            if (!Configuration.IsLudoV2Enabled())
+            {
+                return false;
+            }
+
+            if (isQueueing || hasStartedMatch)
+            {
+                CommonUtil.ShowToast("Match already in progress");
+                return true;
+            }
+
+            if (string.IsNullOrWhiteSpace(Configuration.GetId()) || string.IsNullOrWhiteSpace(Configuration.GetToken()))
+            {
+                CommonUtil.ShowToast("Please login again");
+                return false;
+            }
+
+            if (dashBoardManager == null || socketNumberEventReceiver == null)
+            {
+                Debug.LogWarning("LudoV2MatchmakingBridge missing scene references.");
+                return false;
+            }
+
+            isQueueing = true;
+            hasStartedMatch = false;
+            hasEnteredWaitingBoard = false;
+            hasReportedMatchCompletion = false;
+            isTournamentMode = false;
+            isPrivateTableMode = true;
+            privateTableCode = code ?? tableId.ToString();
+            activeTournamentUuid = null;
+            activeTournamentEntryUuid = null;
+            lastAnnouncedSeatCount = 0;
+            latestSnapshot = null;
+            queuedRoom = new LudoV2QueueJoinEnvelope
+            {
+                success = true,
+                data = new LudoV2QueueRoomData { room_uuid = tableId.ToString() }
+            };
+            dashBoardManager.backButton.SetActive(false);
+            dashBoardManager.lobbySelectPanal.SetActive(false);
+            dashBoardManager.SetLobbyUiBlocking(false);
+
+            ConnectSocket(maxPlayers, entryFee, ResolveGameMode());
             return true;
         }
 
@@ -311,12 +363,12 @@ namespace LudoClassicOffline
                     userId = int.Parse(Configuration.GetId()),
                     displayName = LudoDisplayNameUtility.LocalPlayerLabel(),
                     roomUuid = queuedRoom.data.room_uuid,
-                    roomType = "public",
+                    roomType = isPrivateTableMode ? "private" : "public",
                     playMode = entryFee > 0 ? "cash" : "practice",
                     gameMode = gameMode,
                     maxPlayers = maxPlayers,
                     entryFee = entryFee,
-                    allowBots = true,
+                    allowBots = !isPrivateTableMode,
                 })
             );
         }
@@ -1109,9 +1161,15 @@ namespace LudoClassicOffline
 
             int occupiedSeats = snapshot.seats?.Count ?? snapshot.current_players;
             int remainingSeats = Mathf.Max(0, snapshot.max_players - occupiedSeats);
-            string message = remainingSeats > 0
-                ? $"Waiting for {remainingSeats} more player{(remainingSeats == 1 ? "" : "s")}..."
-                : "Starting match...";
+            string message;
+            if (isPrivateTableMode && !string.IsNullOrEmpty(privateTableCode))
+                message = remainingSeats > 0
+                    ? $"Code: {privateTableCode}\nWaiting for {remainingSeats} more player{(remainingSeats == 1 ? "" : "s")}..."
+                    : $"Code: {privateTableCode}\nStarting match...";
+            else
+                message = remainingSeats > 0
+                    ? $"Waiting for {remainingSeats} more player{(remainingSeats == 1 ? "" : "s")}..."
+                    : "Starting match...";
 
             socketNumberEventReceiver.ludoNumbersAcknowledgementHandler.ludoNumberTostMessage.SetWaitingMessage(message);
 

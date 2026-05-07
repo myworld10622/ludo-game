@@ -125,6 +125,16 @@ class User extends Authenticatable
         return $this->hasMany(UserSocialAccount::class);
     }
 
+    public function recoveryChannels(): HasMany
+    {
+        return $this->hasMany(UserRecoveryChannel::class);
+    }
+
+    public function securityReminder(): HasOne
+    {
+        return $this->hasOne(UserSecurityReminder::class);
+    }
+
     public static function defaultPanelPermissions(): array
     {
         return [

@@ -162,10 +162,21 @@ public class messageprint
 }
 
 [System.Serializable]
+public class RecoveredUsernameResponse
+{
+    public string message;
+    public string username;
+    public string user_code;
+    public int code;
+}
+
+[System.Serializable]
 public class OTP
 {
     public string message;
     public string otp_id;
+    public string otp;
+    public int retry_after;
     public int code;
 }
 
@@ -206,6 +217,10 @@ public class UserDatum
     public string email;
     public string source;
     public string gender;
+    public string date_of_birth;
+    public string state;
+    public string city;
+    public string country_code;
     public string profile_pic;
     public string referral_code;
     public string referred_by;
@@ -293,6 +308,7 @@ public class UserBankDetail
     public string ifsc_code;
     public string acc_holder_name;
     public string acc_no;
+    public string upi_id;
     public string passbook_img;
     public string crypto_address;
     public string crypto_wallet_type;
@@ -316,6 +332,21 @@ public class settings
     public string dollar;
     public string referral_link;
     public string referral_id;
+    public string daily_bonus_status;
+    public string app_popop_status;
+    public string app_popup_title;
+    public string app_popup_message;
+    public string app_popup_button_text;
+    public string app_popup_url;
+    public string app_popup_image;
+    public string recovery_has_verified_channel;
+    public string recovery_mobile_verified;
+    public string recovery_email_verified;
+    public string recovery_whatsapp_verified;
+    public string recovery_whatsapp_value;
+    public string recovery_should_show_reminder;
+    public string recovery_reminder_title;
+    public string recovery_reminder_message;
 }
 
 [System.Serializable]
@@ -415,6 +446,21 @@ public class Setting
     public string payumoney_key;
     public string payumoney_salt;
     public string share_text;
+    public string daily_bonus_status;
+    public string app_popop_status;
+    public string app_popup_title;
+    public string app_popup_message;
+    public string app_popup_button_text;
+    public string app_popup_url;
+    public string app_popup_image;
+    public string recovery_has_verified_channel;
+    public string recovery_mobile_verified;
+    public string recovery_email_verified;
+    public string recovery_whatsapp_verified;
+    public string recovery_whatsapp_value;
+    public string recovery_should_show_reminder;
+    public string recovery_reminder_title;
+    public string recovery_reminder_message;
     public string bank_detail_field;
     public string adhar_card_field;
     public string upi_field;

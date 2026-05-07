@@ -59,6 +59,7 @@ namespace LudoClassicOffline
         private float nextRequestsRefreshAt;
         private bool footerAnchorResolved;
         private bool showingFriendsList;
+        private RectTransform listSubPopup;
 
         private void Awake()
         {
@@ -99,6 +100,7 @@ namespace LudoClassicOffline
             requestBadgeText = null;
             toggleCaptionText = null;
             requestBadgeObject = null;
+            listSubPopup = null;
             uiReady = false;
 
             TryBuildUi();
@@ -120,7 +122,7 @@ namespace LudoClassicOffline
                 TryBuildUi();
             }
 
-            if (Time.unscaledTime >= nextRequestsRefreshAt)
+            if (Time.unscaledTime >= nextRequestsRefreshAt && listSubPopup != null && listSubPopup.gameObject.activeSelf)
             {
                 nextRequestsRefreshAt = Time.unscaledTime + 15f;
                 RefreshActiveList();
@@ -320,7 +322,7 @@ namespace LudoClassicOffline
             StretchRect(placeholder.rectTransform, Vector2.zero, Vector2.zero);
 
             TextMeshProUGUI inputText = CreateTmpLabel(textArea, string.Empty, 24, FontStyles.Normal);
-            inputText.color = new Color32(53, 34, 33, 255);
+            inputText.color = new Color32(255, 255, 255, 255);
             StretchRect(inputText.rectTransform, Vector2.zero, Vector2.zero);
 
             playerIdInput.textViewport = textArea;
@@ -371,73 +373,17 @@ namespace LudoClassicOffline
             requestsTabLayout.minWidth = 250f;
             requestsTabLayout.preferredWidth = 250f;
             requestsTabLayout.preferredHeight = 54f;
-            requestsTabButton.onClick.AddListener(() => SetListMode(false));
+            requestsTabButton.onClick.AddListener(() => OpenListSubPopup(false));
 
             friendsTabButton = CreateActionButton(tabRow, "FRIENDS", new Color32(95, 54, 31, 220));
             LayoutElement friendsTabLayout = friendsTabButton.gameObject.AddComponent<LayoutElement>();
             friendsTabLayout.minWidth = 250f;
             friendsTabLayout.preferredWidth = 250f;
             friendsTabLayout.preferredHeight = 54f;
-            friendsTabButton.onClick.AddListener(() => SetListMode(true));
-
-            RectTransform requestsHeader = CreateUiObject("RequestsHeader", rootPanel).AddComponent<RectTransform>();
-            requestsHeader.sizeDelta = new Vector2(0f, 52f);
-            HorizontalLayoutGroup requestsHeaderLayout = requestsHeader.gameObject.AddComponent<HorizontalLayoutGroup>();
-            requestsHeaderLayout.spacing = 10f;
-            requestsHeaderLayout.childControlHeight = true;
-            requestsHeaderLayout.childControlWidth = true;
-            requestsHeaderLayout.childForceExpandHeight = true;
-            requestsHeaderLayout.childForceExpandWidth = false;
-
-            listSectionTitleText = CreateTmpLabel(requestsHeader, "Incoming Requests", 26, FontStyles.Bold);
-            listSectionTitleText.color = new Color32(255, 240, 204, 255);
-            LayoutElement requestsTitleLayout = listSectionTitleText.gameObject.AddComponent<LayoutElement>();
-            requestsTitleLayout.flexibleWidth = 1f;
-
-            Button refreshButton = CreateActionButton(requestsHeader, "REFRESH", new Color32(139, 40, 46, 235));
-            LayoutElement refreshLayout = refreshButton.gameObject.AddComponent<LayoutElement>();
-            refreshLayout.minWidth = 190f;
-            refreshLayout.preferredWidth = 190f;
-            refreshLayout.preferredHeight = 56f;
-            refreshButton.onClick.AddListener(RefreshActiveList);
-
-            RectTransform requestsScrollRoot = CreateUiObject("RequestsScrollRoot", rootPanel).AddComponent<RectTransform>();
-            LayoutElement requestsScrollLayout = requestsScrollRoot.gameObject.AddComponent<LayoutElement>();
-            requestsScrollLayout.preferredHeight = 380f;
-            Image requestsScrollImage = requestsScrollRoot.gameObject.AddComponent<Image>();
-            requestsScrollImage.color = new Color32(59, 18, 25, 150);
-            Mask requestsMask = requestsScrollRoot.gameObject.AddComponent<Mask>();
-            requestsMask.showMaskGraphic = false;
-            ScrollRect requestsScrollRect = requestsScrollRoot.gameObject.AddComponent<ScrollRect>();
-            requestsScrollRect.horizontal = false;
-            requestsScrollRect.movementType = ScrollRect.MovementType.Elastic;
-            requestsScrollRect.inertia = true;
-            requestsScrollRect.decelerationRate = 0.08f;
-            requestsScrollRect.scrollSensitivity = 120f;
-
-            requestsContent = CreateUiObject("RequestsContent", requestsScrollRoot).AddComponent<RectTransform>();
-            VerticalLayoutGroup requestsContentLayout = requestsContent.gameObject.AddComponent<VerticalLayoutGroup>();
-            requestsContentLayout.spacing = 8f;
-            requestsContentLayout.padding = new RectOffset(8, 8, 8, 8);
-            requestsContentLayout.childControlHeight = true;
-            requestsContentLayout.childControlWidth = true;
-            requestsContentLayout.childForceExpandHeight = false;
-            requestsContentLayout.childForceExpandWidth = true;
-            ContentSizeFitter requestsContentFitter = requestsContent.gameObject.AddComponent<ContentSizeFitter>();
-            requestsContentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            requestsContentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
-            requestsContent.anchorMin = new Vector2(0f, 1f);
-            requestsContent.anchorMax = new Vector2(1f, 1f);
-            requestsContent.pivot = new Vector2(0.5f, 1f);
-            requestsContent.anchoredPosition = Vector2.zero;
-            requestsContent.sizeDelta = new Vector2(0f, 0f);
-            requestsScrollRect.viewport = requestsScrollRoot;
-            requestsScrollRect.content = requestsContent;
-
-            requestsStateText = CreateTmpLabel(requestsContent, "Loading requests...", 22, FontStyles.Italic);
-            requestsStateText.color = new Color32(255, 226, 194, 255);
+            friendsTabButton.onClick.AddListener(() => OpenListSubPopup(true));
 
             BuildRoomPopup(rootCanvas.transform);
+            BuildListSubPopup(rootCanvas.transform);
 
             uiReady = true;
             if (toggleButton != null)
@@ -446,8 +392,8 @@ namespace LudoClassicOffline
             }
             SetPanelOpen(false);
             UpdateTogglePlacement();
-            nextRequestsRefreshAt = 0f;
-            SetListMode(false);
+            nextRequestsRefreshAt = float.MaxValue;
+            showingFriendsList = false;
             ApplyResponsiveHomePanelLayout();
         }
 
@@ -462,7 +408,8 @@ namespace LudoClassicOffline
             if (rootCanvas == null) rootCanvas = existingCanvasObject.GetComponent<Canvas>();
             if (rootPanel == null) rootPanel = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel");
             if (roomPopup == null) roomPopup = FindRectTransform(existingCanvasObject.transform, "LudoFriendRoomPopup");
-            if (requestsContent == null) requestsContent = FindRectTransform(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent");
+            if (listSubPopup == null) listSubPopup = FindRectTransform(existingCanvasObject.transform, "LudoFriendListSubPopup");
+            if (requestsContent == null) requestsContent = FindRectTransform(existingCanvasObject.transform, "LudoFriendListSubPopup/ListSubPanel/ListScrollRoot/ListContent");
             if (toggleButton == null) toggleButton = FindButton(existingCanvasObject.transform, "LudoFriendToggle");
             if (addByIdButton == null) addByIdButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/SENDREQUESTButton");
             if (requestsTabButton == null) requestsTabButton = FindButton(existingCanvasObject.transform, "LudoFriendPanel/TabRow/REQUESTSButton");
@@ -474,9 +421,9 @@ namespace LudoClassicOffline
             TextMeshProUGUI[] resultLabels = resultCard != null ? resultCard.GetComponentsInChildren<TextMeshProUGUI>(true) : new TextMeshProUGUI[0];
             if (resultTitleText == null) resultTitleText = resultLabels.Length > 0 ? resultLabels[0] : null;
             if (resultSubtitleText == null) resultSubtitleText = resultLabels.Length > 1 ? resultLabels[1] : null;
-            if (listSectionTitleText == null) listSectionTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsHeader/TMPLabel");
+            if (listSectionTitleText == null) listSectionTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendListSubPopup/ListSubPanel/ListSubHeader/TitleBadge/TMPLabel");
             if (roomPopupTitleText == null) roomPopupTitleText = FindTmp(existingCanvasObject.transform, "LudoFriendRoomPopup/TMPLabel");
-            if (requestsStateText == null) requestsStateText = FindTmp(existingCanvasObject.transform, "LudoFriendPanel/RequestsScrollRoot/RequestsContent/TMPLabel");
+            if (requestsStateText == null) requestsStateText = FindTmp(existingCanvasObject.transform, "LudoFriendListSubPopup/ListSubPanel/ListScrollRoot/ListContent/TMPLabel");
             if (requestBadgeObject == null) requestBadgeObject = FindByPath(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge")?.gameObject;
             if (requestBadgeText == null) requestBadgeText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/RequestBadge/TMPLabel");
             if (toggleCaptionText == null) toggleCaptionText = FindTmp(existingCanvasObject.transform, "LudoFriendToggle/TMPLabel");
@@ -484,6 +431,7 @@ namespace LudoClassicOffline
             if (rootCanvas == null
                 || rootPanel == null
                 || roomPopup == null
+                || listSubPopup == null
                 || requestsContent == null
                 || toggleButton == null
                 || addByIdButton == null
@@ -510,6 +458,18 @@ namespace LudoClassicOffline
                 && roomAddFriendButton != null)
             {
                 WirePersistentUiListeners();
+            }
+
+            // If existing canvas lacks the list sub-popup, add it now (don't destroy the working canvas)
+            if (listSubPopup == null && rootCanvas != null)
+            {
+                // Hide stale inline list section if present
+                GameObject inlineHeader = existingCanvasObject.transform.Find("LudoFriendPanel/RequestsHeader")?.gameObject;
+                if (inlineHeader != null) inlineHeader.SetActive(false);
+                GameObject inlineScroll = existingCanvasObject.transform.Find("LudoFriendPanel/RequestsScrollRoot")?.gameObject;
+                if (inlineScroll != null) inlineScroll.SetActive(false);
+
+                BuildListSubPopup(rootCanvas.transform);
             }
 
             if (requestsStateText == null)
@@ -542,13 +502,15 @@ namespace LudoClassicOffline
             addByIdButton.onClick.RemoveAllListeners();
             addByIdButton.onClick.AddListener(HandleAddByIdClicked);
             requestsTabButton.onClick.RemoveAllListeners();
-            requestsTabButton.onClick.AddListener(() => SetListMode(false));
+            requestsTabButton.onClick.AddListener(() => OpenListSubPopup(false));
             friendsTabButton.onClick.RemoveAllListeners();
-            friendsTabButton.onClick.AddListener(() => SetListMode(true));
+            friendsTabButton.onClick.AddListener(() => OpenListSubPopup(true));
             roomAddFriendButton.onClick.RemoveAllListeners();
             roomAddFriendButton.onClick.AddListener(HandleRoomAddFriendClicked);
 
-            Button refreshButton = FindButton(rootCanvas.transform, "LudoFriendPanel/RequestsHeader/REFRESHButton");
+            Button refreshButton = listSubPopup != null
+                ? FindButton(listSubPopup, "ListSubPanel/ListSubSectionHeader/REFRESHButton")
+                : FindButton(rootCanvas.transform, "LudoFriendListSubPopup/ListSubPanel/ListSubSectionHeader/REFRESHButton");
             if (refreshButton != null)
             {
                 refreshButton.onClick.RemoveAllListeners();
@@ -625,6 +587,146 @@ namespace LudoClassicOffline
 
             Button closeButton = CreateActionButton(roomPopup, "CLOSE", new Color32(97, 103, 112, 255));
             closeButton.onClick.AddListener(HideRoomPopup);
+        }
+
+        private void BuildListSubPopup(Transform parent)
+        {
+            // Full-screen dimmer overlay
+            GameObject overlayObject = CreateUiObject("LudoFriendListSubPopup", parent);
+            listSubPopup = overlayObject.AddComponent<RectTransform>();
+            listSubPopup.anchorMin = Vector2.zero;
+            listSubPopup.anchorMax = Vector2.one;
+            listSubPopup.offsetMin = Vector2.zero;
+            listSubPopup.offsetMax = Vector2.zero;
+            Image overlayImage = overlayObject.AddComponent<Image>();
+            overlayImage.color = new Color32(0, 0, 0, 180);
+            Button overlayDismissButton = overlayObject.AddComponent<Button>();
+            overlayDismissButton.transition = Selectable.Transition.None;
+            overlayDismissButton.onClick.AddListener(CloseListSubPopup);
+
+            // Centered panel
+            GameObject panelObject = CreateUiObject("ListSubPanel", listSubPopup);
+            RectTransform panelRect = panelObject.AddComponent<RectTransform>();
+            panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+            panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+            panelRect.pivot = new Vector2(0.5f, 0.5f);
+            panelRect.sizeDelta = new Vector2(1000f, 1300f);
+            panelRect.anchoredPosition = Vector2.zero;
+            Image panelImage = panelObject.AddComponent<Image>();
+            panelImage.color = new Color32(33, 23, 25, 245);
+            Sprite panelBg = ResolveBoxSprite();
+            if (panelBg == null) panelBg = ResolvePopupBackgroundSprite("home-notification-banner-bg");
+            if (panelBg != null)
+            {
+                panelImage.sprite = panelBg;
+                panelImage.type = Image.Type.Simple;
+                panelImage.preserveAspect = false;
+            }
+            VerticalLayoutGroup panelLayout = panelObject.AddComponent<VerticalLayoutGroup>();
+            panelLayout.padding = new RectOffset(48, 48, 34, 34);
+            panelLayout.spacing = 16f;
+            panelLayout.childControlHeight = false;
+            panelLayout.childControlWidth = true;
+            panelLayout.childForceExpandHeight = false;
+            panelLayout.childForceExpandWidth = true;
+
+            // Stop clicks inside panel from dismissing overlay
+            Button panelBlocker = panelObject.AddComponent<Button>();
+            panelBlocker.transition = Selectable.Transition.None;
+            panelBlocker.onClick.RemoveAllListeners();
+
+            // Header row: title + close
+            RectTransform headerRow = CreateUiObject("ListSubHeader", panelRect).AddComponent<RectTransform>();
+            headerRow.sizeDelta = new Vector2(0f, 88f);
+
+            GameObject titleBadge = CreateUiObject("TitleBadge", headerRow);
+            RectTransform titleBadgeRect = titleBadge.AddComponent<RectTransform>();
+            titleBadgeRect.anchorMin = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.anchorMax = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.pivot = new Vector2(0.5f, 0.5f);
+            titleBadgeRect.sizeDelta = new Vector2(440f, 76f);
+            titleBadgeRect.anchoredPosition = Vector2.zero;
+            Image titleBadgeImage = titleBadge.AddComponent<Image>();
+            titleBadgeImage.color = new Color32(130, 80, 10, 230);
+            Outline titleBadgeOutline = titleBadge.AddComponent<Outline>();
+            titleBadgeOutline.effectColor = new Color32(255, 200, 80, 200);
+            titleBadgeOutline.effectDistance = new Vector2(2f, -2f);
+            TextMeshProUGUI titleText = CreateTmpLabel(titleBadgeRect, "Incoming Requests", 28, FontStyles.Bold);
+            titleText.alignment = TextAlignmentOptions.Center;
+            titleText.color = new Color32(255, 240, 180, 255);
+            StretchRect(titleText.rectTransform, new Vector2(8f, 4f), new Vector2(-8f, -4f));
+            listSectionTitleText = titleText;
+
+            Button closeBtn = CreateActionButton(headerRow, "X", new Color32(180, 30, 40, 235));
+            RectTransform closeRect = closeBtn.GetComponent<RectTransform>();
+            closeRect.anchorMin = new Vector2(1f, 1f);
+            closeRect.anchorMax = new Vector2(1f, 1f);
+            closeRect.pivot = new Vector2(1f, 1f);
+            closeRect.sizeDelta = new Vector2(78f, 78f);
+            closeRect.anchoredPosition = new Vector2(-4f, -4f);
+            closeBtn.onClick.AddListener(CloseListSubPopup);
+
+            // Section header: label + refresh
+            RectTransform sectionHeader = CreateUiObject("ListSubSectionHeader", panelRect).AddComponent<RectTransform>();
+            sectionHeader.sizeDelta = new Vector2(0f, 56f);
+            HorizontalLayoutGroup sectionLayout = sectionHeader.gameObject.AddComponent<HorizontalLayoutGroup>();
+            sectionLayout.spacing = 10f;
+            sectionLayout.childControlHeight = true;
+            sectionLayout.childControlWidth = true;
+            sectionLayout.childForceExpandHeight = true;
+            sectionLayout.childForceExpandWidth = false;
+
+            TextMeshProUGUI sectionLabel = CreateTmpLabel(sectionHeader, "Showing list...", 20, FontStyles.Italic);
+            sectionLabel.color = new Color32(255, 226, 194, 200);
+            LayoutElement sectionLabelLayout = sectionLabel.gameObject.AddComponent<LayoutElement>();
+            sectionLabelLayout.flexibleWidth = 1f;
+
+            Button refreshBtn = CreateActionButton(sectionHeader, "REFRESH", new Color32(139, 40, 46, 235));
+            LayoutElement refreshLayout = refreshBtn.gameObject.AddComponent<LayoutElement>();
+            refreshLayout.minWidth = 190f;
+            refreshLayout.preferredWidth = 190f;
+            refreshLayout.preferredHeight = 56f;
+            refreshBtn.onClick.AddListener(RefreshActiveList);
+
+            // Scroll area
+            RectTransform scrollRoot = CreateUiObject("ListScrollRoot", panelRect).AddComponent<RectTransform>();
+            scrollRoot.sizeDelta = new Vector2(0f, 980f);
+            LayoutElement scrollLayout = scrollRoot.gameObject.AddComponent<LayoutElement>();
+            scrollLayout.preferredHeight = 980f;
+            Image scrollBg = scrollRoot.gameObject.AddComponent<Image>();
+            scrollBg.color = new Color32(59, 18, 25, 150);
+            Mask scrollMask = scrollRoot.gameObject.AddComponent<Mask>();
+            scrollMask.showMaskGraphic = false;
+            ScrollRect scrollRect = scrollRoot.gameObject.AddComponent<ScrollRect>();
+            scrollRect.horizontal = false;
+            scrollRect.movementType = ScrollRect.MovementType.Elastic;
+            scrollRect.inertia = true;
+            scrollRect.decelerationRate = 0.08f;
+            scrollRect.scrollSensitivity = 120f;
+
+            requestsContent = CreateUiObject("ListContent", scrollRoot).AddComponent<RectTransform>();
+            VerticalLayoutGroup contentLayout = requestsContent.gameObject.AddComponent<VerticalLayoutGroup>();
+            contentLayout.spacing = 8f;
+            contentLayout.padding = new RectOffset(8, 8, 8, 8);
+            contentLayout.childControlHeight = true;
+            contentLayout.childControlWidth = true;
+            contentLayout.childForceExpandHeight = false;
+            contentLayout.childForceExpandWidth = true;
+            ContentSizeFitter contentFitter = requestsContent.gameObject.AddComponent<ContentSizeFitter>();
+            contentFitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            contentFitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            requestsContent.anchorMin = new Vector2(0f, 1f);
+            requestsContent.anchorMax = new Vector2(1f, 1f);
+            requestsContent.pivot = new Vector2(0.5f, 1f);
+            requestsContent.anchoredPosition = Vector2.zero;
+            requestsContent.sizeDelta = new Vector2(0f, 0f);
+            scrollRect.viewport = scrollRoot;
+            scrollRect.content = requestsContent;
+
+            requestsStateText = CreateTmpLabel(requestsContent, "Loading...", 22, FontStyles.Italic);
+            requestsStateText.color = new Color32(255, 226, 194, 255);
+
+            listSubPopup.gameObject.SetActive(false);
         }
 
         private void BuildToggleIcon(RectTransform toggleRect)
@@ -855,15 +957,14 @@ namespace LudoClassicOffline
             {
                 ApplyResponsiveHomePanelLayout();
             }
+            else
+            {
+                CloseListSubPopup();
+            }
 
             if (rootPanel != null)
             {
                 rootPanel.gameObject.SetActive(shouldOpen);
-            }
-
-            if (shouldOpen)
-            {
-                RefreshActiveList();
             }
         }
 
@@ -949,28 +1050,50 @@ namespace LudoClassicOffline
             SetButtonLayout(requestsTabButton, portrait ? 300f : 250f, portrait ? 76f : 54f, portrait ? 28f : 23f);
             SetButtonLayout(friendsTabButton, portrait ? 300f : 250f, portrait ? 76f : 54f, portrait ? 28f : 23f);
 
-            SetRectHeight(FindRectTransform(rootPanel, "RequestsHeader"), portrait ? 78f : 56f);
-            if (listSectionTitleText != null)
+            // Sub-popup layout
+            if (listSubPopup != null)
             {
-                listSectionTitleText.fontSize = portrait ? 34f : 31f;
-                listSectionTitleText.fontStyle = FontStyles.Bold;
-            }
-            SetButtonLayout(FindButton(rootPanel, "RequestsHeader/REFRESHButton"), portrait ? 210f : 190f, portrait ? 72f : 56f, portrait ? 25f : 21f);
-
-            RectTransform scrollRoot = FindRectTransform(rootPanel, "RequestsScrollRoot");
-            SetLayoutHeight(scrollRoot, portrait ? 430f : 380f);
-            if (requestsContent != null)
-            {
-                VerticalLayoutGroup contentLayout = requestsContent.GetComponent<VerticalLayoutGroup>();
-                if (contentLayout != null)
+                RectTransform subPanel = FindRectTransform(listSubPopup, "ListSubPanel");
+                if (subPanel != null)
                 {
-                    contentLayout.spacing = portrait ? 12f : 8f;
-                    contentLayout.padding = portrait ? new RectOffset(12, 12, 12, 12) : new RectOffset(8, 8, 8, 8);
+                    subPanel.sizeDelta = portrait ? new Vector2(1000f, 1300f) : new Vector2(1560f, 920f);
+                    VerticalLayoutGroup subLayout = subPanel.GetComponent<VerticalLayoutGroup>();
+                    if (subLayout != null)
+                    {
+                        subLayout.padding = portrait ? new RectOffset(48, 48, 34, 34) : new RectOffset(44, 44, 26, 24);
+                        subLayout.spacing = portrait ? 16f : 10f;
+                    }
                 }
-            }
-            if (requestsStateText != null)
-            {
-                requestsStateText.fontSize = portrait ? 30f : 26f;
+
+                SetRectHeight(FindRectTransform(listSubPopup, "ListSubPanel/ListSubHeader"), portrait ? 104f : 88f);
+                SetRectHeight(FindRectTransform(listSubPopup, "ListSubPanel/ListSubSectionHeader"), portrait ? 78f : 56f);
+
+                if (listSectionTitleText != null)
+                {
+                    listSectionTitleText.fontSize = portrait ? 34f : 31f;
+                    listSectionTitleText.fontStyle = FontStyles.Bold;
+                }
+                SetButtonLayout(FindButton(listSubPopup, "ListSubPanel/ListSubSectionHeader/REFRESHButton"), portrait ? 210f : 190f, portrait ? 72f : 56f, portrait ? 25f : 21f);
+
+                RectTransform scrollRoot = FindRectTransform(listSubPopup, "ListSubPanel/ListScrollRoot");
+                SetRectHeight(scrollRoot, portrait ? 980f : 680f);
+
+                if (requestsContent != null)
+                {
+                    VerticalLayoutGroup contentLayout = requestsContent.GetComponent<VerticalLayoutGroup>();
+                    if (contentLayout != null)
+                    {
+                        contentLayout.spacing = portrait ? 12f : 8f;
+                        contentLayout.padding = portrait ? new RectOffset(12, 12, 12, 12) : new RectOffset(8, 8, 8, 8);
+                    }
+                }
+
+                if (requestsStateText != null)
+                {
+                    requestsStateText.fontSize = portrait ? 30f : 26f;
+                }
+
+                LayoutRebuilder.ForceRebuildLayoutImmediate(listSubPopup);
             }
 
             Canvas.ForceUpdateCanvases();
@@ -988,7 +1111,7 @@ namespace LudoClassicOffline
             {
                 input.textComponent.fontSize = fontSize;
                 input.textComponent.fontStyle = FontStyles.Bold;
-                input.textComponent.color = new Color32(45, 29, 29, 255);
+                input.textComponent.color = new Color32(255, 255, 255, 255);
                 input.textComponent.enableAutoSizing = false;
             }
 
@@ -1298,7 +1421,19 @@ namespace LudoClassicOffline
 
         public void SetListMode(bool showFriends)
         {
+            OpenListSubPopup(showFriends);
+        }
+
+        private void OpenListSubPopup(bool showFriends)
+        {
             showingFriendsList = showFriends;
+            nextRequestsRefreshAt = Time.unscaledTime + 15f;
+
+            if (listSubPopup != null)
+            {
+                listSubPopup.gameObject.SetActive(true);
+                ApplyResponsiveHomePanelLayout();
+            }
 
             if (listSectionTitleText != null)
             {
@@ -1308,6 +1443,14 @@ namespace LudoClassicOffline
             SetTabVisualState(requestsTabButton, !showFriends);
             SetTabVisualState(friendsTabButton, showFriends);
             RefreshActiveList();
+        }
+
+        private void CloseListSubPopup()
+        {
+            if (listSubPopup != null)
+            {
+                listSubPopup.gameObject.SetActive(false);
+            }
         }
 
         private void RenderRequests(LudoFriendApiResult<List<LudoFriendRequestData>> result)
@@ -1340,8 +1483,15 @@ namespace LudoClassicOffline
                 }
 
                 bool isIncoming = IsLocalUser(item.receiver, localUserId);
-
                 bool isPending = string.Equals(item.status, "pending", StringComparison.OrdinalIgnoreCase);
+
+                // Show: incoming pending (with accept/reject) OR outgoing pending (so sender can see their sent request)
+                // Skip: accepted/rejected — those are now friends or dismissed
+                if (!isPending)
+                {
+                    continue;
+                }
+
                 if (isIncoming && isPending)
                 {
                     pendingIncomingCount++;
@@ -1417,20 +1567,20 @@ namespace LudoClassicOffline
             cardLayout.childForceExpandHeight = false;
             cardLayout.childForceExpandWidth = true;
             LayoutElement cardElement = card.gameObject.AddComponent<LayoutElement>();
-            cardElement.minHeight = isIncoming && isPending ? 132f : 82f;
+            cardElement.minHeight = isIncoming && isPending ? 160f : 96f;
 
             string actorName = isIncoming
                 ? ResolveDisplayName(request.sender)
                 : ResolveDisplayName(request.receiver);
 
-            TextMeshProUGUI title = CreateTmpLabel(card, actorName, 18, FontStyles.Bold);
+            TextMeshProUGUI title = CreateTmpLabel(card, actorName, 24, FontStyles.Bold);
             title.color = new Color32(255, 241, 214, 255);
             TextMeshProUGUI subtitle = CreateTmpLabel(
                 card,
                 isIncoming
                     ? "sent you a friend request"
                     : "request status: " + (request.status ?? "pending"),
-                14,
+                20,
                 FontStyles.Normal
             );
             subtitle.color = new Color32(255, 223, 196, 255);
@@ -1438,35 +1588,32 @@ namespace LudoClassicOffline
             string identifier = isIncoming
                 ? (request.sender?.user_code ?? request.sender?.username)
                 : (request.receiver?.user_code ?? request.receiver?.username);
-            TextMeshProUGUI meta = CreateTmpLabel(card, "ID: " + (identifier ?? "-"), 13, FontStyles.Italic);
+            TextMeshProUGUI meta = CreateTmpLabel(card, "ID: " + (identifier ?? "-"), 18, FontStyles.Italic);
             meta.color = new Color32(240, 199, 177, 255);
 
             if (isIncoming && isPending)
             {
                 RectTransform actions = CreateUiObject("Actions", card).AddComponent<RectTransform>();
                 LayoutElement actionsElement = actions.gameObject.AddComponent<LayoutElement>();
-                actionsElement.preferredHeight = 52f;
-                actionsElement.minHeight = 52f;
+                actionsElement.preferredHeight = 56f;
+                actionsElement.minHeight = 56f;
                 HorizontalLayoutGroup actionsLayout = actions.gameObject.AddComponent<HorizontalLayoutGroup>();
-                actionsLayout.spacing = 16f;
+                actionsLayout.spacing = 12f;
+                actionsLayout.padding = new RectOffset(0, 0, 4, 0);
                 actionsLayout.childControlHeight = true;
-                actionsLayout.childControlWidth = false;
-                actionsLayout.childForceExpandHeight = false;
-                actionsLayout.childForceExpandWidth = false;
+                actionsLayout.childControlWidth = true;
+                actionsLayout.childForceExpandHeight = true;
+                actionsLayout.childForceExpandWidth = true;
                 actionsLayout.childAlignment = TextAnchor.MiddleCenter;
 
-                Button acceptButton = CreateActionButton(actions, "ACCEPT", new Color32(54, 126, 72, 235));
-                Button rejectButton = CreateActionButton(actions, "REJECT", new Color32(145, 45, 53, 235));
-                LayoutElement acceptLayout = acceptButton.gameObject.AddComponent<LayoutElement>();
-                acceptLayout.minWidth = 180f;
-                acceptLayout.preferredWidth = 180f;
-                acceptLayout.minHeight = 52f;
-                acceptLayout.preferredHeight = 52f;
-                LayoutElement rejectLayout = rejectButton.gameObject.AddComponent<LayoutElement>();
-                rejectLayout.minWidth = 180f;
-                rejectLayout.preferredWidth = 180f;
-                rejectLayout.minHeight = 52f;
-                rejectLayout.preferredHeight = 52f;
+                Button acceptButton = CreateActionButton(actions, "✓  ACCEPT", new Color32(34, 120, 60, 235));
+                Button rejectButton = CreateActionButton(actions, "✗  REJECT", new Color32(145, 45, 53, 235));
+
+                // Ensure button text is properly sized
+                var acceptTmp = acceptButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (acceptTmp != null) { acceptTmp.fontSize = 20; acceptTmp.fontStyle = FontStyles.Bold; }
+                var rejectTmp = rejectButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (rejectTmp != null) { rejectTmp.fontSize = 20; rejectTmp.fontStyle = FontStyles.Bold; }
 
                 acceptButton.onClick.AddListener(() => RespondToRequest(request.request_uuid, "accept"));
                 rejectButton.onClick.AddListener(() => RespondToRequest(request.request_uuid, "reject"));

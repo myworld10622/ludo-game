@@ -19,19 +19,17 @@ public class TicketManager : MonoBehaviour
     public GameObject ticketlogoImage;
     public Sprite defaultImage;
     private string categoryNumber;
+    private GameObject _supportRoot;
 
     private void OnEnable()
     {
         ResetTicketImage();
-        DisplayTicketsAsync();
+        OpenTelegramSupportAndClose();
     }
 
     public void OnUpdateTicketImageButtonClick(string target)
     {
-        ImageUtil.Instance.OpenGallery("ticket", ticketImage, ticketlogoImage);
-
-        ticketImage.transform.parent.gameObject.SetActive(true);
-        ticketlogoImage.SetActive(false);
+        OpenTelegramSupportAndClose();
     }
 
     public async Task UpdateTicketImage(string target)
@@ -41,83 +39,192 @@ public class TicketManager : MonoBehaviour
 
     public void GenerateTicket()
     {
-        if (string.IsNullOrWhiteSpace(descriptionField.text))
-        {
-            LoaderUtil.instance.ShowToast("Please Enter Description and Screenshot");
-            return;
-        }
-        else if (ticketlogoImage.gameObject.activeInHierarchy)
-        {
-            LoaderUtil.instance.ShowToast("Please upload Screenshot");
-            return;
-        }
-
-        GenerateTicketAsync();
+        OpenTelegramSupportAndClose();
     }
 
     private async void GenerateTicketAsync()
     {
-        categoryNumber = GetCategoryNumber(categoryLabel.text);
-        if (string.IsNullOrEmpty(categoryNumber))
-        {
-            LoaderUtil.instance.ShowToast("Invalid Category");
-            return;
-        }
-
-        string url = Configuration.createticket;
-        var formData = new Dictionary<string, string>
-        {
-            { "user_id", Configuration.GetId() },
-            { "token", Configuration.GetToken() },
-            { "description", descriptionField.text },
-            { "category", categoryNumber },
-        };
-
-        try
-        {
-            var response = await APIManager.Instance.Post<messageprint>(url, formData);
-            LoaderUtil.instance.ShowToast(response.message);
-            DisplayTicketsAsync();
-        }
-        catch (Exception ex)
-        {
-            CommonUtil.CheckLog($"Failed to create ticket: {ex.Message}");
-        }
+        OpenTelegramSupport();
     }
 
     private async void DisplayTicketsAsync()
     {
-        generateTicketPanel.SetActive(false);
-        string url = Configuration.getticket;
-        var formData = new Dictionary<string, string>
-        {
-            { "user_id", Configuration.GetId() },
-            { "token", Configuration.GetToken() },
-        };
-
-        try
-        {
-            var ticketData = await APIManager.Instance.Post<TicketRootObject>(url, formData);
-            ClearExistingTickets();
-
-            for (int i = 0; i < ticketData.tickets.Count; i++)
-            {
-                CreateTicketPrefab(ticketData.tickets[i]);
-            }
-            //PopUpUtil.ButtonCancel(generateTicketPanel);
-        }
-        catch (Exception ex)
-        {
-            CommonUtil.CheckLog($"Failed to fetch tickets: {ex.Message}");
-        }
+        OpenTelegramSupportAndClose();
     }
 
     public void ResetTicketImage()
     {
-        descriptionField.text = "";
-        ticketImage.sprite = defaultImage;
-        ticketlogoImage.SetActive(true);
-        ticketImage.transform.parent.gameObject.SetActive(false);
+        if (descriptionField != null)
+        {
+            descriptionField.text = "";
+        }
+        if (ticketImage != null)
+        {
+            ticketImage.sprite = defaultImage;
+            if (ticketImage.transform.parent != null)
+            {
+                ticketImage.transform.parent.gameObject.SetActive(false);
+            }
+        }
+        if (ticketlogoImage != null)
+        {
+            ticketlogoImage.SetActive(true);
+        }
+    }
+
+    private void ShowTelegramSupportView()
+    {
+        ClearExistingTickets();
+        if (generateTicketPanel != null)
+        {
+            generateTicketPanel.SetActive(false);
+        }
+        if (content != null && content.parent != null)
+        {
+            content.parent.gameObject.SetActive(false);
+        }
+
+        EnsureSupportView();
+        if (_supportRoot != null)
+        {
+            _supportRoot.SetActive(true);
+            _supportRoot.transform.SetAsLastSibling();
+        }
+    }
+
+    private void EnsureSupportView()
+    {
+        if (_supportRoot != null)
+        {
+            return;
+        }
+
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        Transform panelRoot = transform;
+
+        _supportRoot = new GameObject(
+            "Telegram-Support-View",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        _supportRoot.transform.SetParent(panelRoot, false);
+        RectTransform rootRect = _supportRoot.GetComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(0.5f, 0.5f);
+        rootRect.anchorMax = new Vector2(0.5f, 0.5f);
+        rootRect.pivot = new Vector2(0.5f, 0.5f);
+        rootRect.sizeDelta = new Vector2(760f, 520f);
+        rootRect.anchoredPosition = new Vector2(0f, -20f);
+        Image rootImage = _supportRoot.GetComponent<Image>();
+        rootImage.color = new Color32(60, 10, 18, 220);
+
+        GameObject title = CreateSupportText(_supportRoot.transform, font, "Support Chat", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+        RectTransform titleRect = title.GetComponent<RectTransform>();
+        titleRect.anchorMin = new Vector2(0.5f, 1f);
+        titleRect.anchorMax = new Vector2(0.5f, 1f);
+        titleRect.pivot = new Vector2(0.5f, 1f);
+        titleRect.sizeDelta = new Vector2(420f, 60f);
+        titleRect.anchoredPosition = new Vector2(0f, -40f);
+
+        GameObject subtitle = CreateSupportText(_supportRoot.transform, font, "For any issue, contact support directly on Telegram.", 28, new Color32(255, 228, 190, 255), TextAnchor.MiddleCenter, FontStyle.Normal);
+        RectTransform subtitleRect = subtitle.GetComponent<RectTransform>();
+        subtitleRect.anchorMin = new Vector2(0.5f, 1f);
+        subtitleRect.anchorMax = new Vector2(0.5f, 1f);
+        subtitleRect.pivot = new Vector2(0.5f, 1f);
+        subtitleRect.sizeDelta = new Vector2(640f, 90f);
+        subtitleRect.anchoredPosition = new Vector2(0f, -120f);
+
+        GameObject handle = CreateSupportText(_supportRoot.transform, font, "@John_bz1122", 32, new Color32(255, 196, 90, 255), TextAnchor.MiddleCenter, FontStyle.Bold);
+        RectTransform handleRect = handle.GetComponent<RectTransform>();
+        handleRect.anchorMin = new Vector2(0.5f, 1f);
+        handleRect.anchorMax = new Vector2(0.5f, 1f);
+        handleRect.pivot = new Vector2(0.5f, 1f);
+        handleRect.sizeDelta = new Vector2(360f, 54f);
+        handleRect.anchoredPosition = new Vector2(0f, -210f);
+
+        Button contactButton = CreateSupportButton(_supportRoot.transform, font, "Contact Here", new Vector2(360f, 92f), new Vector2(0f, -300f), new Color32(24, 128, 42, 255));
+        contactButton.onClick.AddListener(OpenTelegramSupport);
+
+        Button supportButton = CreateSupportButton(_supportRoot.transform, font, "Support Chat", new Vector2(360f, 92f), new Vector2(0f, -410f), new Color32(118, 18, 28, 255));
+        supportButton.onClick.AddListener(OpenTelegramSupport);
+
+        _supportRoot.SetActive(false);
+    }
+
+    private void OpenTelegramSupport()
+    {
+        CommonUtil.CheckLog("Opening Telegram support " + Configuration.TelegramSupportHandle);
+        Application.OpenURL(Configuration.TelegramSupportUrl);
+    }
+
+    private void OpenTelegramSupportAndClose()
+    {
+        OpenTelegramSupport();
+        PopUpUtil.ButtonCancel(gameObject);
+    }
+
+    private static GameObject CreateSupportText(Transform parent, Font font, string value, int fontSize, Color color, TextAnchor anchor, FontStyle style)
+    {
+        GameObject go = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        go.transform.SetParent(parent, false);
+        TextMeshProUGUI text = go.GetComponent<TextMeshProUGUI>();
+        text.text = value;
+        text.fontSize = fontSize;
+        text.color = color;
+        text.alignment = anchor switch
+        {
+            TextAnchor.MiddleCenter => TextAlignmentOptions.Center,
+            TextAnchor.MiddleLeft => TextAlignmentOptions.Left,
+            _ => TextAlignmentOptions.Center
+        };
+        text.fontStyle = style == FontStyle.Bold ? FontStyles.Bold : FontStyles.Normal;
+        text.enableWordWrapping = true;
+        return go;
+    }
+
+    private static Button CreateSupportButton(Transform parent, Font font, string label, Vector2 size, Vector2 anchoredPosition, Color32 color)
+    {
+        GameObject buttonGo = new GameObject(
+            label.Replace(" ", string.Empty) + "-Button",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button),
+            typeof(Outline)
+        );
+        buttonGo.transform.SetParent(parent, false);
+        RectTransform rect = buttonGo.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 1f);
+        rect.anchorMax = new Vector2(0.5f, 1f);
+        rect.pivot = new Vector2(0.5f, 1f);
+        rect.sizeDelta = size;
+        rect.anchoredPosition = anchoredPosition;
+
+        Image image = buttonGo.GetComponent<Image>();
+        image.color = color;
+        image.type = Image.Type.Sliced;
+
+        Outline outline = buttonGo.GetComponent<Outline>();
+        outline.effectColor = new Color32(255, 190, 90, 120);
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        GameObject textObj = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(TextMeshProUGUI));
+        textObj.transform.SetParent(buttonGo.transform, false);
+        RectTransform textRect = textObj.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI text = textObj.GetComponent<TextMeshProUGUI>();
+        text.text = label;
+        text.fontSize = 30;
+        text.color = Color.white;
+        text.alignment = TextAlignmentOptions.Center;
+        text.fontStyle = FontStyles.Bold;
+        text.raycastTarget = false;
+
+        return buttonGo.GetComponent<Button>();
     }
 
     private void ClearExistingTickets()

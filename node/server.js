@@ -241,6 +241,7 @@ require("./sockets/ludoOldSocket.js")(
   BASE_URL
 );
 require("./sockets/ludoSocket.js")(ludo_socket, request, timer, BASE_URL);
+require("./sockets/privateTableSocket.js")(ludo_socket);
 require("./sockets/ludoRoomSocket.js")(ludo_v2_socket);
 require("./sockets/pokerSocket.js")(poker_socket, request, timer, BASE_URL);
 require("./sockets/betreenoSocket.js")(

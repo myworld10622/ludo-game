@@ -10,6 +10,9 @@ using UnityEngine.Networking;
 
 public class APIManager : MonoBehaviour
 {
+    private static readonly TimeSpan DefaultConnectTimeout = TimeSpan.FromSeconds(8);
+    private static readonly TimeSpan DefaultRequestTimeout = TimeSpan.FromSeconds(20);
+
     private static APIManager _instance;
     public static APIManager Instance
     {
@@ -55,6 +58,8 @@ public class APIManager : MonoBehaviour
         var request = HTTPRequest.CreatePost(url);
         string json = DefaultApiErrorMessage;
         request.SetHeader("Token", Configuration.TokenLoginHeader);
+        request.TimeoutSettings.ConnectTimeout = DefaultConnectTimeout;
+        request.TimeoutSettings.Timeout = DefaultRequestTimeout;
         request.UploadSettings.UploadStream = form;
         try
         {
@@ -104,6 +109,8 @@ public class APIManager : MonoBehaviour
         var request = HTTPRequest.CreatePost(url);
         string json = DefaultApiErrorMessage;
         request.SetHeader("Token", token);
+        request.TimeoutSettings.ConnectTimeout = DefaultConnectTimeout;
+        request.TimeoutSettings.Timeout = DefaultRequestTimeout;
         request.UploadSettings.UploadStream = form;
         try
         {
@@ -151,6 +158,8 @@ public class APIManager : MonoBehaviour
         // Set the headers to indicate JSON content
         request.SetHeader("Token", Configuration.TokenLoginHeader);
         request.SetHeader("Content-Type", "application/json");
+        request.TimeoutSettings.ConnectTimeout = DefaultConnectTimeout;
+        request.TimeoutSettings.Timeout = DefaultRequestTimeout;
 
         // Upload raw JSON data as the request body
         request.UploadSettings.UploadStream = new System.IO.MemoryStream(

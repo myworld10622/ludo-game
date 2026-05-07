@@ -2,9 +2,11 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using Gpm.WebView;
 using Mkey;
 using TMPro;
 using Unity.Burst.Intrinsics;
@@ -27,6 +29,8 @@ public class PaymentManager : MonoBehaviour
     public GameObject manual_ss_logo;
     private int automatic_amount,
         manual_amount;
+    private string _selectedAutomaticPlanId = string.Empty;
+    private string _selectedAutomaticAmount = string.Empty;
     public GameObject transaction_prefab;
     public Transform transaction_parent;
 
@@ -63,11 +67,38 @@ public class PaymentManager : MonoBehaviour
     private bool _lastLayoutPortrait = true;
     private bool _isApplyingLayout = false;
     private bool _layoutInitialized = false;
+    private int _pendingGatewayOrderId;
+    private string _pendingGatewayTransactionId;
+    private bool _isAutomaticStatusCheckRunning;
+    private bool _automaticGatewayFlowOpen;
+    private bool _isManualPaymentSubmitting;
+    private GameObject _transferQuickButton;
+    private GameObject _transferPopupRoot;
+    private GameObject _transferConfirmPopupRoot;
+    private InputField _transferQueryInput;
+    private InputField _transferAmountInput;
+    private Text _transferLookupSummaryText;
+    private Text _transferHistoryEmptyText;
+    private RectTransform _transferHistoryContent;
+    private GameObject _transferHistorySectionRoot;
+    private TransferPlayer _selectedTransferPlayer;
+    private bool _isTransferLookupRunning;
+    private bool _isTransferSubmitRunning;
 
     void OnDisable()
     {
         if (_extrasRoot != null) { RemoveGeneratedObject(_extrasRoot); _extrasRoot = null; }
+        if (_transferQuickButton != null) { RemoveGeneratedObject(_transferQuickButton); _transferQuickButton = null; }
+        if (_transferPopupRoot != null) { RemoveGeneratedObject(_transferPopupRoot); _transferPopupRoot = null; }
+        if (_transferConfirmPopupRoot != null) { RemoveGeneratedObject(_transferConfirmPopupRoot); _transferConfirmPopupRoot = null; }
         _upiTab = null; _cryptoTab = null;
+        _transferQueryInput = null;
+        _transferAmountInput = null;
+        _transferLookupSummaryText = null;
+        _transferHistoryEmptyText = null;
+        _transferHistoryContent = null;
+        _transferHistorySectionRoot = null;
+        _selectedTransferPlayer = null;
     }
 
     async void OnEnable()
@@ -83,6 +114,7 @@ public class PaymentManager : MonoBehaviour
         if (this == null || !gameObject.activeInHierarchy) return;
         
         DefaultSet();
+        BindPaymentOptionDialogButtons();
     }
 
     void Update()
@@ -415,6 +447,7 @@ public class PaymentManager : MonoBehaviour
         //     finalpanel.SetActive(false);
 
         ApplyResponsiveAddCashLayout();
+        HideTransferEntryPoint();
         BindPresetAmountButtons();
     }
 
@@ -424,6 +457,10 @@ public class PaymentManager : MonoBehaviour
             dialogue.SetActive(false);
         if (manual_panel != null)
             manual_panel.SetActive(false);
+        if (_transferPopupRoot != null)
+            _transferPopupRoot.SetActive(false);
+        if (_transferConfirmPopupRoot != null)
+            _transferConfirmPopupRoot.SetActive(false);
 
         GameObject usdtAuto = ResolveUsdtAutoPanel();
         if (usdtAuto != null)
@@ -443,15 +480,1119 @@ public class PaymentManager : MonoBehaviour
         return USDT_AUTO;
     }
 
+    private void HideTransferEntryPoint()
+    {
+        if (_transferQuickButton != null)
+            _transferQuickButton.SetActive(false);
+    }
+
     private void ShowPaymentOptionsPanel()
     {
         if (dialogue == null) return;
 
+        CommonUtil.CheckLog("PAY_TRACE ShowPaymentOptionsPanel");
+        BindPaymentOptionDialogButtons();
         HidePaymentFlowPanels();
         dialogue.SetActive(true);
         dialogue.transform.SetAsLastSibling();
         transform.SetAsLastSibling();
         ApplyResponsiveAddCashLayout();
+    }
+
+    private void BindPaymentOptionDialogButtons()
+    {
+        if (dialogue == null)
+            return;
+
+        Transform tableBg = FindChildRecursive(dialogue.transform, "Table-Bg");
+        if (tableBg == null)
+            return;
+
+        List<Button> optionButtons = new List<Button>();
+        for (int index = 0; index < tableBg.childCount; index++)
+        {
+            Button button = tableBg.GetChild(index).GetComponent<Button>();
+            if (button == null)
+                continue;
+
+            optionButtons.Add(button);
+        }
+
+        if (optionButtons.Count < 4)
+        {
+            CommonUtil.CheckLog("PAY_TRACE BindPaymentOptionDialogButtons skipped: found " + optionButtons.Count + " candidate buttons");
+            return;
+        }
+
+        float[] yPositions = { 148f, 33f, -82f, -197f };
+        for (int index = 0; index < 4; index++)
+        {
+            RectTransform rect = optionButtons[index].transform as RectTransform;
+            if (rect == null)
+                continue;
+
+            optionButtons[index].gameObject.SetActive(true);
+            rect.anchoredPosition = new Vector2(0f, yPositions[index]);
+            rect.sizeDelta = new Vector2(700f, 104f);
+        }
+
+        CommonUtil.CheckLog("PAY_TRACE BindPaymentOptionDialogButtons bound 4 option buttons");
+
+        ConfigurePaymentOptionButton(optionButtons[0], "UPI / Bank (Option 1)", OpenManual);
+        ConfigurePaymentOptionButton(optionButtons[1], "UPI / Bank (Option 2)", OpenAutomaticGatewayFromOption);
+        ConfigurePaymentOptionButton(optionButtons[2], "USDT Manual", OpenUsdtManualOption);
+        ConfigurePaymentOptionButton(optionButtons[3], "BEP20 USDT", OpenUsdtAutoOption);
+    }
+
+    private void ConfigurePaymentOptionButton(Button button, string label, Action onClick)
+    {
+        if (button == null || onClick == null)
+            return;
+
+        SetPaymentOptionButtonLabel(button, label);
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() =>
+        {
+            CommonUtil.CheckLog("PAY_TRACE Option button clicked: " + label);
+            if (dialogue != null)
+                dialogue.SetActive(false);
+
+            onClick();
+        });
+    }
+
+    private void SetPaymentOptionButtonLabel(Button button, string label)
+    {
+        if (button == null)
+            return;
+
+        TMP_Text text = button.GetComponentInChildren<TMP_Text>(true);
+        if (text != null)
+            text.text = label;
+    }
+
+    private void EnsureTransferQuickButton(
+        RectTransform details,
+        float rowWidth,
+        float inputWidth,
+        float addButtonWidth,
+        float inputTop,
+        bool portrait
+    )
+    {
+        if (details == null)
+            return;
+
+        if (_transferQuickButton == null)
+        {
+            _transferQuickButton = new GameObject(
+                "Transfer-Button",
+                typeof(RectTransform),
+                typeof(CanvasRenderer),
+                typeof(Image),
+                typeof(Button)
+            );
+            _transferQuickButton.transform.SetParent(details, false);
+
+            Image image = _transferQuickButton.GetComponent<Image>();
+            Sprite sprite = ResolveButtonSprite();
+            if (sprite != null)
+            {
+                image.sprite = sprite;
+                image.type = Image.Type.Sliced;
+            }
+            image.color = new Color32(118, 18, 28, 255);
+
+            Button button = _transferQuickButton.GetComponent<Button>();
+            ColorBlock colors = button.colors;
+            colors.highlightedColor = new Color32(180, 40, 55, 255);
+            colors.pressedColor = new Color32(60, 8, 16, 255);
+            button.colors = colors;
+            button.onClick.AddListener(OpenTransferPopup);
+
+            GameObject label = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            label.transform.SetParent(_transferQuickButton.transform, false);
+            Text text = label.GetComponent<Text>();
+            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            text.text = "Transfer";
+            text.fontStyle = FontStyle.Bold;
+            text.alignment = TextAnchor.MiddleCenter;
+            text.color = Color.white;
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
+            text.raycastTarget = false;
+            RectTransform labelRect = label.GetComponent<RectTransform>();
+            labelRect.anchorMin = Vector2.zero;
+            labelRect.anchorMax = Vector2.one;
+            labelRect.offsetMin = Vector2.zero;
+            labelRect.offsetMax = Vector2.zero;
+        }
+
+        _transferQuickButton.transform.SetAsLastSibling();
+
+        RectTransform transferRect = _transferQuickButton.transform as RectTransform;
+        SetTopLeft(
+            transferRect,
+            new Vector2(addButtonWidth, portrait ? 66f : 70f),
+            new Vector2(inputWidth + 12f, inputTop - (portrait ? 88f : 94f))
+        );
+        ConfigureAnyText(transferRect, portrait ? 24f : 28f, Color.white, true);
+    }
+
+    public void OpenTransferPopup()
+    {
+        EnsureTransferPopup();
+
+        if (_transferPopupRoot == null)
+            return;
+
+        EnsureTransferPopupVisibleParent();
+        HidePaymentFlowPanels();
+        _transferPopupRoot.SetActive(true);
+        _transferPopupRoot.transform.SetAsLastSibling();
+        Transform popupParent = _transferPopupRoot.transform.parent;
+        if (popupParent != null)
+            popupParent.SetAsLastSibling();
+
+        ResetTransferForm();
+    }
+
+    private void CloseTransferPopup()
+    {
+        if (_transferConfirmPopupRoot != null)
+            _transferConfirmPopupRoot.SetActive(false);
+        if (_transferPopupRoot != null)
+            _transferPopupRoot.SetActive(false);
+    }
+
+    private void EnsureTransferPopup()
+    {
+        if (_transferPopupRoot != null)
+        {
+            EnsureTransferPopupVisibleParent();
+            return;
+        }
+
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        Sprite popupSprite = ResolvePopupSprite();
+        Transform popupParent = FindPreferredPopupParent();
+
+        _transferPopupRoot = new GameObject(
+            "Transfer-Popup",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        _transferPopupRoot.transform.SetParent(popupParent, false);
+        RectTransform rootRect = _transferPopupRoot.transform as RectTransform;
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+        Image overlayImage = _transferPopupRoot.GetComponent<Image>();
+        overlayImage.color = new Color(0f, 0f, 0f, 0.72f);
+
+        GameObject panel = new GameObject(
+            "Panel",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        panel.transform.SetParent(_transferPopupRoot.transform, false);
+        RectTransform panelRect = panel.transform as RectTransform;
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0.5f, 0.5f);
+        panelRect.sizeDelta = new Vector2(760f, 920f);
+        Image panelImage = panel.GetComponent<Image>();
+        if (popupSprite != null)
+        {
+            panelImage.sprite = popupSprite;
+            panelImage.type = Image.Type.Sliced;
+        }
+        panelImage.color = popupSprite != null ? Color.white : new Color32(88, 16, 22, 255);
+
+        VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(34, 34, 28, 28);
+        layout.spacing = 16f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        LayoutElement panelLayout = panel.AddComponent<LayoutElement>();
+        panelLayout.preferredWidth = 760f;
+        panelLayout.preferredHeight = 920f;
+
+        GameObject header = CreateRuntimeRow(panel.transform, 8f, 80f);
+        CreateRuntimeLabel(header.transform, font, "Wallet Transfer", 34, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+        Button closeButton = CreateRuntimeButton(header.transform, font, "X", 80f, 80f, new Color32(90, 12, 22, 255), Color.white, popupSprite);
+        closeButton.onClick.AddListener(CloseTransferPopup);
+
+        CreateRuntimeLabel(
+            panel.transform,
+            font,
+            "Enter player ID, mobile, email or username.",
+            30,
+            new Color32(255, 228, 190, 255),
+            TextAnchor.MiddleLeft
+        );
+
+        GameObject lookupRow = CreateRuntimeRow(panel.transform, 12f, 84f);
+        _transferQueryInput = CreateRuntimeInputField(
+            lookupRow.transform,
+            font,
+            "Player ID / Mobile / Email / Username",
+            520f,
+            84f
+        );
+        _transferQueryInput.onValueChanged.AddListener(_ => ClearTransferSelection(false));
+        Button lookupButton = CreateRuntimeButton(
+            lookupRow.transform,
+            font,
+            "Find",
+            160f,
+            84f,
+            new Color32(118, 18, 28, 255),
+            Color.white,
+            ResolveButtonSprite()
+        );
+        lookupButton.onClick.AddListener(() => _ = LookupTransferPlayer());
+
+        _transferLookupSummaryText = CreateRuntimeLabel(
+            panel.transform,
+            font,
+            "Player details will appear here.",
+            28,
+            new Color32(245, 225, 195, 255),
+            TextAnchor.UpperLeft
+        );
+        LayoutElement summaryLayout = _transferLookupSummaryText.gameObject.AddComponent<LayoutElement>();
+        summaryLayout.preferredHeight = 150f;
+        summaryLayout.minHeight = 150f;
+        _transferLookupSummaryText.horizontalOverflow = HorizontalWrapMode.Wrap;
+        _transferLookupSummaryText.verticalOverflow = VerticalWrapMode.Overflow;
+
+        GameObject amountSpacer = new GameObject("Transfer-Amount-Spacer", typeof(RectTransform), typeof(LayoutElement));
+        amountSpacer.transform.SetParent(panel.transform, false);
+        LayoutElement amountSpacerLayout = amountSpacer.GetComponent<LayoutElement>();
+        amountSpacerLayout.preferredHeight = 36f;
+        amountSpacerLayout.minHeight = 36f;
+
+        GameObject amountRow = CreateRuntimeRow(panel.transform, 12f, 84f);
+        _transferAmountInput = CreateRuntimeInputField(
+            amountRow.transform,
+            font,
+            "Enter amount",
+            520f,
+            84f,
+            InputField.ContentType.DecimalNumber
+        );
+        Button transferButton = CreateRuntimeButton(
+            amountRow.transform,
+            font,
+            "Transfer",
+            160f,
+            84f,
+            new Color32(28, 128, 42, 255),
+            Color.white,
+            ResolveButtonSprite()
+        );
+        transferButton.onClick.AddListener(OpenTransferConfirmPopup);
+
+        _transferHistorySectionRoot = new GameObject(
+            "Transfer-History-Section",
+            typeof(RectTransform),
+            typeof(VerticalLayoutGroup),
+            typeof(LayoutElement)
+        );
+        _transferHistorySectionRoot.transform.SetParent(panel.transform, false);
+        VerticalLayoutGroup historyLayout = _transferHistorySectionRoot.GetComponent<VerticalLayoutGroup>();
+        historyLayout.spacing = 12f;
+        historyLayout.childControlWidth = true;
+        historyLayout.childControlHeight = false;
+        historyLayout.childForceExpandWidth = true;
+        historyLayout.childForceExpandHeight = false;
+        LayoutElement historyRootLayout = _transferHistorySectionRoot.GetComponent<LayoutElement>();
+        historyRootLayout.preferredHeight = 0f;
+        historyRootLayout.minHeight = 0f;
+        historyRootLayout.flexibleHeight = 0f;
+
+        CreateRuntimeLabel(
+            _transferHistorySectionRoot.transform,
+            font,
+            "Recent Transfers",
+            32,
+            new Color32(255, 190, 60, 255),
+            TextAnchor.MiddleLeft,
+            FontStyle.Bold
+        );
+
+        ScrollRect historyScroll = CreateRuntimeScroll(_transferHistorySectionRoot.transform, out _transferHistoryContent, out _transferHistoryEmptyText, font);
+        LayoutElement scrollLayout = historyScroll.gameObject.AddComponent<LayoutElement>();
+        scrollLayout.preferredHeight = 360f;
+        scrollLayout.flexibleHeight = 1f;
+        scrollLayout.minHeight = 280f;
+        _transferHistorySectionRoot.SetActive(false);
+
+        EnsureTransferConfirmPopup(font, popupSprite, popupParent);
+        _transferPopupRoot.SetActive(false);
+    }
+
+    private void EnsureTransferConfirmPopup(Font font, Sprite popupSprite, Transform popupParent)
+    {
+        if (_transferConfirmPopupRoot != null)
+            return;
+
+        _transferConfirmPopupRoot = new GameObject(
+            "Transfer-Confirm-Popup",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        _transferConfirmPopupRoot.transform.SetParent(popupParent, false);
+        RectTransform rootRect = _transferConfirmPopupRoot.transform as RectTransform;
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+        _transferConfirmPopupRoot.GetComponent<Image>().color = new Color(0f, 0f, 0f, 0.76f);
+
+        GameObject panel = new GameObject(
+            "Panel",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        );
+        panel.transform.SetParent(_transferConfirmPopupRoot.transform, false);
+        RectTransform panelRect = panel.transform as RectTransform;
+        panelRect.anchorMin = new Vector2(0.5f, 0.5f);
+        panelRect.anchorMax = new Vector2(0.5f, 0.5f);
+        panelRect.pivot = new Vector2(0.5f, 0.5f);
+        panelRect.sizeDelta = new Vector2(800f, 560f);
+        Image image = panel.GetComponent<Image>();
+        if (popupSprite != null)
+        {
+            image.sprite = popupSprite;
+            image.type = Image.Type.Sliced;
+        }
+        image.color = popupSprite != null ? Color.white : new Color32(88, 16, 22, 255);
+
+        VerticalLayoutGroup layout = panel.AddComponent<VerticalLayoutGroup>();
+        layout.padding = new RectOffset(34, 34, 34, 34);
+        layout.spacing = 20f;
+        layout.childControlWidth = true;
+        layout.childControlHeight = false;
+        layout.childForceExpandWidth = true;
+        layout.childForceExpandHeight = false;
+
+        CreateRuntimeLabel(panel.transform, font, "Confirm Transfer", 36, Color.white, TextAnchor.MiddleCenter, FontStyle.Bold);
+        Text body = CreateRuntimeLabel(
+            panel.transform,
+            font,
+            "",
+            28,
+            new Color32(235, 210, 180, 255),
+            TextAnchor.UpperLeft
+        );
+        body.name = "Confirm-Body";
+        body.horizontalOverflow = HorizontalWrapMode.Wrap;
+        body.verticalOverflow = VerticalWrapMode.Overflow;
+        LayoutElement bodyLayout = body.gameObject.AddComponent<LayoutElement>();
+        bodyLayout.preferredHeight = 300f;
+        bodyLayout.minHeight = 300f;
+
+        GameObject spacer = new GameObject("Spacer", typeof(RectTransform), typeof(LayoutElement));
+        spacer.transform.SetParent(panel.transform, false);
+        LayoutElement spacerLayout = spacer.GetComponent<LayoutElement>();
+        spacerLayout.preferredHeight = 18f;
+        spacerLayout.minHeight = 18f;
+
+        GameObject actions = CreateRuntimeRow(panel.transform, 20f, 92f);
+        Button cancelButton = CreateRuntimeButton(actions.transform, font, "Cancel", 290f, 92f, new Color32(90, 12, 22, 255), Color.white, ResolveButtonSprite());
+        cancelButton.onClick.AddListener(() =>
+        {
+            if (_transferConfirmPopupRoot != null)
+                _transferConfirmPopupRoot.SetActive(false);
+        });
+        Button confirmButton = CreateRuntimeButton(actions.transform, font, "Confirm", 290f, 92f, new Color32(28, 128, 42, 255), Color.white, ResolveButtonSprite());
+        confirmButton.onClick.AddListener(() => _ = SubmitTransfer());
+
+        _transferConfirmPopupRoot.SetActive(false);
+    }
+
+    private void EnsureTransferPopupVisibleParent()
+    {
+        if (_transferPopupRoot == null)
+            return;
+
+        Transform preferredParent = FindPreferredPopupParent();
+        if (preferredParent == null)
+            return;
+
+        if (_transferPopupRoot.transform.parent != preferredParent)
+        {
+            _transferPopupRoot.transform.SetParent(preferredParent, false);
+            RectTransform rootRect = _transferPopupRoot.transform as RectTransform;
+            if (rootRect != null)
+            {
+                rootRect.anchorMin = Vector2.zero;
+                rootRect.anchorMax = Vector2.one;
+                rootRect.offsetMin = Vector2.zero;
+                rootRect.offsetMax = Vector2.zero;
+            }
+
+            if (_transferConfirmPopupRoot != null)
+                _transferConfirmPopupRoot.transform.SetParent(_transferPopupRoot.transform, false);
+
+            CommonUtil.CheckLog("PAY_TRACE Transfer popup reparented to visible host: " + preferredParent.name);
+        }
+    }
+
+    private void ResetTransferForm()
+    {
+        if (_transferQueryInput != null)
+            _transferQueryInput.text = string.Empty;
+        if (_transferAmountInput != null)
+            _transferAmountInput.text = string.Empty;
+
+        ClearTransferSelection(true);
+    }
+
+    private void ClearTransferSelection(bool resetMessage)
+    {
+        _selectedTransferPlayer = null;
+
+        if (_transferLookupSummaryText == null)
+            return;
+
+        if (resetMessage)
+        {
+            _transferLookupSummaryText.text = "Player details will appear here.";
+        }
+        else
+        {
+            _transferLookupSummaryText.text = "Player changed. Tap Find again to confirm the receiver.";
+        }
+    }
+
+    private async Task LookupTransferPlayer()
+    {
+        if (_isTransferLookupRunning)
+            return;
+
+        string query = _transferQueryInput != null ? _transferQueryInput.text.Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            SafeShowToast("Please enter player ID, mobile, email or username.");
+            return;
+        }
+
+        _isTransferLookupRunning = true;
+        CommonUtil.CheckLog("PAY_TRACE TransferLookup request query=" + query);
+
+        try
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "user_id", Configuration.GetId() },
+                { "token", Configuration.GetToken() },
+                { "query", query },
+            };
+
+            TransferLookupResponse response = await APIManager.Instance.Post<TransferLookupResponse>(Configuration.WalletTransferLookup, formData);
+            if (response == null)
+            {
+                _selectedTransferPlayer = null;
+                if (_transferLookupSummaryText != null)
+                    _transferLookupSummaryText.text = "Player lookup failed. Please try again.";
+                SafeShowToast("Player lookup failed. Please try again.");
+                return;
+            }
+            CommonUtil.CheckLog("PAY_TRACE TransferLookup response code=" + response.code + " message=" + (response.message ?? string.Empty));
+
+            if (response.code == 200 && response.player != null)
+            {
+                _selectedTransferPlayer = response.player;
+                if (_transferLookupSummaryText != null)
+                {
+                    _transferLookupSummaryText.text =
+                        "Player ID: " + SafeTransferValue(response.player.user_id) + "\n"
+                        + "Username: " + SafeTransferValue(response.player.username) + "\n"
+                        + "Name: " + SafeTransferValue(response.player.name) + "\n"
+                        + "Mobile: " + SafeTransferValue(response.player.mobile) + "\n"
+                        + "Email: " + SafeTransferValue(response.player.email);
+                }
+            }
+            else
+            {
+                _selectedTransferPlayer = null;
+                if (_transferLookupSummaryText != null)
+                    _transferLookupSummaryText.text = GetFriendlyTransferApiMessage(response.message, "Player not found or server unavailable.");
+                SafeShowToast(GetFriendlyTransferApiMessage(response.message, "Player not found or server unavailable."));
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Transfer lookup failed: " + exception.Message);
+            _selectedTransferPlayer = null;
+            if (_transferLookupSummaryText != null)
+                _transferLookupSummaryText.text = "Server is offline. Please try again shortly.";
+            SafeShowToast("Server is offline. Please try again shortly.");
+        }
+        finally
+        {
+            _isTransferLookupRunning = false;
+        }
+    }
+
+    private void OpenTransferConfirmPopup()
+    {
+        if (_selectedTransferPlayer == null)
+        {
+            SafeShowToast("Find the receiver first.");
+            return;
+        }
+
+        if (!TryGetTransferAmount(out float amount))
+        {
+            SafeShowToast("Please enter a valid transfer amount.");
+            return;
+        }
+
+        EnsureTransferPopup();
+        if (_transferConfirmPopupRoot == null)
+            return;
+
+        Text body = FindDeepChild(_transferConfirmPopupRoot.transform, "Confirm-Body")?.GetComponent<Text>();
+        if (body != null)
+        {
+            body.text =
+                "You are sending " + amount.ToString("0.##", CultureInfo.InvariantCulture) + " chips to:\n\n"
+                + "Player ID: " + SafeTransferValue(_selectedTransferPlayer.user_id) + "\n"
+                + "Username: " + SafeTransferValue(_selectedTransferPlayer.username) + "\n"
+                + "Name: " + SafeTransferValue(_selectedTransferPlayer.name);
+        }
+
+        _transferConfirmPopupRoot.SetActive(true);
+        _transferConfirmPopupRoot.transform.SetAsLastSibling();
+    }
+
+    private async Task SubmitTransfer()
+    {
+        if (_isTransferSubmitRunning)
+            return;
+
+        if (_selectedTransferPlayer == null)
+        {
+            SafeShowToast("Find the receiver first.");
+            return;
+        }
+
+        if (!TryGetTransferAmount(out float amount))
+        {
+            SafeShowToast("Please enter a valid transfer amount.");
+            return;
+        }
+
+        _isTransferSubmitRunning = true;
+        CommonUtil.CheckLog("PAY_TRACE TransferWallet request receiver=" + SafeTransferValue(_selectedTransferPlayer.user_id) + " amount=" + amount.ToString("0.##", CultureInfo.InvariantCulture));
+
+        try
+        {
+            var formData = new Dictionary<string, string>
+            {
+                { "user_id", Configuration.GetId() },
+                { "token", Configuration.GetToken() },
+                { "receiver_user_id", _selectedTransferPlayer.user_id ?? string.Empty },
+                { "amount", amount.ToString("0.##", CultureInfo.InvariantCulture) },
+            };
+
+            TransferWalletResponse response = await APIManager.Instance.Post<TransferWalletResponse>(Configuration.WalletTransfer, formData);
+            if (response == null)
+            {
+                SafeShowToast("Transfer failed. Please try again.");
+                return;
+            }
+            CommonUtil.CheckLog("PAY_TRACE TransferWallet response code=" + response.code + " message=" + (response.message ?? string.Empty));
+            SafeShowToast(GetFriendlyTransferApiMessage(response.message, "Transfer failed. Please try again."));
+
+            if (response.code == 200)
+            {
+                if (!string.IsNullOrWhiteSpace(response.wallet))
+                {
+                    PlayerPrefs.SetString("wallet", response.wallet);
+                    PlayerPrefs.Save();
+                }
+
+                if (_transferConfirmPopupRoot != null)
+                    _transferConfirmPopupRoot.SetActive(false);
+
+                ResetTransferForm();
+                await LoadTransferHistory();
+                Configuration.GetProfileWallet();
+            }
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Transfer submit failed: " + exception.Message);
+            SafeShowToast("Server is offline. Transfer could not be completed.");
+        }
+        finally
+        {
+            _isTransferSubmitRunning = false;
+        }
+    }
+
+    private async Task LoadTransferHistory()
+    {
+        if (_transferHistoryContent == null)
+            return;
+
+        foreach (Transform child in _transferHistoryContent)
+            RemoveGeneratedObject(child.gameObject);
+
+        var formData = new Dictionary<string, string>
+        {
+            { "user_id", Configuration.GetId() },
+            { "token", Configuration.GetToken() },
+        };
+
+        TransferHistoryResponse response = await APIManager.Instance.Post<TransferHistoryResponse>(Configuration.WalletTransferHistory, formData);
+        if (response == null)
+        {
+            if (_transferHistoryEmptyText != null)
+            {
+                _transferHistoryEmptyText.gameObject.SetActive(true);
+                _transferHistoryEmptyText.text = "Transfer history could not be loaded.";
+            }
+            return;
+        }
+        CommonUtil.CheckLog("PAY_TRACE TransferHistory response code=" + response.code + " count=" + (response.transfer_history == null ? 0 : response.transfer_history.Length));
+
+        if (response.code == 0)
+        {
+            if (_transferHistoryEmptyText != null)
+            {
+                _transferHistoryEmptyText.gameObject.SetActive(true);
+                _transferHistoryEmptyText.text = "Server is offline. Transfer history is unavailable.";
+            }
+            return;
+        }
+
+        TransferHistoryEntry[] history = response.transfer_history ?? Array.Empty<TransferHistoryEntry>();
+        if (_transferHistoryEmptyText != null)
+        {
+            _transferHistoryEmptyText.gameObject.SetActive(history.Length == 0);
+            _transferHistoryEmptyText.text = history.Length == 0 ? "No transfer records found yet." : string.Empty;
+        }
+
+        if (response.code != 200 || history.Length == 0)
+            return;
+
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        for (int index = 0; index < history.Length; index++)
+        {
+            CreateTransferHistoryRow(_transferHistoryContent, font, history[index]);
+        }
+
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_transferHistoryContent);
+        if (_transferHistoryContent.parent is RectTransform viewportRect)
+        {
+            LayoutRebuilder.ForceRebuildLayoutImmediate(viewportRect);
+        }
+        Canvas.ForceUpdateCanvases();
+    }
+
+    private static string GetFriendlyTransferApiMessage(string rawMessage, string fallback)
+    {
+        string message = string.IsNullOrWhiteSpace(rawMessage) ? string.Empty : rawMessage.Trim();
+        if (string.IsNullOrEmpty(message))
+            return fallback;
+
+        string normalized = message.ToLowerInvariant();
+        if (normalized.Contains("actively refused")
+            || normalized.Contains("connection could not be made")
+            || normalized.Contains("connection refused")
+            || normalized.Contains("target machine")
+            || normalized.Contains("request finished with error"))
+        {
+            return "Server is offline. Please try again shortly.";
+        }
+
+        return message;
+    }
+
+    private void CreateTransferHistoryRow(Transform parent, Font font, TransferHistoryEntry entry)
+    {
+        GameObject card = new GameObject(
+            "Transfer-History-Row",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(LayoutElement),
+            typeof(VerticalLayoutGroup)
+        );
+        card.transform.SetParent(parent, false);
+
+        Image image = card.GetComponent<Image>();
+        Sprite sprite = popupBgSprite ?? ResolveButtonSprite();
+        if (sprite != null)
+        {
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+        }
+        image.color = new Color32(78, 12, 18, 255);
+
+        LayoutElement layout = card.GetComponent<LayoutElement>();
+        layout.preferredHeight = 112f;
+        layout.minHeight = 112f;
+        layout.flexibleWidth = 1f;
+
+        VerticalLayoutGroup group = card.GetComponent<VerticalLayoutGroup>();
+        group.padding = new RectOffset(18, 18, 12, 12);
+        group.spacing = 4f;
+        group.childControlWidth = true;
+        group.childControlHeight = false;
+        group.childForceExpandWidth = true;
+        group.childForceExpandHeight = false;
+
+        RectTransform cardRect = card.GetComponent<RectTransform>();
+        cardRect.localScale = Vector3.one;
+        cardRect.anchorMin = new Vector2(0f, 1f);
+        cardRect.anchorMax = new Vector2(1f, 1f);
+        cardRect.pivot = new Vector2(0.5f, 1f);
+        cardRect.sizeDelta = new Vector2(0f, 112f);
+
+        string direction = (entry.direction ?? string.Empty).Equals("received", StringComparison.OrdinalIgnoreCase) ? "Received" : "Sent";
+        string amount = SafeTransferValue(entry.amount) + " " + SafeTransferValue(entry.currency);
+        string partner = SafeTransferValue(entry.username) + " (" + SafeTransferValue(entry.user_id) + ")";
+        string meta = SafeTransferValue(entry.status) + "  |  " + SafeTransferValue(entry.added_date);
+
+        CreateRuntimeLabel(card.transform, font, direction + "  " + amount, 24, Color.white, TextAnchor.MiddleLeft, FontStyle.Bold);
+        CreateRuntimeLabel(card.transform, font, partner, 22, new Color32(255, 210, 170, 255), TextAnchor.MiddleLeft);
+        CreateRuntimeLabel(card.transform, font, meta, 19, new Color32(220, 180, 180, 255), TextAnchor.MiddleLeft);
+    }
+
+    private bool TryGetTransferAmount(out float amount)
+    {
+        amount = 0f;
+
+        string raw = _transferAmountInput != null ? _transferAmountInput.text.Trim() : string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+            return false;
+
+        return float.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out amount) && amount > 0f;
+    }
+
+    private static string SafeTransferValue(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "-" : value.Trim();
+    }
+
+    private static GameObject CreateRuntimeRow(Transform parent, float spacing, float height)
+    {
+        GameObject row = new GameObject(
+            "Row",
+            typeof(RectTransform),
+            typeof(HorizontalLayoutGroup),
+            typeof(LayoutElement)
+        );
+        row.transform.SetParent(parent, false);
+
+        HorizontalLayoutGroup layout = row.GetComponent<HorizontalLayoutGroup>();
+        layout.spacing = spacing;
+        layout.childControlWidth = true;
+        layout.childControlHeight = true;
+        layout.childForceExpandWidth = false;
+        layout.childForceExpandHeight = false;
+        layout.childAlignment = TextAnchor.MiddleCenter;
+
+        LayoutElement element = row.GetComponent<LayoutElement>();
+        element.preferredHeight = height;
+        element.minHeight = height;
+
+        return row;
+    }
+
+    private static Text CreateRuntimeLabel(
+        Transform parent,
+        Font font,
+        string value,
+        int fontSize,
+        Color color,
+        TextAnchor alignment,
+        FontStyle fontStyle = FontStyle.Normal
+    )
+    {
+        GameObject label = new GameObject(
+            "Label",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Text),
+            typeof(LayoutElement)
+        );
+        label.transform.SetParent(parent, false);
+
+        Text text = label.GetComponent<Text>();
+        text.font = font;
+        text.text = value;
+        text.fontSize = fontSize;
+        text.fontStyle = fontStyle;
+        text.color = color;
+        text.alignment = alignment;
+        text.resizeTextForBestFit = false;
+        text.horizontalOverflow = HorizontalWrapMode.Wrap;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+        text.raycastTarget = false;
+
+        LayoutElement element = label.GetComponent<LayoutElement>();
+        element.flexibleWidth = 1f;
+        element.minHeight = fontSize + 18f;
+        element.preferredHeight = fontSize + 22f;
+
+        return text;
+    }
+
+    private static Button CreateRuntimeButton(
+        Transform parent,
+        Font font,
+        string label,
+        float width,
+        float height,
+        Color color,
+        Color textColor,
+        Sprite sprite
+    )
+    {
+        GameObject buttonObject = new GameObject(
+            label + "-Button",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Button),
+            typeof(LayoutElement)
+        );
+        buttonObject.transform.SetParent(parent, false);
+
+        LayoutElement element = buttonObject.GetComponent<LayoutElement>();
+        element.preferredWidth = width;
+        element.minWidth = width;
+        element.preferredHeight = height;
+        element.minHeight = height;
+
+        Image image = buttonObject.GetComponent<Image>();
+        if (sprite != null)
+        {
+            image.sprite = sprite;
+            image.type = Image.Type.Sliced;
+        }
+        image.color = color;
+
+        Button button = buttonObject.GetComponent<Button>();
+        button.targetGraphic = image;
+
+        GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        textObject.transform.SetParent(buttonObject.transform, false);
+        Text text = textObject.GetComponent<Text>();
+        text.font = font;
+        text.text = label;
+        text.fontSize = 30;
+        text.fontStyle = FontStyle.Bold;
+        text.alignment = TextAnchor.MiddleCenter;
+        text.color = textColor;
+        text.resizeTextForBestFit = false;
+        text.raycastTarget = false;
+
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = Vector2.zero;
+        textRect.offsetMax = Vector2.zero;
+
+        return button;
+    }
+
+    private static InputField CreateRuntimeInputField(
+        Transform parent,
+        Font font,
+        string placeholder,
+        float width,
+        float height,
+        InputField.ContentType contentType = InputField.ContentType.Standard
+    )
+    {
+        GameObject inputObject = new GameObject(
+            "Input",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(InputField),
+            typeof(LayoutElement)
+        );
+        inputObject.transform.SetParent(parent, false);
+
+        LayoutElement element = inputObject.GetComponent<LayoutElement>();
+        element.preferredWidth = width;
+        element.minWidth = width;
+        element.preferredHeight = height;
+        element.minHeight = height;
+        element.flexibleWidth = 1f;
+
+        Image image = inputObject.GetComponent<Image>();
+        image.color = new Color32(38, 18, 18, 240);
+
+        GameObject placeholderObject = new GameObject("Placeholder", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        placeholderObject.transform.SetParent(inputObject.transform, false);
+        Text placeholderText = placeholderObject.GetComponent<Text>();
+        placeholderText.font = font;
+        placeholderText.text = placeholder;
+        placeholderText.fontSize = 28;
+        placeholderText.fontStyle = FontStyle.Normal;
+        placeholderText.color = new Color32(215, 195, 195, 255);
+        placeholderText.alignment = TextAnchor.MiddleLeft;
+        placeholderText.resizeTextForBestFit = false;
+        placeholderText.raycastTarget = false;
+
+        GameObject textObject = new GameObject("Text", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        textObject.transform.SetParent(inputObject.transform, false);
+        Text valueText = textObject.GetComponent<Text>();
+        valueText.font = font;
+        valueText.text = string.Empty;
+        valueText.fontSize = 30;
+        valueText.fontStyle = FontStyle.Bold;
+        valueText.color = Color.white;
+        valueText.alignment = TextAnchor.MiddleLeft;
+        valueText.resizeTextForBestFit = false;
+        valueText.raycastTarget = false;
+
+        RectTransform placeholderRect = placeholderObject.GetComponent<RectTransform>();
+        placeholderRect.anchorMin = Vector2.zero;
+        placeholderRect.anchorMax = Vector2.one;
+        placeholderRect.offsetMin = new Vector2(18f, 0f);
+        placeholderRect.offsetMax = new Vector2(-18f, 0f);
+
+        RectTransform textRect = textObject.GetComponent<RectTransform>();
+        textRect.anchorMin = Vector2.zero;
+        textRect.anchorMax = Vector2.one;
+        textRect.offsetMin = new Vector2(18f, 0f);
+        textRect.offsetMax = new Vector2(-18f, 0f);
+
+        InputField input = inputObject.GetComponent<InputField>();
+        input.textComponent = valueText;
+        input.placeholder = placeholderText;
+        input.contentType = contentType;
+        input.lineType = InputField.LineType.SingleLine;
+
+        return input;
+    }
+
+    private static ScrollRect CreateRuntimeScroll(
+        Transform parent,
+        out RectTransform content,
+        out Text emptyText,
+        Font font
+    )
+    {
+        GameObject scrollObject = new GameObject(
+            "History-Scroll",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(ScrollRect),
+            typeof(LayoutElement)
+        );
+        scrollObject.transform.SetParent(parent, false);
+        Image image = scrollObject.GetComponent<Image>();
+        image.color = new Color32(28, 8, 12, 150);
+
+        GameObject viewport = new GameObject(
+            "Viewport",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Mask)
+        );
+        viewport.transform.SetParent(scrollObject.transform, false);
+        RectTransform viewportRect = viewport.GetComponent<RectTransform>();
+        viewportRect.anchorMin = Vector2.zero;
+        viewportRect.anchorMax = Vector2.one;
+        viewportRect.offsetMin = new Vector2(10f, 10f);
+        viewportRect.offsetMax = new Vector2(-10f, -10f);
+        Image viewportImage = viewport.GetComponent<Image>();
+        viewportImage.color = new Color(0f, 0f, 0f, 0f);
+        viewport.GetComponent<Mask>().showMaskGraphic = false;
+
+        GameObject contentObject = new GameObject(
+            "Content",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(VerticalLayoutGroup),
+            typeof(ContentSizeFitter)
+        );
+        contentObject.transform.SetParent(viewport.transform, false);
+        content = contentObject.GetComponent<RectTransform>();
+        content.anchorMin = new Vector2(0f, 1f);
+        content.anchorMax = new Vector2(1f, 1f);
+        content.pivot = new Vector2(0.5f, 1f);
+        content.anchoredPosition = Vector2.zero;
+        content.sizeDelta = new Vector2(0f, 0f);
+
+        VerticalLayoutGroup group = contentObject.GetComponent<VerticalLayoutGroup>();
+        group.spacing = 10f;
+        group.padding = new RectOffset(0, 0, 0, 0);
+        group.childControlWidth = true;
+        group.childControlHeight = false;
+        group.childForceExpandWidth = true;
+        group.childForceExpandHeight = false;
+
+        ContentSizeFitter fitter = contentObject.GetComponent<ContentSizeFitter>();
+        fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+        GameObject emptyObject = new GameObject("Empty", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+        emptyObject.transform.SetParent(viewport.transform, false);
+        RectTransform emptyRect = emptyObject.GetComponent<RectTransform>();
+        emptyRect.anchorMin = Vector2.zero;
+        emptyRect.anchorMax = Vector2.one;
+        emptyRect.offsetMin = new Vector2(18f, 18f);
+        emptyRect.offsetMax = new Vector2(-18f, -18f);
+        emptyText = emptyObject.GetComponent<Text>();
+        emptyText.font = font;
+        emptyText.fontSize = 22;
+        emptyText.color = new Color32(220, 180, 180, 255);
+        emptyText.alignment = TextAnchor.MiddleCenter;
+        emptyText.text = "No transfer records found yet.";
+        emptyText.raycastTarget = false;
+
+        ScrollRect scroll = scrollObject.GetComponent<ScrollRect>();
+        scroll.viewport = viewportRect;
+        scroll.content = content;
+        scroll.horizontal = false;
+        scroll.vertical = true;
+        scroll.movementType = ScrollRect.MovementType.Clamped;
+        scroll.scrollSensitivity = 30f;
+
+        return scroll;
+    }
+
+    private Transform FindChildRecursive(Transform parent, string childName)
+    {
+        if (parent == null)
+            return null;
+
+        for (int index = 0; index < parent.childCount; index++)
+        {
+            Transform child = parent.GetChild(index);
+            if (child.name == childName)
+                return child;
+
+            Transform nested = FindChildRecursive(child, childName);
+            if (nested != null)
+                return nested;
+        }
+
+        return null;
     }
 
     private void ApplyResponsiveAddCashLayout()
@@ -785,6 +1926,7 @@ public class PaymentManager : MonoBehaviour
         RectTransform addButton = FindDirectChild(details, "add-button");
         SetTopLeft(addButton, new Vector2(addButtonWidth, inputHeight), new Vector2(inputWidth + 12f, inputTop));
         ConfigureAnyText(addButton, portrait ? 27f : 32f, Color.white, true);
+        EnsureTransferQuickButton(details, rowWidth, inputWidth, addButtonWidth, inputTop, portrait);
 
         RectTransform panel = finalpanel != null ? finalpanel.transform as RectTransform : FindDirectChild(details, "Panel");
         SetBottomStretch(panel, width, finalHeight, Vector2.zero);
@@ -1051,6 +2193,19 @@ public class PaymentManager : MonoBehaviour
         RectTransform panelBg = FindDirectChild(transform, "panel-bg");
         Image image = panelBg != null ? panelBg.GetComponent<Image>() : null;
         return image != null ? image.sprite : null;
+    }
+
+    private Transform FindPreferredPopupParent()
+    {
+        Canvas canvas = GetComponentInParent<Canvas>(true);
+        if (canvas != null)
+        {
+            Canvas rootCanvas = canvas.rootCanvas != null ? canvas.rootCanvas : canvas;
+            if (rootCanvas != null)
+                return rootCanvas.transform;
+        }
+
+        return transform.parent != null ? transform.parent : transform;
     }
 
     private void LayoutChipList(float visibleWidth, bool portrait)
@@ -1578,6 +2733,8 @@ public class PaymentManager : MonoBehaviour
 
     public void PlaceOrder(string id, string amount, string coin)
     {
+        _selectedAutomaticPlanId = id ?? string.Empty;
+        _selectedAutomaticAmount = amount ?? string.Empty;
         automatic_button.onClick.RemoveAllListeners();
         automatic_button.onClick.AddListener(async () => await PlaceOrderAPI(id, amount));
         automatic_amount = int.Parse(amount);
@@ -1688,6 +2845,24 @@ public class PaymentManager : MonoBehaviour
     public void OpenURLInBrowser(string url)
     {
         CommonUtil.CheckLog("RES_Check + url open " + url);
+        CommonUtil.CheckLog("PAY_TRACE OpenURLInBrowser " + (url ?? string.Empty));
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            CommonUtil.CheckLog("PAY_TRACE OpenURLInBrowser blocked: empty url");
+            SafeShowToast("Payment URL is not available right now.");
+            return;
+        }
+
+        if (Application.isEditor)
+        {
+            CommonUtil.CheckLog("PAY_TRACE OpenURLInBrowser editor fallback -> Application.OpenURL");
+            OpenURLInWeb(url);
+            return;
+        }
+
+#if UNITY_ANDROID || UNITY_IOS
+        OpenUrlInWebView(url);
+#else
         if (Application.platform == RuntimePlatform.Android)
         {
             OpenURLInAndroid(url);
@@ -1696,6 +2871,92 @@ public class PaymentManager : MonoBehaviour
         {
             OpenURLInWeb(url);
         }
+#endif
+    }
+
+    private void OpenAutomaticPaymentUrl(string url, int orderId, string transactionId)
+    {
+        CommonUtil.CheckLog(
+            "PAY_TRACE OpenAutomaticPaymentUrl order_id="
+            + orderId
+            + " transaction_id="
+            + (transactionId ?? string.Empty)
+            + " url="
+            + (url ?? string.Empty)
+        );
+        _pendingGatewayOrderId = orderId;
+        _pendingGatewayTransactionId = transactionId ?? string.Empty;
+        _automaticGatewayFlowOpen = true;
+        OpenURLInBrowser(url);
+    }
+
+#if UNITY_ANDROID || UNITY_IOS
+    private void OpenUrlInWebView(string url)
+    {
+        try
+        {
+            var configuration = new GpmWebViewRequest.Configuration
+            {
+                style = GpmWebViewStyle.FULLSCREEN,
+                orientation = GpmOrientation.UNSPECIFIED,
+                isClearCookie = false,
+                isClearCache = false,
+                isNavigationBarVisible = true,
+                navigationBarColor = "#111111",
+                title = "Deposit",
+                isBackButtonVisible = true,
+                isForwardButtonVisible = false,
+                isCloseButtonVisible = true,
+                supportMultipleWindows = true,
+                isBackButtonCloseCallbackUsed = true,
+#if UNITY_IOS
+                contentMode = GpmWebViewContentMode.RECOMMENDED,
+                isMaskViewVisible = true,
+                isAutoRotation = true,
+#endif
+            };
+
+            GpmWebView.ShowUrl(url, configuration, OnAutomaticPaymentWebViewCallback, null);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Failed to open payment webview: " + exception.Message);
+            OpenURLInWeb(url);
+        }
+    }
+
+    private void OnAutomaticPaymentWebViewCallback(
+        GpmWebViewCallback.CallbackType callbackType,
+        string data,
+        GpmWebViewError error
+    )
+    {
+        if (error != null)
+        {
+            Debug.LogWarning("Payment WebView callback error: " + error);
+        }
+
+        switch (callbackType)
+        {
+            case GpmWebViewCallback.CallbackType.Close:
+#if UNITY_ANDROID
+            case GpmWebViewCallback.CallbackType.BackButtonClose:
+#endif
+                HandleAutomaticPaymentFlowClosed();
+                break;
+        }
+    }
+#endif
+
+    private void HandleAutomaticPaymentFlowClosed()
+    {
+        if (!_automaticGatewayFlowOpen)
+        {
+            return;
+        }
+
+        _automaticGatewayFlowOpen = false;
+        _ = PollAutomaticPaymentStatusAfterClose();
     }
 
     private void OpenURLInAndroid(string url)
@@ -1745,6 +3006,125 @@ public class PaymentManager : MonoBehaviour
         Application.OpenURL(url);
     }
 
+    private async Task PollAutomaticPaymentStatusAfterClose()
+    {
+        if (_isAutomaticStatusCheckRunning)
+        {
+            return;
+        }
+
+        if (_pendingGatewayOrderId <= 0 && string.IsNullOrEmpty(_pendingGatewayTransactionId))
+        {
+            return;
+        }
+
+        _isAutomaticStatusCheckRunning = true;
+
+        try
+        {
+            const int maxAttempts = 6;
+            for (int attempt = 0; attempt < maxAttempts; attempt++)
+            {
+                AutomaticPaymentStatusResponse response = await FetchAutomaticPaymentStatus();
+                if (response != null && response.code == 200)
+                {
+                    string normalizedStatus = NormalizeGatewayStatus(response.status_label, response.status);
+                    if (normalizedStatus == "success")
+                    {
+                        Configuration.GetProfileWallet();
+                        SafeShowToast("Deposit approved. Wallet updated.");
+                        ClearAutomaticPaymentTracking();
+                        return;
+                    }
+
+                    if (normalizedStatus == "rejected")
+                    {
+                        SafeShowToast("Deposit rejected.");
+                        ClearAutomaticPaymentTracking();
+                        return;
+                    }
+                }
+
+                if (attempt < maxAttempts - 1)
+                {
+                    await Task.Delay(3000);
+                }
+            }
+
+            SafeShowToast("Payment request submitted. Approval status will update shortly.");
+        }
+        catch (Exception exception)
+        {
+            Debug.LogError("Automatic payment status check failed: " + exception.Message);
+            SafeShowToast("Payment request submitted. Check status in transaction history.");
+        }
+        finally
+        {
+            _isAutomaticStatusCheckRunning = false;
+        }
+    }
+
+    private async Task<AutomaticPaymentStatusResponse> FetchAutomaticPaymentStatus()
+    {
+        string url = Configuration.AutomaticPaymentStatus;
+        var formData = new Dictionary<string, string>
+        {
+            { "user_id", Configuration.GetId() },
+            { "token", Configuration.GetToken() },
+        };
+
+        if (_pendingGatewayOrderId > 0)
+        {
+            formData["order_id"] = _pendingGatewayOrderId.ToString();
+        }
+
+        if (!string.IsNullOrEmpty(_pendingGatewayTransactionId))
+        {
+            formData["transaction_id"] = _pendingGatewayTransactionId;
+        }
+
+        return await APIManager.Instance.Post<AutomaticPaymentStatusResponse>(url, formData);
+    }
+
+    private string NormalizeGatewayStatus(string statusLabel, string statusCode)
+    {
+        string normalized = (statusLabel ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrEmpty(normalized))
+        {
+            normalized = (statusCode ?? string.Empty).Trim();
+            if (normalized == "1")
+            {
+                return "success";
+            }
+
+            if (normalized == "2")
+            {
+                return "rejected";
+            }
+
+            return "pending";
+        }
+
+        if (normalized == "1")
+        {
+            return "success";
+        }
+
+        if (normalized == "2")
+        {
+            return "rejected";
+        }
+
+        return normalized;
+    }
+
+    private void ClearAutomaticPaymentTracking()
+    {
+        _pendingGatewayOrderId = 0;
+        _pendingGatewayTransactionId = string.Empty;
+        _automaticGatewayFlowOpen = false;
+    }
+
     #endregion
 
     #region  Custom Payment
@@ -1759,6 +3139,8 @@ public class PaymentManager : MonoBehaviour
             }
             else
             {
+                _selectedAutomaticPlanId = string.Empty;
+                _selectedAutomaticAmount = custom.text;
                 automatic_button.onClick.RemoveAllListeners();
                 automatic_button.onClick.AddListener(
                     async () => await PlaceOrderAPI("", custom.text)
@@ -1776,6 +3158,66 @@ public class PaymentManager : MonoBehaviour
     #endregion
 
     #region Manual Payment
+
+    public async void OpenAutomaticGatewayFromOption()
+    {
+        HidePaymentFlowPanels();
+        string amount = !string.IsNullOrWhiteSpace(_selectedAutomaticAmount)
+            ? _selectedAutomaticAmount
+            : custom != null
+                ? custom.text
+                : string.Empty;
+
+        CommonUtil.CheckLog(
+            "PAY_TRACE OpenAutomaticGatewayFromOption plan_id="
+            + (_selectedAutomaticPlanId ?? string.Empty)
+            + " amount="
+            + (amount ?? string.Empty)
+        );
+
+        if (string.IsNullOrWhiteSpace(amount) || amount == "0")
+        {
+            CommonUtil.CheckLog("PAY_TRACE OpenAutomaticGatewayFromOption blocked: invalid amount");
+            CommonUtil.ShowToast("Please enter a valid amount");
+            return;
+        }
+
+        await PlaceOrderAPI(_selectedAutomaticPlanId, amount);
+    }
+
+    public void OpenUsdtManualOption()
+    {
+        CommonUtil.CheckLog("PAY_TRACE OpenUsdtManualOption");
+        HidePaymentFlowPanels();
+        RectTransform manualUsdt = FindDirectChild(transform, "USDT-Manual");
+        if (manualUsdt == null)
+        {
+            CommonUtil.CheckLog("PAY_TRACE OpenUsdtManualOption missing USDT-Manual panel");
+            return;
+        }
+
+        manualUsdt.gameObject.SetActive(true);
+        manualUsdt.SetAsLastSibling();
+        transform.SetAsLastSibling();
+        ApplyResponsiveAddCashLayout();
+    }
+
+    public void OpenUsdtAutoOption()
+    {
+        CommonUtil.CheckLog("PAY_TRACE OpenUsdtAutoOption");
+        HidePaymentFlowPanels();
+        GameObject autoPanel = ResolveUsdtAutoPanel();
+        if (autoPanel == null)
+        {
+            CommonUtil.CheckLog("PAY_TRACE OpenUsdtAutoOption missing USDT Auto panel");
+            return;
+        }
+
+        autoPanel.SetActive(true);
+        autoPanel.transform.SetAsLastSibling();
+        transform.SetAsLastSibling();
+        ApplyResponsiveAddCashLayout();
+    }
 
     public async void OpenManual()
     {
@@ -1930,20 +3372,28 @@ public class PaymentManager : MonoBehaviour
 
     public async void SubmitManualPayment()
     {
+        if (_isManualPaymentSubmitting)
+        {
+            CommonUtil.ShowStyledMessage(
+                "Your manual deposit request is already being submitted. Please wait for the response.",
+                "Request In Progress",
+                isError: true
+            );
+            return;
+        }
+
         if (string.IsNullOrEmpty(utr_inputfield.text))
         {
-            LoaderUtil.instance.ShowToast("Please enter UTR Address");
+            CommonUtil.ShowStyledMessage("Please enter UTR / Transaction ID before submitting.", "Missing UTR", isError: true);
             return;
         }
 
-        // Check if payment screenshot is missing
         if (string.IsNullOrEmpty(SpriteManager.Instance.base64forimgmanualss))
         {
-            LoaderUtil.instance.ShowToast("Please upload the Screen Shot of your payment");
+            CommonUtil.ShowStyledMessage("Please upload a screenshot of your payment before submitting.", "Screenshot Required", isError: true);
             return;
         }
 
-        // Proceed with API call if all checks are passed
         await Manual_Payment_API();
     }
 
@@ -2042,11 +3492,13 @@ public class PaymentManager : MonoBehaviour
     {
         if (amount == "0")
         {
+            CommonUtil.CheckLog("PAY_TRACE PlaceOrderAPI blocked: zero amount");
             CommonUtil.ShowToast("Please Enter Amount Greater than 0");
             return;
         }
         string Url = Configuration.UpiGateway;
         CommonUtil.CheckLog("RES_Check + API-Call + PlaceOrder " + plan_id + " , " + amount);
+        CommonUtil.CheckLog("PAY_TRACE PlaceOrderAPI request url=" + Url + " plan_id=" + (plan_id ?? string.Empty) + " amount=" + amount);
 
         var formData = new Dictionary<string, string>
         {
@@ -2057,8 +3509,18 @@ public class PaymentManager : MonoBehaviour
         };
         OrderDetails details = new OrderDetails();
         details = await APIManager.Instance.Post<OrderDetails>(Url, formData);
+        CommonUtil.CheckLog(
+            "PAY_TRACE PlaceOrderAPI response code="
+            + details.code
+            + " order_id="
+            + details.order_id
+            + " transaction_id="
+            + (details.transaction_id ?? string.Empty)
+            + " intentData="
+            + (string.IsNullOrWhiteSpace(details.intentData) ? "<empty>" : details.intentData)
+        );
         if (details.code == 200)
-            OpenURLInBrowser(details.intentData);
+            OpenAutomaticPaymentUrl(details.intentData, details.order_id, details.transaction_id);
         else
             CommonUtil.ShowToast(details.message);
     }
@@ -2093,6 +3555,8 @@ public class PaymentManager : MonoBehaviour
         string Url = Configuration.addcash;
         CommonUtil.CheckLog("RES_Check + API-Call + Manual_Payment_API");
 
+        _isManualPaymentSubmitting = true;
+
         var formData = new Dictionary<string, string>
         {
             { "user_id", Configuration.GetId() },
@@ -2102,18 +3566,37 @@ public class PaymentManager : MonoBehaviour
             { "ss_image", SpriteManager.Instance.base64forimgmanualss },
             { "type", "0" },
         };
-        UPISuccessResponse response = new UPISuccessResponse();
-        response = await APIManager.Instance.Post<UPISuccessResponse>(Url, formData);
-
-        SafeShowToast(response.message);
-        manual_panel.SetActive(false);
-
-        if (response.code == 200)
+        try
         {
-            utr_inputfield.text = "";
-            manual_ss_logo.SetActive(true);
+            UPISuccessResponse response = new UPISuccessResponse();
+            response = await APIManager.Instance.Post<UPISuccessResponse>(Url, formData);
 
-            manual_ss_img.sprite = UploadScreenshort;
+            manual_panel.SetActive(false);
+
+            if (response.code == 200)
+            {
+                utr_inputfield.text = "";
+                manual_ss_logo.SetActive(true);
+                manual_ss_img.sprite = UploadScreenshort;
+                SpriteManager.Instance.base64forimgmanualss = string.Empty;
+
+                string utr = string.IsNullOrEmpty(response.Utr) ? "" : response.Utr;
+                string successMsg = "Your deposit request has been submitted successfully!\n\nUTR: " + utr + "\n\nAdmin will review and approve within 24 hours.\nCheck status in Recent Transactions tab.";
+                CommonUtil.ShowStyledMessage(successMsg, "Request Submitted", isError: false);
+
+                // Refresh recent transactions so user can see pending status immediately
+                await PurchaseHistoryAPI();
+                ClickPurchaseTransactionsButton();
+            }
+            else
+            {
+                string errMsg = string.IsNullOrEmpty(response.message) ? "Submission failed. Please try again." : response.message;
+                CommonUtil.ShowStyledMessage(errMsg, "Submission Failed", isError: true);
+            }
+        }
+        finally
+        {
+            _isManualPaymentSubmitting = false;
         }
     }
 

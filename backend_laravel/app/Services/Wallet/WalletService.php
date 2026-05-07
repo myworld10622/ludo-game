@@ -5,6 +5,7 @@ namespace App\Services\Wallet;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\WalletTransfer;
 use App\Models\WalletTransaction;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -197,6 +198,126 @@ class WalletService
             tournamentId: $tournamentId,
             meta: $meta,
         );
+    }
+
+    public function transfer(
+        User $sender,
+        User $receiver,
+        float $amount,
+        string $currency = 'INR',
+        ?string $note = null,
+        array $meta = []
+    ): WalletTransfer {
+        if ($sender->id === $receiver->id) {
+            throw new HttpException(422, 'You cannot transfer to your own account.');
+        }
+
+        if ($amount <= 0) {
+            throw new HttpException(422, 'Transfer amount must be greater than zero.');
+        }
+
+        return DB::transaction(function () use ($sender, $receiver, $amount, $currency, $note, $meta) {
+            $normalizedCurrency = strtoupper(trim($currency)) ?: 'INR';
+
+            if ($sender->id < $receiver->id) {
+                $senderWallet = $this->resolveLockedWallet($sender, $normalizedCurrency);
+                $receiverWallet = $this->resolveLockedWallet($receiver, $normalizedCurrency);
+            } else {
+                $receiverWallet = $this->resolveLockedWallet($receiver, $normalizedCurrency);
+                $senderWallet = $this->resolveLockedWallet($sender, $normalizedCurrency);
+            }
+
+            $senderOpeningBalance = (string) $senderWallet->balance;
+            $receiverOpeningBalance = (string) $receiverWallet->balance;
+
+            if ((float) $senderWallet->balance < $amount) {
+                throw new HttpException(422, 'Insufficient wallet balance.');
+            }
+
+            $senderClosingBalance = number_format(((float) $senderWallet->balance - $amount), 4, '.', '');
+            $receiverClosingBalance = number_format(((float) $receiverWallet->balance + $amount), 4, '.', '');
+
+            $senderWallet->forceFill([
+                'balance' => $senderClosingBalance,
+                'last_transaction_at' => now(),
+            ])->save();
+
+            $receiverWallet->forceFill([
+                'balance' => $receiverClosingBalance,
+                'last_transaction_at' => now(),
+            ])->save();
+
+            $transfer = WalletTransfer::query()->create([
+                'transfer_uuid' => 'TRF-'.strtoupper(Str::random(12)),
+                'sender_user_id' => $sender->id,
+                'receiver_user_id' => $receiver->id,
+                'sender_wallet_id' => $senderWallet->id,
+                'receiver_wallet_id' => $receiverWallet->id,
+                'amount' => $amount,
+                'currency' => $normalizedCurrency,
+                'status' => 'completed',
+                'note' => $note,
+                'meta' => array_merge($meta, [
+                    'sender_user_code' => (string) $sender->user_code,
+                    'receiver_user_code' => (string) $receiver->user_code,
+                ]),
+                'processed_at' => now(),
+            ]);
+
+            $senderTransaction = $this->storeTransaction(
+                wallet: $senderWallet,
+                user: $sender,
+                type: 'transfer_sent',
+                direction: 'debit',
+                status: 'completed',
+                amount: $amount,
+                referenceType: WalletTransfer::class,
+                referenceId: $transfer->id,
+                description: 'Wallet transfer sent to '.$receiver->username,
+                currency: $normalizedCurrency,
+                openingBalance: $senderOpeningBalance,
+                closingBalance: $senderClosingBalance,
+                meta: array_merge($meta, [
+                    'transfer_uuid' => $transfer->transfer_uuid,
+                    'counterparty_user_id' => $receiver->id,
+                    'counterparty_user_code' => (string) $receiver->user_code,
+                    'counterparty_username' => (string) $receiver->username,
+                ]),
+            );
+
+            $receiverTransaction = $this->storeTransaction(
+                wallet: $receiverWallet,
+                user: $receiver,
+                type: 'transfer_received',
+                direction: 'credit',
+                status: 'completed',
+                amount: $amount,
+                referenceType: WalletTransfer::class,
+                referenceId: $transfer->id,
+                description: 'Wallet transfer received from '.$sender->username,
+                currency: $normalizedCurrency,
+                openingBalance: $receiverOpeningBalance,
+                closingBalance: $receiverClosingBalance,
+                meta: array_merge($meta, [
+                    'transfer_uuid' => $transfer->transfer_uuid,
+                    'counterparty_user_id' => $sender->id,
+                    'counterparty_user_code' => (string) $sender->user_code,
+                    'counterparty_username' => (string) $sender->username,
+                ]),
+            );
+
+            $transfer->forceFill([
+                'sender_wallet_transaction_id' => $senderTransaction->id,
+                'receiver_wallet_transaction_id' => $receiverTransaction->id,
+            ])->save();
+
+            return $transfer->fresh([
+                'sender',
+                'receiver',
+                'senderTransaction',
+                'receiverTransaction',
+            ]);
+        });
     }
 
     public function captureHeldTransaction(
