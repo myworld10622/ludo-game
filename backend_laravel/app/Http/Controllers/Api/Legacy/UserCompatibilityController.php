@@ -3780,6 +3780,14 @@ class UserCompatibilityController extends Controller
             return 0;
         }
 
+        if ((int) $referrer->id === (int) $user->id) {
+            return 0;
+        }
+
+        if ((string) ($referrer->user_code ?? '') !== '' && (string) ($referrer->user_code ?? '') === (string) ($user->user_code ?? '')) {
+            return 0;
+        }
+
         $referrerLegacy = $this->resolveLegacyDbUser($referrer);
 
         return (int) ($referrerLegacy->id ?? 0);
