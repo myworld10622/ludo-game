@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\Internal\V1\LudoMatchController as InternalLudoMatc
 use App\Http\Controllers\Api\Internal\V1\LudoRoomMessageController as InternalLudoRoomMessageController;
 use App\Http\Controllers\Api\Internal\V1\TournamentMatchResultController as InternalTournamentMatchResult;
 use App\Http\Controllers\Api\V1\AppConfigController;
+use App\Http\Controllers\Api\V1\AgoraTokenController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
 use App\Http\Controllers\Api\V1\BetzonoCallbackController;
 use App\Http\Controllers\Api\V1\GameController;
@@ -159,6 +160,7 @@ Route::prefix($version)
         Route::middleware('api.auth')->group(function () {
             Route::get('/me', [AuthController::class, 'me']);
             Route::get('/me/profile', [AuthController::class, 'me']);
+            Route::get('/agora/token', AgoraTokenController::class);
         });
 
         // ── Tournament Routes ──────────────────────────────────────────────────

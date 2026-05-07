@@ -1,0 +1,29 @@
+<?php
+namespace CyberDeep\LaravelAgoraTokenGenerator\Services\Token\Services;
+
+use CyberDeep\LaravelAgoraTokenGenerator\Services\Token\Util;
+
+class ServiceChat extends Service
+{
+    const SERVICE_TYPE = 5;
+    const PRIVILEGE_USER = 1;
+    const PRIVILEGE_APP = 2;
+    public $userId;
+
+    public function __construct($userId = "")
+    {
+        parent::__construct(self::SERVICE_TYPE);
+        $this->userId = $userId;
+    }
+
+    public function pack()
+    {
+        return parent::pack() . Util::packString($this->userId);
+    }
+
+    public function unpack(&$data)
+    {
+        parent::unpack($data);
+        $this->userId = Util::unpackString($data);
+    }
+}

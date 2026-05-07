@@ -7,6 +7,7 @@
     "license": "proprietary",
     "require": {
         "php": "^8.2",
+        "cyberdeep/laravel-agora-token-generator": "^1.0",
         "laravel/framework": "^11.0",
         "laravel/sanctum": "^4.0",
         "laravel/tinker": "^3.0",

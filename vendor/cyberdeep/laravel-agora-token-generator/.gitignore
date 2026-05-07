@@ -1,0 +1,10 @@
+vendor/
+.idea/
+composer.lock
+.junie/
+.DS_Store
+Thumbs.db
+.phpunit.result.cache
+/.claude/
+.claude/*
+/CLAUDE.md

@@ -1,0 +1,57 @@
+{
+  "name": "cyberdeep/laravel-agora-token-generator",
+  "type": "library",
+  "description": "Laravel package for generating Agora.io tokens (RTC, RTM, Chat) with support for both V1 and V2 token formats",
+  "keywords": [
+    "laravel",
+    "agora",
+    "agora.io",
+    "token",
+    "rtc",
+    "rtm",
+    "real-time",
+    "video",
+    "audio",
+    "chat",
+    "webrtc"
+  ],
+  "homepage": "https://github.com/cyberdeep/laravel-agora-token-generator",
+  "license": "MIT",
+  "support": {
+    "issues": "https://github.com/cyberdeep/laravel-agora-token-generator/issues",
+    "source": "https://github.com/cyberdeep/laravel-agora-token-generator"
+  },
+  "autoload": {
+    "psr-4": {
+      "CyberDeep\\LaravelAgoraTokenGenerator\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "CyberDeep\\LaravelAgoraTokenGenerator\\LaravelAgoraTokenGeneratorServiceProvider"
+      ]
+    }
+  },
+  "authors": [
+    {
+      "name": "Fady Mondy",
+      "email": "info@3x1.io"
+    }
+  ],
+  "require": {
+    "php": "^8.0",
+    "illuminate/support": "^8.0|^9.0|^10.0|^11.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^9.5|^10.0",
+    "orchestra/testbench": "^6.0|^7.0|^8.0|^9.0"
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
