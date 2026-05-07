@@ -1,4 +1,11 @@
 <?php return array (
+  'cyberdeep/laravel-agora-token-generator' => 
+  array (
+    'providers' => 
+    array (
+      0 => 'CyberDeep\\LaravelAgoraTokenGenerator\\LaravelAgoraTokenGeneratorServiceProvider',
+    ),
+  ),
   'laravel/sanctum' => 
   array (
     'providers' => 
