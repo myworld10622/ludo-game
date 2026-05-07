@@ -1546,3 +1546,19 @@
 #44 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php(23): require_once('D://Live-Code//Li...')
 #45 {main}
 "} 
+[2026-05-07 05:30:43] local.ERROR: The "--columns" option does not exist. {"exception":"[object] (Symfony\\Component\\Console\\Exception\\RuntimeException(code: 0): The \"--columns\" option does not exist. at D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Input/ArgvInput.php:226)
+[stacktrace]
+#0 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Input/ArgvInput.php(153): Symfony/Component/Console/Input/ArgvInput->addLongOption('columns', 'Method,URI,Name...')
+#1 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Input/ArgvInput.php(88): Symfony/Component/Console/Input/ArgvInput->parseLongOption('--columns=Metho...')
+#2 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Input/ArgvInput.php(77): Symfony/Component/Console/Input/ArgvInput->parseToken('--columns=Metho...', true)
+#3 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Input/Input.php(53): Symfony/Component/Console/Input/ArgvInput->parse()
+#4 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Command/Command.php(295): Symfony/Component/Console/Input/Input->bind(Object(Symfony/Component/Console/Input/InputDefinition))
+#5 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/laravel/framework/src/Illuminate/Console/Command.php(182): Symfony/Component/Console/Command/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Illuminate/Console/OutputStyle))
+#6 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Application.php(1117): Illuminate/Console/Command->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#7 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Application.php(356): Symfony/Component/Console/Application->doRunCommand(Object(Illuminate/Foundation/Console/RouteListCommand), Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#8 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/symfony/console/Application.php(195): Symfony/Component/Console/Application->doRun(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#9 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/laravel/framework/src/Illuminate/Foundation/Console/Kernel.php(198): Symfony/Component/Console/Application->run(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#10 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/vendor/laravel/framework/src/Illuminate/Foundation/Application.php(1235): Illuminate/Foundation/Console/Kernel->handle(Object(Symfony/Component/Console/Input/ArgvInput), Object(Symfony/Component/Console/Output/ConsoleOutput))
+#11 D:/Live-Code/Live-Rox-Ludo/games/backend_laravel/artisan(14): Illuminate/Foundation/Application->handleCommand(Object(Symfony/Component/Console/Input/ArgvInput))
+#12 {main}
+"} 

@@ -2,6 +2,7 @@
   <Project Path="Unity.Timeline.csproj" />
   <Project Path="Unity.PlasticSCM.Editor.csproj" />
   <Project Path="gpm_common.csproj" />
+  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="com.Tivadar.Best.HTTP.csproj" />
   <Project Path="Unity.Mathematics.csproj" />
   <Project Path="Unity.Timeline.Editor.csproj" />
@@ -14,10 +15,10 @@
   <Project Path="UnityEngine.TestRunner.csproj" />
   <Project Path="Unity.Burst.csproj" />
   <Project Path="Unity.VisualScripting.Flow.Editor.csproj" />
-  <Project Path="Assembly-CSharp.csproj" />
   <Project Path="Unity.Recorder.Editor.csproj" />
   <Project Path="Unity.VisualStudio.Editor.csproj" />
   <Project Path="CodeStage.Maintainer.Editor.csproj" />
+  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="NativeShare.Editor.csproj" />
   <Project Path="UnityEditor.TestRunner.csproj" />
   <Project Path="Unity.VisualScripting.Core.csproj" />
@@ -43,7 +44,6 @@
   <Project Path="com.Tivadar.Best.SocketIO.csproj" />
   <Project Path="Unity.Multiplayer.Center.Common.csproj" />
   <Project Path="com.Tivadar.Best.WebSockets.csproj" />
-  <Project Path="Assembly-CSharp-Editor.csproj" />
   <Project Path="gpm_communicator.csproj" />
   <Project Path="Unity.Collections.CodeGen.csproj" />
   <Project Path="gpm_webview.csproj" />
