@@ -88,12 +88,19 @@
             </div>
             <div class="stack-compact" style="margin-top:14px;">
                 <div style="font-size:15px;font-weight:700;">Playing Slots</div>
+                <div class="muted">Optional daily preferred play windows. Users can still play outside these times.</div>
                 <div class="form-grid">
                     @for($slot = 1; $slot <= 5; $slot++)
+                        @php
+                            $slotStart = data_get($editing?->play_slots, ($slot - 1).'.start_at');
+                            $slotEnd = data_get($editing?->play_slots, ($slot - 1).'.end_at');
+                            $slotStartTime = data_get($editing?->play_slots, ($slot - 1).'.start_time') ?: ($slotStart ? \Illuminate\Support\Carbon::parse($slotStart)->format('H:i') : '');
+                            $slotEndTime = data_get($editing?->play_slots, ($slot - 1).'.end_time') ?: ($slotEnd ? \Illuminate\Support\Carbon::parse($slotEnd)->format('H:i') : '');
+                        @endphp
                         <div class="panel" style="padding:12px;">
                             <div style="font-size:14px;font-weight:700;margin-bottom:10px;">Slot {{ $slot }}</div>
-                            <div><label>Start</label><input type="datetime-local" name="play_slot_start_{{ $slot }}" value="{{ old('play_slot_start_'.$slot) }}" data-utc="{{ $editing && data_get($editing->play_slots, ($slot - 1).'.start_at') ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.start_at'))->toIso8601String() : '' }}"></div>
-                            <div style="margin-top:10px;"><label>End</label><input type="datetime-local" name="play_slot_end_{{ $slot }}" value="{{ old('play_slot_end_'.$slot) }}" data-utc="{{ $editing && data_get($editing->play_slots, ($slot - 1).'.end_at') ? \Illuminate\Support\Carbon::parse(data_get($editing->play_slots, ($slot - 1).'.end_at'))->toIso8601String() : '' }}"></div>
+                            <div><label>Start</label><input type="time" name="play_slot_start_{{ $slot }}" value="{{ old('play_slot_start_'.$slot, $slotStartTime) }}"></div>
+                            <div style="margin-top:10px;"><label>End</label><input type="time" name="play_slot_end_{{ $slot }}" value="{{ old('play_slot_end_'.$slot, $slotEndTime) }}"></div>
                         </div>
                     @endfor
                 </div>

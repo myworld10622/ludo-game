@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 class Tournament extends Model
@@ -169,12 +170,37 @@ class Tournament extends Model
             ->map(function ($slot, $index) {
                 $startAt = data_get($slot, 'start_at');
                 $endAt = data_get($slot, 'end_at');
+                $startTime = data_get($slot, 'start_time');
+                $endTime = data_get($slot, 'end_time');
+                $timezone = (string) (data_get($slot, 'timezone') ?: config('app.timezone', 'UTC'));
+                $recurrence = (string) (data_get($slot, 'recurrence') ?: '');
+                $isRecurringDaily = $recurrence === 'daily' && $startTime && $endTime;
+
+                if ($isRecurringDaily) {
+                    $slotNow = now($timezone);
+                    $slotDate = $slotNow->toDateString();
+                    $startAt = Carbon::parse($slotDate . ' ' . $startTime, $timezone)->utc();
+                    $endAt = Carbon::parse($slotDate . ' ' . $endTime, $timezone)->utc();
+
+                    if ($endAt->lessThanOrEqualTo($startAt)) {
+                        $endAt->addDay();
+                    }
+                } else {
+                    $startAt = $startAt ? now()->parse($startAt) : null;
+                    $endAt = $endAt ? now()->parse($endAt) : null;
+                }
 
                 return [
                     'index' => (int) $index + 1,
                     'label' => data_get($slot, 'label') ?: 'Slot ' . ((int) $index + 1),
-                    'start_at' => $startAt ? now()->parse($startAt) : null,
-                    'end_at' => $endAt ? now()->parse($endAt) : null,
+                    'start_at' => $startAt,
+                    'end_at' => $endAt,
+                    'start_time' => $startTime ?: ($startAt ? Carbon::parse($startAt)->format('H:i') : null),
+                    'end_time' => $endTime ?: ($endAt ? Carbon::parse($endAt)->format('H:i') : null),
+                    'timezone' => $timezone,
+                    'recurrence' => $isRecurringDaily ? 'daily' : $recurrence,
+                    'is_recurring_daily' => $isRecurringDaily,
+                    'is_enforced' => (bool) data_get($slot, 'is_enforced', false),
                 ];
             })
             ->filter(fn ($slot) => $slot['start_at'] && $slot['end_at'])

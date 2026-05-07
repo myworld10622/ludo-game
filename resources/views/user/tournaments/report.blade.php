@@ -59,8 +59,8 @@
         <div class="note-box">
             <div class="note-title">Playing Slots</div>
             <div class="stack-compact">
-                @foreach($tournament->play_slots as $slot)
-                    <div>{{ $slot['label'] ?? 'Slot' }}: <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['start_at'])->format('d M Y, h:i A') }}</span> to <span data-utc-time="{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->toIso8601String() }}">{{ \Illuminate\Support\Carbon::parse($slot['end_at'])->format('d M Y, h:i A') }}</span></div>
+                @foreach($tournament->normalizedPlaySlots() as $slot)
+                    <div>{{ $slot['label'] ?? 'Slot' }}: {{ $slot['start_time'] ?? '—' }} to {{ $slot['end_time'] ?? '—' }}{{ !empty($slot['timezone']) ? ' · '.$slot['timezone'] : '' }}{{ ($slot['recurrence'] ?? '') === 'daily' ? ' · Daily' : '' }}</div>
                 @endforeach
             </div>
         </div>

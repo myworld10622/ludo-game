@@ -392,22 +392,19 @@ class TournamentController extends Controller
 
         if ($tournament->hasPlaySlots()) {
             $activeSlotIndex = $tournament->activePlaySlotIndex();
-            if ($activeSlotIndex === null) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Tournament can only be played during scheduled play slots.',
-                    'play_slots' => $tournament->play_slots,
-                ], 422);
-            }
-
-            $registration->update([
+            $payload = [
                 'last_checked_in_at' => now(),
-                'last_checked_in_slot_index' => $activeSlotIndex,
                 'status' => in_array($registration->status, [
                     TournamentRegistration::STATUS_REGISTERED,
                     TournamentRegistration::STATUS_CHECKED_IN,
                 ], true) ? TournamentRegistration::STATUS_CHECKED_IN : $registration->status,
-            ]);
+            ];
+
+            if ($activeSlotIndex !== null) {
+                $payload['last_checked_in_slot_index'] = $activeSlotIndex;
+            }
+
+            $registration->update($payload);
         }
 
         // Find the next unplayed match for this registration
