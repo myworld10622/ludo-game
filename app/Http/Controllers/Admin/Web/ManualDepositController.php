@@ -76,14 +76,22 @@ class ManualDepositController extends Controller
 
         // If approving (status=1) and not already approved → credit wallet
         if ($status === 1 && $current !== 1) {
-            // Find Laravel user by legacy user_id
-            $legacyUser = DB::table('tbl_users')->where('id', $row->user_id)->first();
-            if (! $legacyUser) {
-                return response()->json(['success' => false, 'message' => 'User not found.']);
-            }
+            // Try to find Laravel user via legacy tbl_users lookup first
+            $legacyUser = Schema::hasTable('tbl_users')
+                ? DB::table('tbl_users')->where('id', $row->user_id)->first()
+                : null;
 
-            $laravelUser = \App\Models\User::where('mobile', $legacyUser->mobile)->first()
-                ?? \App\Models\User::find($legacyUser->id);
+            $laravelUser = null;
+            if ($legacyUser) {
+                $laravelUser = ($legacyUser->mobile
+                    ? \App\Models\User::where('mobile', $legacyUser->mobile)->first()
+                    : null)
+                    ?? \App\Models\User::find($legacyUser->id);
+            }
+            // Fallback: user_id may be the Laravel users.id directly
+            if (! $laravelUser) {
+                $laravelUser = \App\Models\User::find($row->user_id);
+            }
 
             if (! $laravelUser) {
                 return response()->json(['success' => false, 'message' => 'Laravel user not found.']);

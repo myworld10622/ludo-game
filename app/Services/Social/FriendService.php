@@ -84,7 +84,7 @@ class FriendService
                 throw new HttpException(409, 'Friend request already pending.');
             }
 
-            $request = FriendRequest::query()->create([
+            return FriendRequest::query()->create([
                 'request_uuid' => (string) Str::uuid(),
                 'sender_user_id' => $sender->id,
                 'receiver_user_id' => $receiver->id,
@@ -94,8 +94,6 @@ class FriendService
                 'message' => $attributes['message'] ?? null,
                 'meta' => $attributes['meta'] ?? null,
             ]);
-
-            return $request->loadMissing(['sender.profile', 'receiver.profile']);
         });
     }
 

@@ -630,13 +630,21 @@ class PlanCompatibilityController extends Controller
         return DB::table('tbl_users')->where('id', $legacyId)->first();
     }
 
+    private static array $tableExistsCache = [];
+
     protected function legacyTableExists(string $table): bool
     {
-        try {
-            return Schema::hasTable($table);
-        } catch (\Throwable $exception) {
-            return false;
+        if (array_key_exists($table, self::$tableExistsCache)) {
+            return self::$tableExistsCache[$table];
         }
+
+        try {
+            self::$tableExistsCache[$table] = Schema::hasTable($table);
+        } catch (\Throwable $exception) {
+            self::$tableExistsCache[$table] = false;
+        }
+
+        return self::$tableExistsCache[$table];
     }
 
     protected function storeManualPaymentScreenshot(string $base64): string

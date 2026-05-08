@@ -3404,13 +3404,21 @@ class UserCompatibilityController extends Controller
         return $filename;
     }
 
+    private static array $tableExistsCache = [];
+
     protected function legacyTableExists(string $table): bool
     {
-        try {
-            return Schema::hasTable($table);
-        } catch (\Throwable $exception) {
-            return false;
+        if (array_key_exists($table, self::$tableExistsCache)) {
+            return self::$tableExistsCache[$table];
         }
+
+        try {
+            self::$tableExistsCache[$table] = Schema::hasTable($table);
+        } catch (\Throwable $exception) {
+            self::$tableExistsCache[$table] = false;
+        }
+
+        return self::$tableExistsCache[$table];
     }
 
     protected function setLegacySessionLockTimeouts(): void
@@ -3428,13 +3436,22 @@ class UserCompatibilityController extends Controller
         }
     }
 
+    private static bool $settingsRowFetched = false;
+    private static ?object $settingsRowCache = null;
+
     protected function legacySettingsRow(): ?object
     {
-        if (! $this->legacyTableExists('tbl_setting')) {
-            return null;
+        if (self::$settingsRowFetched) {
+            return self::$settingsRowCache;
         }
 
-        return DB::table('tbl_setting')
+        self::$settingsRowFetched = true;
+
+        if (! $this->legacyTableExists('tbl_setting')) {
+            return self::$settingsRowCache = null;
+        }
+
+        return self::$settingsRowCache = DB::table('tbl_setting')
             ->where('isDeleted', 0)
             ->orderByDesc('id')
             ->first();
