@@ -80,7 +80,7 @@ namespace LudoClassicOffline
                 payload,
                 response =>
                 {
-                    if (response != null && response.success && response.data != null)
+                    if (response != null && response.success)
                     {
                         callback?.Invoke(LudoFriendApiResult<LudoFriendRequestData>.Ok(response.data, response.message));
                         return;
@@ -121,7 +121,7 @@ namespace LudoClassicOffline
                 payload,
                 response =>
                 {
-                    if (response != null && response.success && response.data != null)
+                    if (response != null && response.success)
                     {
                         callback?.Invoke(LudoFriendApiResult<LudoFriendRequestData>.Ok(response.data, response.message));
                         return;

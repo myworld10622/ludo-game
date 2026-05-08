@@ -9614,7 +9614,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -30, y: -411}
+  m_AnchoredPosition: {x: -30, y: -511}
   m_SizeDelta: {x: 120, y: 120}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &211530382
@@ -18173,7 +18173,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -23, y: -13}
+  m_AnchoredPosition: {x: -23, y: -113}
   m_SizeDelta: {x: 120, y: 120}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &360678321
@@ -44941,7 +44941,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: -100}
   m_SizeDelta: {x: 0, y: 125.4629}
   m_Pivot: {x: 0.5, y: 1}
 --- !u!114 &934176002
@@ -54811,7 +54811,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 91.79999, y: -150}
+  m_AnchoredPosition: {x: 91.79999, y: -250}
   m_SizeDelta: {x: 135.751, y: 150}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &1128048156
@@ -60215,7 +60215,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 33, y: -549}
+  m_AnchoredPosition: {x: 33, y: -649}
   m_SizeDelta: {x: 125, y: 125}
   m_Pivot: {x: 0, y: 0}
 --- !u!114 &1260082842
@@ -77974,7 +77974,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 1}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: -31, y: -224}
+  m_AnchoredPosition: {x: -31, y: -324}
   m_SizeDelta: {x: 100, y: 100}
   m_Pivot: {x: 1, y: 1}
 --- !u!114 &1711329548
@@ -93350,7 +93350,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -225, y: 406}
+  m_AnchoredPosition: {x: -525, y: 706}
   m_SizeDelta: {x: 310, y: 230}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!95 &2041731788
@@ -96097,7 +96097,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 90, y: -350}
+  m_AnchoredPosition: {x: 90, y: -450}
   m_SizeDelta: {x: 139.277, y: 150}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &2104229974
@@ -96687,6 +96687,7 @@ MonoBehaviour:
   EmailAddressInputField: {fileID: 530436102}
   phonenumber: {fileID: 1819222432}
   texture2d: {fileID: 0}
+  defaultProfileSprite: {fileID: 0}
   profileEditorRoot: {fileID: 257093705}
   profileNameEditor: {fileID: 0}
   profileEmailEditor: {fileID: 0}

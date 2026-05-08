@@ -2200,6 +2200,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
                 req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
                 req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("Content-Type", "application/json");
                 req.SetRequestHeader("Accept", "application/json");
                 req.SetRequestHeader("Authorization", "Bearer " + token);
 
@@ -2283,6 +2284,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
                 req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
                 req.downloadHandler = new DownloadHandlerBuffer();
+                req.SetRequestHeader("Content-Type", "application/json");
                 req.SetRequestHeader("Accept", "application/json");
                 req.SetRequestHeader("Authorization", "Bearer " + token);
 
