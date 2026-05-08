@@ -32,6 +32,7 @@ namespace LudoClassicOffline
         private bool isLoading;
         private bool hasBuiltUi;
         private bool isBakedPanel;   // true when using existing scene panel (skip layout overrides)
+        private GameObject bakedRowTemplate; // first baked TCard in scene — cloned for each API row
         private Font runtimeFont;
         private int lastResponsiveWidth = -1;
         private int lastResponsiveHeight = -1;
@@ -59,6 +60,8 @@ namespace LudoClassicOffline
         private InputField inviteCodeField;
         private InputField invitePasswordField;
         private Text privateStatusText;
+        // Assign TCard.prefab in Inspector — when set, rows use the baked design instead of runtime code
+        public GameObject rowCardPrefab;
         public GameObject detailPopup;
         public Text detailTitleText;
         public Text detailMetaText;
@@ -913,6 +916,17 @@ namespace LudoClassicOffline
             if (string.IsNullOrWhiteSpace(tournament.TournamentUuid))
                 return;
 
+            // Use baked scene template (auto-detected) or Inspector-assigned prefab
+            GameObject templateSource = bakedRowTemplate ?? rowCardPrefab;
+            if (templateSource != null && listContent != null)
+            {
+                var prefabCard = Instantiate(templateSource, listContent, false);
+                prefabCard.SetActive(true);
+                runtimeRows.Add(prefabCard);
+                FillTCardPrefab(prefabCard, tournament);
+                return;
+            }
+
             bool playable = IsTournamentPlayable(tournament);
             bool shouldOpenDetails = !playable;
 
@@ -1195,6 +1209,89 @@ namespace LudoClassicOffline
             return chip;
         }
 
+        // Fill an instantiated TCard prefab with tournament data
+        private void FillTCardPrefab(GameObject card, LudoTournamentListItem tournament)
+        {
+            bool playable = IsTournamentPlayable(tournament);
+            string statusLabel = tournament.Status.Replace("_", " ").ToUpperInvariant();
+            string playersStr  = tournament.JoinedPlayers + " / " + tournament.MaxPlayers + " PLAYERS";
+            string timingText  = string.IsNullOrWhiteSpace(tournament.StartTime)
+                ? "Start time will be announced soon"
+                : "Starts " + tournament.StartTime;
+            string feeValue   = tournament.EntryFee > 0 ? "₹" + tournament.EntryFee : "FREE";
+            string prizeValue = tournament.PrizePool > 0f ? "₹" + Mathf.RoundToInt(tournament.PrizePool) : "TBA";
+            string noteText   = playable
+                ? "Match is LIVE — tap Play to enter the table now!"
+                : "Tap Details to see prize breakdown, slots and schedule.";
+            string btnLabel = playable ? "▶  PLAY NOW" : "  " + GetDetailsButtonLabel(tournament) + "  ";
+
+            // Name + timing (HeaderCol has two Text children: [0]=name, [1]=timing)
+            var headerCol = card.transform.Find("ContentArea/HeaderCol");
+            if (headerCol != null)
+            {
+                var texts = headerCol.GetComponentsInChildren<Text>(true);
+                if (texts.Length > 0) texts[0].text = tournament.Title;
+                if (texts.Length > 1) texts[1].text = timingText;
+            }
+
+            // Status pill label
+            var statusT = FindText(card.transform, "ContentArea/BadgeRow/StatusPill/Label");
+            if (statusT != null) statusT.text = statusLabel;
+
+            // Players label — direct Text child of BadgeRow that is NOT inside StatusPill
+            var badgeRow = card.transform.Find("ContentArea/BadgeRow");
+            if (badgeRow != null)
+            {
+                foreach (Transform child in badgeRow)
+                {
+                    if (child.name == "StatusPill") continue;
+                    var t = child.GetComponent<Text>();
+                    if (t == null) t = child.GetComponentInChildren<Text>(true);
+                    if (t != null) { t.text = playersStr; break; }
+                }
+            }
+
+            // Metric chips: first Label = header (keep), second Label = value
+            SetChipValue(card.transform.Find("ContentArea/MetricsRow/ENTRY FEEChip"), feeValue);
+            SetChipValue(card.transform.Find("ContentArea/MetricsRow/PRIZE POOLChip"), prizeValue);
+
+            // Note text
+            var noteT = FindText(card.transform, "ContentArea/FooterRow/NoteWrap/Label");
+            if (noteT != null) noteT.text = noteText;
+
+            // Action button — find first Button in FooterRow (outside NoteWrap)
+            var footerRow = card.transform.Find("ContentArea/FooterRow");
+            if (footerRow != null)
+            {
+                Button btn = null;
+                foreach (Transform child in footerRow)
+                {
+                    if (child.name == "NoteWrap") continue;
+                    btn = child.GetComponent<Button>();
+                    if (btn == null) btn = child.GetComponentInChildren<Button>(true);
+                    if (btn != null) break;
+                }
+                if (btn != null)
+                {
+                    var btnTxt = btn.GetComponentInChildren<Text>(true);
+                    if (btnTxt != null) btnTxt.text = btnLabel;
+                    btn.onClick.RemoveAllListeners();
+                    btn.onClick.AddListener(() =>
+                    {
+                        if (IsTournamentPlayable(tournament)) JoinTournament(tournament);
+                        else OpenTournamentDetails(tournament);
+                    });
+                }
+            }
+        }
+
+        private void SetChipValue(Transform chip, string value)
+        {
+            if (chip == null) return;
+            var labels = chip.GetComponentsInChildren<Text>(true);
+            if (labels.Length > 1) labels[1].text = value;
+        }
+
         private bool IsTournamentJoinable(LudoTournamentListItem tournament)
         {
             return tournament != null && tournament.CanJoin;
@@ -1268,6 +1365,7 @@ namespace LudoClassicOffline
                 detailPopup  = null; 
             }
             isBakedPanel = false;
+            if (bakedRowTemplate != null) { Destroy(bakedRowTemplate); bakedRowTemplate = null; }
             listContent = null; titleText = null; statusText = null;
             closeButton = null; refreshButton = null; joinPrivateBtn = null;
             tournamentScroll = null; _popupLayer = null; _privatePopupLayer = null;
@@ -1944,6 +2042,14 @@ namespace LudoClassicOffline
             {
                 Debug.LogWarning($"[Tournament] TryBind failed — title={titleText!=null} status={statusText!=null} refresh={refreshButton!=null} close={closeButton!=null} private={joinPrivateBtn!=null} scroll={tournamentScroll!=null} viewport={tournamentViewport!=null} content={listContent!=null} grid={tournamentGrid!=null}");
                 return false;
+            }
+
+            // Grab first baked TCard as a clone template, detach it so ClearRows won't destroy it
+            if (listContent.childCount > 0)
+            {
+                bakedRowTemplate = listContent.GetChild(0).gameObject;
+                bakedRowTemplate.transform.SetParent(null, false);
+                bakedRowTemplate.SetActive(false);
             }
 
             Debug.Log("[Tournament] Bound to baked TournamentPanel successfully");

@@ -129,26 +129,20 @@ public class Profile : MonoBehaviour
         if (obj.name == "Profile")
         {
             profilesettingpic2.sprite = profilepic.sprite;
-            PopUpUtil.ButtonClick(obj);
             EnsureProfileEditorBindings(true);
             ApplyProfileDataToEditor();
+            if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(true);
+            PopUpUtil.ButtonClick(obj);
             if (Application.isPlaying)
                 StartCoroutine(RefreshProfileEditorVisualsDelayed());
             return;
         }
-        else if (obj.name == "Bank Details")
+
+        // Hide the profile editor whenever any other sub-panel opens
+        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(false);
+
+        if (obj.name == "Bank Details")
         {
-            // IFSCCode.text = string.Empty;
-            // account_holder_name.text = string.Empty;
-            // account_number.text = string.Empty;
-            // bank_name.text = string.Empty;
-        }
-        else if (obj.name == "Bank Details")
-        {
-            // IFSCCode.text = string.Empty;
-            // account_holder_name.text = string.Empty;
-            // account_number.text = string.Empty;
-            // bank_name.text = string.Empty;
             EnsureBankDetailBindings();
         }
         PopUpUtil.ButtonClick(obj);
@@ -156,6 +150,7 @@ public class Profile : MonoBehaviour
 
     public void PopUpPanelClose(GameObject obj)
     {
+        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(false);
         PopUpUtil.ButtonCancel(obj);
     }
 
@@ -1338,6 +1333,7 @@ public class Profile : MonoBehaviour
         }
 #endif
         GameObject root = new GameObject("ProfileDetailsRuntime", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+        root.SetActive(false); // hidden by default — only shown when Profile button is clicked
         root.transform.SetParent(popupRect, false);
         RectTransform rootRect = root.GetComponent<RectTransform>();
         rootRect.anchorMin = new Vector2(0f, 0f);

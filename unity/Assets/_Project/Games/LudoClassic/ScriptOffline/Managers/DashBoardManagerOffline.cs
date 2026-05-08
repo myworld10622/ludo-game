@@ -1090,7 +1090,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 card.SetActive(shouldShow);
             }
 
-            ApplyClassicLobbyResponsiveLayout(lobbyRoot);
+            StartCoroutine(DelayedLobbyLayout(lobbyRoot));
             WirePassNPlayLobbyCardButtons(lobbyRoot);
         }
 
@@ -1118,8 +1118,14 @@ public class DashBoardManagerOffline : MonoBehaviour
                 card.SetActive(false);
             }
 
-            ApplyClassicLobbyResponsiveLayout(lobbyRoot);
+            StartCoroutine(DelayedLobbyLayout(lobbyRoot));
             WirePassNPlayLobbyCardButtons(lobbyRoot);
+        }
+
+        private System.Collections.IEnumerator DelayedLobbyLayout(GameObject lobbyRoot)
+        {
+            yield return null; // wait one frame so RectTransform sizes are computed
+            ApplyClassicLobbyResponsiveLayout(lobbyRoot);
         }
 
         private void WirePassNPlayLobbyCardButtons(GameObject lobbyRoot)
@@ -1243,9 +1249,36 @@ public class DashBoardManagerOffline : MonoBehaviour
                     float contentHeight = grid.padding.top + grid.padding.bottom
                         + rows * cardHeight
                         + Mathf.Max(0, rows - 1) * grid.spacing.y;
+
+                    // Anchor content to top so it grows downward and scroll works correctly
+                    gridRect.anchorMin = new Vector2(0f, 1f);
+                    gridRect.anchorMax = new Vector2(1f, 1f);
+                    gridRect.pivot     = new Vector2(0.5f, 1f);
+                    gridRect.offsetMin = new Vector2(0f, -contentHeight);
+                    gridRect.offsetMax = new Vector2(0f, 0f);
+
                     gridRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
-                    gridRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, Mathf.Max(contentHeight, gridRect.rect.height));
+                    gridRect.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, contentHeight);
+
+                    // Ensure a ContentSizeFitter exists so layout rebuilds properly
+                    var csf = gridRect.GetComponent<ContentSizeFitter>();
+                    if (csf == null) csf = gridRect.gameObject.AddComponent<ContentSizeFitter>();
+                    csf.verticalFit   = ContentSizeFitter.FitMode.PreferredSize;
+                    csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
                     LayoutRebuilder.ForceRebuildLayoutImmediate(gridRect);
+
+                    // Also rebuild the ScrollRect content parent if it differs from the grid
+                    var scrollContent = gridRect.parent as RectTransform;
+                    if (scrollContent != null && scrollContent != gridRect)
+                    {
+                        scrollContent.anchorMin = new Vector2(0f, 1f);
+                        scrollContent.anchorMax = new Vector2(1f, 1f);
+                        scrollContent.pivot     = new Vector2(0.5f, 1f);
+                        scrollContent.offsetMin = new Vector2(0f, -contentHeight);
+                        scrollContent.offsetMax = new Vector2(0f, 0f);
+                        LayoutRebuilder.ForceRebuildLayoutImmediate(scrollContent);
+                    }
                 }
             }
         }
