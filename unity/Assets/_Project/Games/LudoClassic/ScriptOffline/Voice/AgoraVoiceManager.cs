@@ -135,7 +135,7 @@ namespace LudoClassicOffline
 
             if (toggleButton != null)
             {
-                toggleButton.gameObject.SetActive(available);
+                toggleButton.gameObject.SetActive(true); // always visible — dimmed when unavailable
             }
 
             if (!available)
@@ -347,22 +347,22 @@ namespace LudoClassicOffline
             RectTransform rect = toggleObj.GetComponent<RectTransform>();
             if (rect != null)
             {
-                rect.sizeDelta = new Vector2(100f, 100f);
+                rect.sizeDelta = new Vector2(110f, 110f);
             }
 
             Image img = toggleObj.GetComponent<Image>();
             if (img == null) img = toggleObj.AddComponent<Image>();
-            img.color = new Color(0.05f, 0.38f, 0.28f, 0.97f);
+            img.color = new Color32(120, 18, 30, 245); // dark maroon
 
             Outline outline = toggleObj.GetComponent<Outline>();
             if (outline == null) outline = toggleObj.AddComponent<Outline>();
-            outline.effectColor = new Color(0.25f, 0.95f, 0.70f, 0.22f);
+            outline.effectColor = new Color32(255, 180, 60, 80); // gold rim
             outline.effectDistance = new Vector2(2f, -2f);
 
             Shadow shadow = toggleObj.GetComponent<Shadow>();
             if (shadow == null) shadow = toggleObj.AddComponent<Shadow>();
-            shadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
-            shadow.effectDistance = new Vector2(0f, -8f);
+            shadow.effectColor = new Color(0f, 0f, 0f, 0.65f);
+            shadow.effectDistance = new Vector2(0f, -6f);
         }
 
         private void BuildToggleDecorations(Transform parent)
@@ -373,16 +373,16 @@ namespace LudoClassicOffline
             EnsureDecorativeCircle(parent, "AgoraVoiceToggleInner", new Vector2(66f, 66f), new Color(1f, 1f, 1f, 0.06f));
 
             // Mic icon label (center-top)
-            Text iconText = FindOrCreateText(parent, "AgoraVoiceToggleIcon", new Vector2(0f, 10f), 26, TextAnchor.MiddleCenter);
-            iconText.text = "MIC";
+            Text iconText = FindOrCreateText(parent, "AgoraVoiceToggleIcon", new Vector2(0f, 10f), 28, TextAnchor.MiddleCenter);
+            iconText.text = "🎙";
             iconText.fontStyle = FontStyle.Bold;
-            iconText.color = new Color(0.86f, 1f, 0.94f, 1f);
-            iconText.rectTransform.sizeDelta = new Vector2(90f, 34f);
+            iconText.color = new Color32(255, 220, 100, 255); // gold
+            iconText.rectTransform.sizeDelta = new Vector2(90f, 38f);
 
             // Status label (center-bottom)
-            toggleLabel = FindOrCreateText(parent, VoiceToggleLabelName, new Vector2(0f, -24f), 15, TextAnchor.MiddleCenter);
+            toggleLabel = FindOrCreateText(parent, VoiceToggleLabelName, new Vector2(0f, -26f), 16, TextAnchor.MiddleCenter);
             toggleLabel.fontStyle = FontStyle.Bold;
-            toggleLabel.color = new Color(0.72f, 0.98f, 0.86f, 0.94f);
+            toggleLabel.color = new Color32(255, 200, 80, 230); // gold label
             toggleLabel.rectTransform.sizeDelta = new Vector2(90f, 24f);
 
             // Live status dot (top-right corner)
@@ -393,16 +393,16 @@ namespace LudoClassicOffline
         {
             Image panelImage = panelObj.GetComponent<Image>();
             if (panelImage == null) panelImage = panelObj.AddComponent<Image>();
-            panelImage.color = new Color(0.06f, 0.09f, 0.14f, 0.96f);
+            panelImage.color = new Color32(28, 5, 10, 248); // near-black maroon
 
             Outline panelOutline = panelObj.GetComponent<Outline>();
             if (panelOutline == null) panelOutline = panelObj.AddComponent<Outline>();
-            panelOutline.effectColor = new Color(0.18f, 0.88f, 0.60f, 0.18f);
+            panelOutline.effectColor = new Color32(200, 140, 40, 90); // gold border
             panelOutline.effectDistance = new Vector2(2f, -2f);
 
             Shadow panelShadow = panelObj.GetComponent<Shadow>();
             if (panelShadow == null) panelShadow = panelObj.AddComponent<Shadow>();
-            panelShadow.effectColor = new Color(0f, 0f, 0f, 0.55f);
+            panelShadow.effectColor = new Color(0f, 0f, 0f, 0.70f);
             panelShadow.effectDistance = new Vector2(0f, -14f);
         }
 
@@ -541,14 +541,18 @@ namespace LudoClassicOffline
             }
 
             RectTransform rect = toggleObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(1f, 0f);
-            rect.anchorMax = new Vector2(1f, 0f);
-            rect.pivot = new Vector2(1f, 0f);
-            rect.anchoredPosition = new Vector2(-28f, 180f);
-            rect.sizeDelta = new Vector2(100f, 100f);
+            rect.anchorMin = new Vector2(0.5f, 0.5f);
+            rect.anchorMax = new Vector2(0.5f, 0.5f);
+            rect.pivot     = new Vector2(0.5f, 0.5f);
+            rect.anchoredPosition = new Vector2(460f, -600f); // bottom-right area
+            rect.sizeDelta = new Vector2(110f, 110f);
 
             ApplyToggleStyle(toggleObject);
             BuildToggleDecorations(toggleObject.transform);
+
+            // Add drag-to-move behaviour
+            if (toggleObject.GetComponent<VoiceToggleDragHandler>() == null)
+                toggleObject.AddComponent<VoiceToggleDragHandler>();
 
             return toggleObject;
         }
@@ -603,7 +607,7 @@ namespace LudoClassicOffline
             rect.offsetMax = new Vector2(-20f, -20f);
 
             Image background = panelRootObject.GetComponent<Image>();
-            background.color = new Color(0.08f, 0.11f, 0.16f, 0.92f);
+            background.color = new Color32(28, 5, 10, 235); // deep maroon
 
             VerticalLayoutGroup layout = panelRootObject.GetComponent<VerticalLayoutGroup>();
             layout.spacing = 14f;
@@ -631,11 +635,11 @@ namespace LudoClassicOffline
 
             // Accent strip behind header
             Image headerBg = headerRow.gameObject.AddComponent<Image>();
-            headerBg.color = new Color(0.05f, 0.38f, 0.27f, 0.55f);
+            headerBg.color = new Color32(100, 14, 24, 200); // maroon header strip
 
             Text titleLabel = CreateText(headerRow, "AgoraVoiceTitleLabel", 22, FontStyle.Bold, TextAnchor.MiddleLeft);
-            titleLabel.text = "  VOICE CHAT";
-            titleLabel.color = new Color(0.72f, 1f, 0.88f, 1f);
+            titleLabel.text = "  🎙 VOICE CHAT";
+            titleLabel.color = new Color32(255, 210, 100, 255); // gold title
             LayoutElement titleEl = titleLabel.gameObject.AddComponent<LayoutElement>();
             titleEl.flexibleWidth = 1f;
             titleEl.minHeight = 52f;
@@ -692,9 +696,9 @@ namespace LudoClassicOffline
             btnRowEl.minHeight = 58f;
             btnRowEl.preferredHeight = 58f;
 
-            micButton = CreateIconButton(buttonsRow, "AgoraMicBtn", "MUTE", new Color(0.10f, 0.52f, 0.38f, 1f), 17);
-            speakerButton = CreateIconButton(buttonsRow, "AgoraSpeakerBtn", "SPEAKER", new Color(0.16f, 0.34f, 0.60f, 1f), 17);
-            leaveButton = CreateIconButton(buttonsRow, "AgoraLeaveBtn", "LEAVE", new Color(0.65f, 0.14f, 0.18f, 1f), 17);
+            micButton   = CreateIconButton(buttonsRow, "AgoraMicBtn",     "🎙 Mute",    new Color32(60,  120, 60,  240), 17);
+            speakerButton = CreateIconButton(buttonsRow, "AgoraSpeakerBtn", "🔊 Speaker", new Color32(40,  80,  150, 240), 17);
+            leaveButton = CreateIconButton(buttonsRow, "AgoraLeaveBtn",   "✕ Leave",   new Color32(160, 22,  36,  240), 17);
 
             micButton.onClick.AddListener(ToggleMic);
             speakerButton.onClick.AddListener(ToggleSpeaker);
@@ -822,7 +826,7 @@ namespace LudoClassicOffline
 
         private void SetPanelOpen(bool open)
         {
-            isPanelOpen = open && isVoiceAvailable;
+            isPanelOpen = open; // allow panel to open even while connecting
             if (overlayPanelObject == null || panelRoot == null)
             {
                 return;
@@ -1225,13 +1229,13 @@ namespace LudoClassicOffline
                 if (toggleImage != null)
                 {
                     if (!isVoiceAvailable)
-                        toggleImage.color = new Color(0.22f, 0.22f, 0.25f, 0.80f); // dim grey
+                        toggleImage.color = new Color32(60,  10, 16, 200);  // dim maroon
                     else if (isJoined)
-                        toggleImage.color = new Color(0.04f, 0.55f, 0.37f, 0.98f); // bright green
+                        toggleImage.color = new Color32(30,  130, 60, 250); // green — live
                     else if (isJoining)
-                        toggleImage.color = new Color(0.26f, 0.43f, 0.16f, 0.98f); // olive
+                        toggleImage.color = new Color32(140, 100, 10, 245); // amber — connecting
                     else
-                        toggleImage.color = new Color(0.05f, 0.38f, 0.28f, 0.97f); // dark teal
+                        toggleImage.color = new Color32(120, 18,  30, 245); // maroon — ready
                 }
             }
 
@@ -1251,18 +1255,24 @@ namespace LudoClassicOffline
             {
                 Text micText = micButton.GetComponentInChildren<Text>();
                 if (micText != null)
-                {
-                    micText.text = isMuted ? "Unmute" : "Mute";
-                }
+                    micText.text = isMuted ? "🔇 Unmute" : "🎙 Mute";
+                Image micImg = micButton.GetComponent<Image>();
+                if (micImg != null)
+                    micImg.color = isMuted
+                        ? new Color32(160, 22, 36, 240)   // red when muted
+                        : new Color32(60, 120, 60, 240);  // green when live
             }
 
             if (speakerButton != null)
             {
                 Text speakerText = speakerButton.GetComponentInChildren<Text>();
                 if (speakerText != null)
-                {
-                    speakerText.text = isSpeakerEnabled ? "Speaker On" : "Speaker Off";
-                }
+                    speakerText.text = isSpeakerEnabled ? "🔊 Speaker" : "🔇 Speaker";
+                Image spkImg = speakerButton.GetComponent<Image>();
+                if (spkImg != null)
+                    spkImg.color = isSpeakerEnabled
+                        ? new Color32(40, 80, 150, 240)
+                        : new Color32(80, 80, 80, 220);
             }
 
             UpdatePulseState();
@@ -1433,6 +1443,62 @@ namespace LudoClassicOffline
             public string channel;
             public uint uid;
             public int expiresIn;
+        }
+    }
+
+    // Drag handler — attach to the floating mic toggle button
+    internal class VoiceToggleDragHandler : MonoBehaviour,
+        UnityEngine.EventSystems.IBeginDragHandler,
+        UnityEngine.EventSystems.IDragHandler,
+        UnityEngine.EventSystems.IEndDragHandler
+    {
+        private RectTransform rectTransform;
+        private Canvas canvas;
+        private Vector2 dragOffset;
+        private bool wasDragged;
+
+        private void Awake()
+        {
+            rectTransform = GetComponent<RectTransform>();
+            canvas = GetComponentInParent<Canvas>();
+        }
+
+        public void OnBeginDrag(UnityEngine.EventSystems.PointerEventData e)
+        {
+            wasDragged = false;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                canvas.GetComponent<RectTransform>(), e.position,
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                out Vector2 localPos);
+            dragOffset = rectTransform.anchoredPosition - localPos;
+        }
+
+        public void OnDrag(UnityEngine.EventSystems.PointerEventData e)
+        {
+            wasDragged = true;
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                canvas.GetComponent<RectTransform>(), e.position,
+                canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera,
+                out Vector2 localPos);
+
+            Vector2 newPos = localPos + dragOffset;
+
+            // Clamp inside canvas bounds
+            Vector2 half = rectTransform.sizeDelta * 0.5f;
+            Rect canvasRect = canvas.GetComponent<RectTransform>().rect;
+            newPos.x = Mathf.Clamp(newPos.x, canvasRect.xMin + half.x, canvasRect.xMax - half.x);
+            newPos.y = Mathf.Clamp(newPos.y, canvasRect.yMin + half.y, canvasRect.yMax - half.y);
+
+            rectTransform.anchoredPosition = newPos;
+        }
+
+        public void OnEndDrag(UnityEngine.EventSystems.PointerEventData e)
+        {
+            if (wasDragged)
+            {
+                // Suppress the click that fires after drag ends
+                e.eligibleForClick = false;
+            }
         }
     }
 }

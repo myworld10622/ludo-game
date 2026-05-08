@@ -41,8 +41,11 @@ public class Profile : MonoBehaviour
         phonenumber;
     public Texture2D texture2d;
 
+    [Header("Default Avatar")]
+    public Sprite defaultProfileSprite;
+
     [Header("Persistent Profile Editor")]
-    [SerializeField] private RectTransform profileEditorRoot;
+    public RectTransform profileEditorRoot;
     [SerializeField] private InputField profileNameEditor;
     [SerializeField] private InputField profileEmailEditor;
     [SerializeField] private InputField profilePhoneEditor;
@@ -123,23 +126,26 @@ public class Profile : MonoBehaviour
 
     public GameObject ProfilePopup;
 
+    // Called directly by the "profile-update-info" button via OnClick — no name matching needed
+    public void OpenProfileEditor()
+    {
+        if (profilesettingpic2 != null && profilepic != null)
+            profilesettingpic2.sprite = profilepic.sprite;
+        EnsureProfileEditorBindings(true);
+        ApplyProfileDataToEditor();
+        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(true);
+        if (Application.isPlaying)
+            StartCoroutine(RefreshProfileEditorVisualsDelayed());
+    }
+
+    public void CloseProfileEditor()
+    {
+        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(false);
+    }
+
     public void PopUpPanelOpen(GameObject obj)
     {
         Debug.Log("OpenPopupName:" + obj.name);
-        if (obj.name == "Profile")
-        {
-            profilesettingpic2.sprite = profilepic.sprite;
-            EnsureProfileEditorBindings(true);
-            ApplyProfileDataToEditor();
-            if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(true);
-            PopUpUtil.ButtonClick(obj);
-            if (Application.isPlaying)
-                StartCoroutine(RefreshProfileEditorVisualsDelayed());
-            return;
-        }
-
-        // Hide the profile editor whenever any other sub-panel opens
-        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(false);
 
         if (obj.name == "Bank Details")
         {
@@ -150,7 +156,6 @@ public class Profile : MonoBehaviour
 
     public void PopUpPanelClose(GameObject obj)
     {
-        if (profileEditorRoot != null) profileEditorRoot.gameObject.SetActive(false);
         PopUpUtil.ButtonCancel(obj);
     }
 
@@ -193,9 +198,12 @@ public class Profile : MonoBehaviour
             return;
         }
 
-        if (SpriteManager.Instance != null && profilepic != null)
+        if (profilepic != null)
         {
-            profilepic.sprite = SpriteManager.Instance.profile_image;
+            Sprite initialPic = (SpriteManager.Instance != null && SpriteManager.Instance.profile_image != null)
+                ? SpriteManager.Instance.profile_image
+                : defaultProfileSprite;
+            if (initialPic != null) profilepic.sprite = initialPic;
         }
         selection = this.GetComponent<GameSelection>();
         EnsureBankDetailBindings();
@@ -226,19 +234,22 @@ public class Profile : MonoBehaviour
 
     }
 
+    private const float WalletAutoRefreshInterval = 30f;
+    private float walletRefreshTimer = 0f;
+
     private void LateUpdate()
     {
-        if (!Application.isPlaying || ProfilePopup == null || !ProfilePopup.activeInHierarchy)
+        if (!Application.isPlaying)
             return;
 
-        if (Time.unscaledTime - lastProfileEditorNormalizeAt < 0.2f)
-            return;
-
-        if (NeedsProfileEditorRefresh())
+        // Auto-refresh wallet balance every 30 seconds
+        walletRefreshTimer += Time.unscaledDeltaTime;
+        if (walletRefreshTimer >= WalletAutoRefreshInterval)
         {
-            EnsureProfileEditorBindings(true);
-            lastProfileEditorNormalizeAt = Time.unscaledTime;
+            walletRefreshTimer = 0f;
+            StartCoroutine(UpdateWallet());
         }
+
     }
 
 #if UNITY_EDITOR
@@ -1083,7 +1094,10 @@ public class Profile : MonoBehaviour
     public void SetUserProfileDetails()
     {
         // Populate UI elements after updatedata is completed
-        string currentWallet = Configuration.GetWallet();
+        string rawWallet = Configuration.GetWallet();
+        string currentWallet = float.TryParse(rawWallet, out float walletVal)
+            ? walletVal.ToString("F2")
+            : rawWallet;
         string currentId = new StringBuilder().Append("ID :").Append(Configuration.GetId()).ToString();
         string currentName = Configuration.GetName();
 
@@ -1093,11 +1107,14 @@ public class Profile : MonoBehaviour
         if (profileid != null) profileid.text = currentId;
         if (name != null) name.text = currentName;
         if (profilename != null) profilename.text = currentName;
-        if (SpriteManager.Instance != null && SpriteManager.Instance.profile_image != null)
+        Sprite picToUse = (SpriteManager.Instance != null && SpriteManager.Instance.profile_image != null)
+            ? SpriteManager.Instance.profile_image
+            : defaultProfileSprite;
+        if (picToUse != null)
         {
-            if (profilepic != null)         profilepic.sprite         = SpriteManager.Instance.profile_image;
-            if (profilesettingpic != null)  profilesettingpic.sprite  = SpriteManager.Instance.profile_image;
-            if (profilesettingpic2 != null) profilesettingpic2.sprite = SpriteManager.Instance.profile_image;
+            if (profilepic != null)         profilepic.sprite         = picToUse;
+            if (profilesettingpic != null)  profilesettingpic.sprite  = picToUse;
+            if (profilesettingpic2 != null) profilesettingpic2.sprite = picToUse;
         }
 
         if (entername != null) entername.text = currentName;
@@ -1232,7 +1249,9 @@ public class Profile : MonoBehaviour
 
         if (profileEditorRoot == null)
             profileEditorRoot = ProfilePopup.transform.Find("ProfileDetailsRuntime") as RectTransform;
-        if (profileEditorRoot != null && allowCreate)
+        // In play mode: never destroy the baked panel — use it as-is
+        // In editor mode: rebuild if structure is outdated
+        if (profileEditorRoot != null && allowCreate && !Application.isPlaying)
         {
             bool hasLegacyFields =
                 profileEditorRoot.Find("EmailField") != null
@@ -1246,12 +1265,7 @@ public class Profile : MonoBehaviour
             if (hasLegacyFields || missingNewRows)
             {
 #if UNITY_EDITOR
-                if (!Application.isPlaying)
-                    Undo.DestroyObjectImmediate(profileEditorRoot.gameObject);
-                else
-                    Destroy(profileEditorRoot.gameObject);
-#else
-                Destroy(profileEditorRoot.gameObject);
+                Undo.DestroyObjectImmediate(profileEditorRoot.gameObject);
 #endif
                 profileEditorRoot = null;
                 profileNameEditor = null;
@@ -1264,7 +1278,7 @@ public class Profile : MonoBehaviour
                 profileEditorStatus = null;
             }
         }
-        if (profileEditorRoot == null && allowCreate)
+        if (profileEditorRoot == null && allowCreate && !Application.isPlaying)
             profileEditorRoot = BuildProfileEditor();
         if (profileEditorRoot == null)
             return;
@@ -1278,7 +1292,9 @@ public class Profile : MonoBehaviour
 
         NormalizeProfileEditorLayout();
         if (Application.isPlaying)
+        {
             lastProfileEditorNormalizeAt = Time.unscaledTime;
+        }
     }
 
     private bool NeedsProfileEditorRefresh()
@@ -1333,7 +1349,8 @@ public class Profile : MonoBehaviour
         }
 #endif
         GameObject root = new GameObject("ProfileDetailsRuntime", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
-        root.SetActive(false); // hidden by default — only shown when Profile button is clicked
+        if (Application.isPlaying)
+            root.SetActive(false); // hidden at runtime — only shown when profile-update-info button is clicked
         root.transform.SetParent(popupRect, false);
         RectTransform rootRect = root.GetComponent<RectTransform>();
         rootRect.anchorMin = new Vector2(0f, 0f);

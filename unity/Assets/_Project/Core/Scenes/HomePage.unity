@@ -216,7 +216,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!224 &1563386
 RectTransform:
   m_ObjectHideFlags: 0
@@ -35055,12 +35055,12 @@ GameObject:
   - component: {fileID: 713154744}
   - component: {fileID: 713154743}
   m_Layer: 5
-  m_Name: Profile
+  m_Name: Profile-update-info
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!224 &713154741
 RectTransform:
   m_ObjectHideFlags: 0

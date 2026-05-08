@@ -90,6 +90,8 @@ namespace LudoClassicOffline
                 SetStatus(string.Empty);
                 foreach (JToken item in items)
                     CreateHistoryRow(item);
+
+                FitContentToRows();
             }
             catch (Exception ex)
             {
@@ -642,6 +644,43 @@ namespace LudoClassicOffline
             lr.anchorMin = Vector2.zero; lr.anchorMax = Vector2.one;
             lr.offsetMin = lr.offsetMax = Vector2.zero;
             return btn;
+        }
+
+        private void FitContentToRows()
+        {
+            if (listContent == null) return;
+
+            // Ensure content has a VerticalLayoutGroup so rows stack properly
+            VerticalLayoutGroup vl = listContent.GetComponent<VerticalLayoutGroup>();
+            if (vl == null) vl = listContent.gameObject.AddComponent<VerticalLayoutGroup>();
+            vl.padding              = new RectOffset(8, 8, 8, 20);
+            vl.spacing              = 10;
+            vl.childControlHeight   = true;
+            vl.childControlWidth    = true;
+            vl.childForceExpandHeight = false;
+            vl.childForceExpandWidth  = true;
+
+            // Remove ContentSizeFitter if present (can cause blank-scroll issues)
+            var csf = listContent.GetComponent<ContentSizeFitter>();
+            if (csf != null) UnityEngine.Object.Destroy(csf);
+
+            // Anchor content to top so it grows downward
+            listContent.anchorMin = new Vector2(0f, 1f);
+            listContent.anchorMax = new Vector2(1f, 1f);
+            listContent.pivot     = new Vector2(0.5f, 1f);
+            listContent.anchoredPosition = Vector2.zero;
+
+            // Compute total height from row LayoutElements
+            float totalH = vl.padding.top + vl.padding.bottom;
+            int rowCount = listContent.childCount;
+            for (int i = 0; i < rowCount; i++)
+            {
+                LayoutElement le = listContent.GetChild(i).GetComponent<LayoutElement>();
+                totalH += le != null ? Mathf.Max(le.minHeight, le.preferredHeight) : 175f;
+                if (i < rowCount - 1) totalH += vl.spacing;
+            }
+
+            listContent.sizeDelta = new Vector2(0f, Mathf.Max(totalH, 200f));
         }
 
         private void SetStatus(string msg, bool neutral = false)

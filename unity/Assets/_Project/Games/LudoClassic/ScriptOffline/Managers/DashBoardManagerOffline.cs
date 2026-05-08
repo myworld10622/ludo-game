@@ -2106,13 +2106,8 @@ public class DashBoardManagerOffline : MonoBehaviour
                     SetCookiePosition();
                 }
                 socketNumberEventReceiver.PlayerJoinData();
-                LudoRoomChatController debugChatController = GetComponent<LudoRoomChatController>();
-                if (debugChatController == null)
-                {
-                    debugChatController = gameObject.AddComponent<LudoRoomChatController>();
-                }
-                debugChatController.manualRootCanvas = ludoChatCanvas;
-                debugChatController.EnableDebugPreview();
+                GetComponent<LudoRoomChatController>()?.SetChatAvailability(false);
+                GetComponent<AgoraVoiceManager>()?.SetVoiceAvailability(false);
                 ResolveFriendPanelController().SetRoomActionAvailability(true);
             }
         }
