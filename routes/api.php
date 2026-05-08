@@ -41,7 +41,8 @@ Route::prefix('internal/v1')
             Route::post('/matches/{match}/override', [InternalTournamentMatchResult::class, 'override']);
         });
 
-        // Private table completion (called by Node.js when game ends)
+        // Private table (called by Node.js)
+        Route::post('/ludo/private-table/start', [PrivateLudoTableController::class, 'start']);
         Route::post('/ludo/private-table/complete', [PrivateLudoTableController::class, 'complete']);
     });
 
@@ -228,6 +229,7 @@ Route::prefix($version)
             Route::prefix('private-table')->group(function () {
                 Route::post('/create', [PrivateLudoTableController::class, 'create']);
                 Route::post('/join', [PrivateLudoTableController::class, 'join']);
+                Route::post('/leave', [PrivateLudoTableController::class, 'leave']);
                 Route::get('/{code}', [PrivateLudoTableController::class, 'info']);
             });
         });
