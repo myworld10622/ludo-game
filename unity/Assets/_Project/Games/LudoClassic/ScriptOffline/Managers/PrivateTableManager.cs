@@ -26,7 +26,9 @@ namespace LudoClassicOffline
         public Text waitingCodeText;
         public Text waitingPlayersText;
         public Text waitingPrizeText;
+        public Text waitingFeeStatusText;
         public Button cancelWaitingButton;
+        public Button copyCodeButton;
 
         [Header("Join Panel")]
         public GameObject joinPanel;
@@ -41,6 +43,7 @@ namespace LudoClassicOffline
         private int currentTableId;
         private int currentMaxPlayers;
         private int currentFee;
+        private bool isConnecting;
 
         private void Awake()
         {
@@ -53,7 +56,7 @@ namespace LudoClassicOffline
             DisconnectSocket();
         }
 
-        // ── Called by DashBoardManagerOffline when PLAY (Private Table) pressed ──
+        // ── Called by DashBoardManagerOffline when CREATE (Private Table) pressed ──
         public void OnCreatePressed(int maxPlayers)
         {
             int fee = 0;
@@ -62,6 +65,9 @@ namespace LudoClassicOffline
 
             currentMaxPlayers = maxPlayers;
             currentFee = fee;
+
+            SetButtonsInteractable(false);
+            CommonUtil.ShowToast("Creating table...");
 
             ConnectAndEmit(() =>
             {
@@ -81,9 +87,12 @@ namespace LudoClassicOffline
             string code = joinCodeInput?.text?.Trim().ToUpper();
             if (string.IsNullOrEmpty(code) || code.Length != 6)
             {
-                ShowError("Please enter a valid 6-character code.");
+                CommonUtil.ShowToast("Please enter a valid 6-character table code.");
                 return;
             }
+
+            SetButtonsInteractable(false);
+            CommonUtil.ShowToast("Joining table...");
 
             ConnectAndEmit(() =>
             {
@@ -96,14 +105,57 @@ namespace LudoClassicOffline
             });
         }
 
+        // ── Leave table while waiting ──
+        public void CancelWaiting()
+        {
+            if (string.IsNullOrEmpty(currentTableCode))
+            {
+                DisconnectSocket();
+                HideWaitingPanel();
+                return;
+            }
+
+            if (cancelWaitingButton != null)
+                cancelWaitingButton.interactable = false;
+
+            if (socket != null && socket.IsOpen)
+            {
+                socket.Emit("leave-private-table", JsonConvert.SerializeObject(new
+                {
+                    user_id = int.Parse(Configuration.GetId()),
+                    token = Configuration.GetToken(),
+                    code = currentTableCode,
+                }));
+            }
+            else
+            {
+                // Socket gone — just hide panel
+                HideWaitingPanel();
+                DisconnectSocket();
+            }
+        }
+
+        // ── Copy code button ──
+        public void CopyCodeToClipboard()
+        {
+            if (!string.IsNullOrEmpty(currentTableCode))
+            {
+                GUIUtility.systemCopyBuffer = currentTableCode;
+                CommonUtil.ShowToast("Code copied to clipboard!");
+            }
+        }
+
         private void ConnectAndEmit(Action onConnected)
         {
+            if (isConnecting) return;
+
             if (socket != null && socket.IsOpen)
             {
                 onConnected?.Invoke();
                 return;
             }
 
+            isConnecting = true;
             string socketUrl = Configuration.BaseSocketUrl + "/socket.io/";
             var options = new SocketOptions { Reconnection = false, AutoConnect = true };
             socketManager = new SocketManager(new Uri(socketUrl), options);
@@ -111,68 +163,127 @@ namespace LudoClassicOffline
 
             socket.On(SocketIOEventTypes.Connect, () =>
             {
+                isConnecting = false;
                 Debug.Log("[PrivateTable] Socket connected");
                 onConnected?.Invoke();
+            });
+
+            socket.On(SocketIOEventTypes.Error, (string err) =>
+            {
+                isConnecting = false;
+                Debug.LogError("[PrivateTable] Socket error: " + err);
+                CommonUtil.ShowStyledMessage("Connection failed. Please check your internet and try again.", "Connection Error", true);
+                SetButtonsInteractable(true);
             });
 
             socket.On<string>("private-table-created", OnTableCreated);
             socket.On<string>("private-table-joined", OnTableJoined);
             socket.On<string>("private-table-player-joined", OnPlayerJoined);
+            socket.On<string>("private-table-player-left", OnPlayerLeft);
             socket.On<string>("private-table-start", OnTableStart);
+            socket.On<string>("private-table-left", OnTableLeftConfirmed);
 
             socket.On(SocketIOEventTypes.Disconnect, () =>
             {
+                isConnecting = false;
                 Debug.Log("[PrivateTable] Socket disconnected");
             });
         }
 
         private void OnTableCreated(string jsonStr)
         {
+            SetButtonsInteractable(true);
             var resp = JsonConvert.DeserializeObject<PrivateTableResponse>(jsonStr);
             if (!resp.success)
             {
-                ShowError(resp.message ?? "Failed to create table.");
+                HandleError(resp.error_code, resp.message ?? "Failed to create table.");
                 return;
             }
 
             currentTableCode = resp.code;
             currentTableId = resp.table_id;
 
-            ShowWaitingPanel(resp.code, 1, resp.max_players, resp.fee_amount);
+            GUIUtility.systemCopyBuffer = resp.code;
+            CommonUtil.ShowToast($"Table created! Code {resp.code} copied. Share with friends.");
+
+            // Go directly to the game board — player waits there for others to join
+            if (DashBoardManagerOffline.Instance != null)
+                DashBoardManagerOffline.Instance.EnterPrivateTableBoard(
+                    resp.code, resp.max_players, resp.table_id,
+                    fee: resp.fee_amount, currentPlayers: 1, isCreator: true);
         }
 
         private void OnTableJoined(string jsonStr)
         {
+            SetButtonsInteractable(true);
             var resp = JsonConvert.DeserializeObject<PrivateTableJoinResponse>(jsonStr);
             if (!resp.success)
             {
-                ShowError(resp.message ?? "Failed to join table.");
+                HandleError(resp.error_code, resp.message ?? "Failed to join table.");
                 return;
             }
 
             currentTableCode = resp.code;
             currentTableId = resp.table_id;
+            currentMaxPlayers = resp.max_players;
+            currentFee = resp.fee_amount;
 
-            ShowWaitingPanel(resp.code, resp.current_players, resp.max_players, resp.fee_amount);
+            CommonUtil.ShowToast(resp.message ?? "Joined! Entering game room...");
+
+            // Go directly to the game board — player waits there for others to join
+            if (DashBoardManagerOffline.Instance != null)
+                DashBoardManagerOffline.Instance.EnterPrivateTableBoard(
+                    resp.code, resp.max_players, resp.table_id,
+                    fee: resp.fee_amount, currentPlayers: resp.current_players, isCreator: false);
         }
 
         private void OnPlayerJoined(string jsonStr)
         {
-            var payload = JsonConvert.DeserializeObject<PlayerJoinedPayload>(jsonStr);
+            var payload = JsonConvert.DeserializeObject<PlayerCountPayload>(jsonStr);
             if (waitingPlayersText != null)
                 waitingPlayersText.text = $"{payload.current_players}/{payload.max_players} Players";
+
+            CommonUtil.ShowToast($"A player joined! ({payload.current_players}/{payload.max_players})");
+        }
+
+        private void OnPlayerLeft(string jsonStr)
+        {
+            var payload = JsonConvert.DeserializeObject<PlayerCountPayload>(jsonStr);
+            if (waitingPlayersText != null)
+                waitingPlayersText.text = $"{payload.current_players}/{payload.max_players} Players";
+
+            CommonUtil.ShowToast($"A player left. ({payload.current_players}/{payload.max_players})");
+        }
+
+        private void OnTableLeftConfirmed(string jsonStr)
+        {
+            var resp = JsonConvert.DeserializeObject<SimpleResponse>(jsonStr);
+            if (!resp.success)
+            {
+                CommonUtil.ShowToast(resp.message ?? "Could not leave table.");
+                if (cancelWaitingButton != null)
+                    cancelWaitingButton.interactable = true;
+                return;
+            }
+
+            HideWaitingPanel();
+            DisconnectSocket();
+            currentTableCode = string.Empty;
+            currentTableId = 0;
+
+            CommonUtil.ShowToast(resp.message ?? "Left table. Balance refunded.");
         }
 
         private void OnTableStart(string jsonStr)
         {
             var payload = JsonConvert.DeserializeObject<TableStartPayload>(jsonStr);
-            Debug.Log($"[PrivateTable] Game starting! Prize: {payload.winner_prize}");
+            Debug.Log($"[PrivateTable] All players ready — game starting! Prize: {payload.winner_prize}");
 
-            HideWaitingPanel();
+            // Board is already open (entered on join/create). Signal the bridge to start the match.
+            CommonUtil.ShowToast("All players joined — game starting!");
 
-            // Hand off to existing Ludo game flow — same as Pass N Play
             if (DashBoardManagerOffline.Instance != null)
-                DashBoardManagerOffline.Instance.StartPrivateTableMatch(currentMaxPlayers, payload.table_id);
+                DashBoardManagerOffline.Instance.OnPrivateTableAllPlayersReady(currentMaxPlayers, payload.table_id);
         }
 
         private void ShowWaitingPanel(string code, int current, int max, int fee)
@@ -181,16 +292,18 @@ namespace LudoClassicOffline
             if (joinPanel != null) joinPanel.SetActive(false);
             if (waitingPanel != null) waitingPanel.SetActive(true);
 
-            if (waitingCodeText != null)    waitingCodeText.text = $"Code: {code}";
+            if (waitingCodeText != null)    waitingCodeText.text = code;
             if (waitingPlayersText != null) waitingPlayersText.text = $"{current}/{max} Players";
 
             int prizePool = fee * max;
             int winnerPrize = Mathf.RoundToInt(prizePool * 0.80f);
             if (waitingPrizeText != null)
-                waitingPrizeText.text = fee > 0 ? $"Prize: {winnerPrize} coins" : "Free Table";
+                waitingPrizeText.text = fee > 0 ? $"Prize Pool: ₹{winnerPrize}" : "Free Table";
+
+            if (cancelWaitingButton != null)
+                cancelWaitingButton.interactable = true;
 
             GUIUtility.systemCopyBuffer = code;
-            Debug.Log($"[PrivateTable] Code copied to clipboard: {code}");
         }
 
         private void HideWaitingPanel()
@@ -198,15 +311,30 @@ namespace LudoClassicOffline
             if (waitingPanel != null) waitingPanel.SetActive(false);
         }
 
-        private void ShowError(string message)
+        private void HandleError(string errorCode, string message)
         {
-            Debug.LogWarning("[PrivateTable] " + message);
+            switch (errorCode)
+            {
+                case "insufficient_balance":
+                    CommonUtil.ShowStyledMessage(message, "Insufficient Balance", true);
+                    break;
+                case "invalid_code":
+                    CommonUtil.ShowStyledMessage(message, "Invalid Code", true);
+                    break;
+                case "table_full":
+                    CommonUtil.ShowStyledMessage(message, "Table Full", true);
+                    break;
+                default:
+                    CommonUtil.ShowStyledMessage(message, "Error", true);
+                    break;
+            }
         }
 
-        public void CancelWaiting()
+        private void SetButtonsInteractable(bool interactable)
         {
-            DisconnectSocket();
-            HideWaitingPanel();
+            if (createButton != null)      createButton.interactable = interactable;
+            if (joinButton != null)        joinButton.interactable = interactable;
+            if (confirmJoinButton != null) confirmJoinButton.interactable = interactable;
         }
 
         private void DisconnectSocket()
@@ -217,6 +345,7 @@ namespace LudoClassicOffline
                 socketManager = null;
                 socket = null;
             }
+            isConnecting = false;
         }
 
         // ── Response Models ──────────────────────────────────────────────────
@@ -226,6 +355,7 @@ namespace LudoClassicOffline
         {
             public bool success;
             public string message;
+            public string error_code;
             public string code;
             public int table_id;
             public int fee_amount;
@@ -238,6 +368,7 @@ namespace LudoClassicOffline
         {
             public bool success;
             public string message;
+            public string error_code;
             public string code;
             public int table_id;
             public int fee_amount;
@@ -248,7 +379,7 @@ namespace LudoClassicOffline
         }
 
         [Serializable]
-        private class PlayerJoinedPayload
+        private class PlayerCountPayload
         {
             public int current_players;
             public int max_players;
@@ -261,6 +392,13 @@ namespace LudoClassicOffline
             public string code;
             public int prize_pool;
             public int winner_prize;
+        }
+
+        [Serializable]
+        private class SimpleResponse
+        {
+            public bool success;
+            public string message;
         }
     }
 }

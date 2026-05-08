@@ -48,20 +48,29 @@ class TournamentRegistrationController extends Controller
             ], 422);
         }
 
-        // Wallet balance check
-        $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
-
-        if (! $wallet || $wallet->balance < $tournament->entry_fee) {
+        // Pre-flight balance check (non-locking, for fast early rejection)
+        $preCheck = Wallet::where('user_id', $user->id)->first();
+        if (! $preCheck || $preCheck->balance < $tournament->entry_fee) {
             return response()->json([
                 'success' => false,
                 'message' => 'Insufficient wallet balance. Please add funds.',
                 'required' => $tournament->entry_fee,
-                'balance'  => $wallet?->balance ?? 0,
+                'balance'  => $preCheck?->balance ?? 0,
             ], 422);
         }
 
         // ── Registration Transaction ──────────────────────────────────────────
-        $registration = DB::transaction(function () use ($user, $tournament, $wallet) {
+        $registration = DB::transaction(function () use ($user, $tournament) {
+            // Lock wallet row inside transaction to prevent concurrent double-debit
+            $wallet = Wallet::where('user_id', $user->id)->lockForUpdate()->first();
+
+            if (! $wallet || $wallet->balance < $tournament->entry_fee) {
+                throw new \Symfony\Component\HttpKernel\Exception\HttpException(
+                    422,
+                    'Insufficient wallet balance. Please add funds.'
+                );
+            }
+
             // Deduct entry fee
             $wallet->balance -= $tournament->entry_fee;
             $wallet->save();
@@ -96,14 +105,14 @@ class TournamentRegistrationController extends Controller
                 $tournament->recalculatePrizePool();
             }
 
-            return $registration;
+            return ['registration' => $registration, 'new_balance' => $wallet->balance];
         });
 
         return response()->json([
             'success'       => true,
             'message'       => 'Successfully registered for the tournament!',
-            'data'          => $registration,
-            'new_balance'   => $wallet->balance,
+            'data'          => $registration['registration'],
+            'new_balance'   => $registration['new_balance'],
         ], 201);
     }
 

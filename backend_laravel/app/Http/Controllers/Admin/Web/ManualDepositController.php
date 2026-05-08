@@ -72,47 +72,54 @@ class ManualDepositController extends Controller
             return response()->json(['success' => false, 'message' => 'Deposit not found.']);
         }
 
-        $current = (int) ($row->status ?? 0);
+        try {
+            DB::transaction(function () use ($id, $status, $row) {
+                // Re-read with lock to prevent concurrent double-approval
+                $locked = DB::table('tbl_purchase')->where('id', $id)->lockForUpdate()->first();
+                $current = (int) ($locked->status ?? 0);
 
-        // If approving (status=1) and not already approved → credit wallet
-        if ($status === 1 && $current !== 1) {
-            // Try to find Laravel user via legacy tbl_users lookup first
-            $legacyUser = Schema::hasTable('tbl_users')
-                ? DB::table('tbl_users')->where('id', $row->user_id)->first()
-                : null;
+                // If approving (status=1) and not already approved → credit wallet
+                if ($status === 1 && $current !== 1) {
+                    $legacyUser = Schema::hasTable('tbl_users')
+                        ? DB::table('tbl_users')->where('id', $locked->user_id)->first()
+                        : null;
 
-            $laravelUser = null;
-            if ($legacyUser) {
-                $laravelUser = ($legacyUser->mobile
-                    ? \App\Models\User::where('mobile', $legacyUser->mobile)->first()
-                    : null)
-                    ?? \App\Models\User::find($legacyUser->id);
-            }
-            // Fallback: user_id may be the Laravel users.id directly
-            if (! $laravelUser) {
-                $laravelUser = \App\Models\User::find($row->user_id);
-            }
+                    $laravelUser = null;
+                    if ($legacyUser) {
+                        $laravelUser = ($legacyUser->mobile
+                            ? \App\Models\User::where('mobile', $legacyUser->mobile)->first()
+                            : null)
+                            ?? \App\Models\User::find($legacyUser->id);
+                    }
+                    if (! $laravelUser) {
+                        $laravelUser = \App\Models\User::find($locked->user_id);
+                    }
 
-            if (! $laravelUser) {
-                return response()->json(['success' => false, 'message' => 'Laravel user not found.']);
-            }
+                    if (! $laravelUser) {
+                        throw new \RuntimeException('Laravel user not found.');
+                    }
 
-            try {
-                $this->wallet->credit(
-                    user: $laravelUser,
-                    amount: (float) ($row->coin ?? $row->price ?? 0),
-                    referenceType: 'manual_deposit',
-                    referenceId: $id,
-                    description: 'Manual deposit approved (UTR: ' . ($row->utr ?? '-') . ')',
-                );
-            } catch (\Throwable $e) {
-                return response()->json(['success' => false, 'message' => 'Wallet credit failed: ' . $e->getMessage()]);
-            }
+                    $amount = (float) ($locked->coin ?? $locked->price ?? 0);
+                    if ($amount <= 0) {
+                        throw new \RuntimeException('Deposit amount must be greater than zero.');
+                    }
+
+                    $this->wallet->credit(
+                        user: $laravelUser,
+                        amount: $amount,
+                        referenceType: 'manual_deposit',
+                        referenceId: $id,
+                        description: 'Manual deposit approved (UTR: ' . ($locked->utr ?? '-') . ')',
+                    );
+                }
+
+                DB::table('tbl_purchase')
+                    ->where('id', $id)
+                    ->update(['status' => $status, 'updated_date' => now()]);
+            });
+        } catch (\Throwable $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()]);
         }
-
-        DB::table('tbl_purchase')
-            ->where('id', $id)
-            ->update(['status' => $status, 'updated_date' => now()]);
 
         $label = match ($status) { 1 => 'Approved', 2 => 'Rejected', default => 'Pending' };
 

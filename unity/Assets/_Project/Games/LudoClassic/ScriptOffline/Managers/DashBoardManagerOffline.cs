@@ -2328,7 +2328,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         // Step 2 — Player (including creator) joins via code → go straight to game board.
         // Seat fills on the board; waiting message shows "Code: XX  Waiting for N more..."
         // When all seats fill → ludo v2 socket fires ludo.room.starting → game begins.
-        private void EnterPrivateTableBoard(string code, int maxPlayers, int tableId,
+        public void EnterPrivateTableBoard(string code, int maxPlayers, int tableId,
             int fee = 0, int currentPlayers = 1, bool isCreator = false)
         {
             _privateTableBoardActive = true;
@@ -2347,7 +2347,13 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
         }
 
-        public void OnPrivateTableAllPlayersReady(int maxPlayers, int tableId) { }
+        public void OnPrivateTableAllPlayersReady(int maxPlayers, int tableId)
+        {
+            // If LudoV2 board is active, it handles game start via its own ludo socket events
+            // If LudoV2 was not available (_privateTableBoardActive=false), start match directly
+            if (!_privateTableBoardActive)
+                StartPrivateTableMatch(maxPlayers, tableId);
+        }
 
         private void ShowPrivateTableWaitingUI(string code, int fee, int maxPlayers, int currentPlayers, bool isCreator)
         {

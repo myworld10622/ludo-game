@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class PrivateLudoTablePlayer extends Model
 {
     protected $fillable = [
-        'private_table_id', 'user_id', 'fee_paid', 'status',
+        'private_table_id', 'user_id', 'fee_paid', 'wallet_transaction_id', 'status',
     ];
 
     public function table(): BelongsTo

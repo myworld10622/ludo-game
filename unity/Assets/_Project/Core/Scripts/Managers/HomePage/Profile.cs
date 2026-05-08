@@ -2480,7 +2480,7 @@ public class Profile : MonoBehaviour
     [Button]
     public void SetSliderAndImage()
     {
-        for (int i = 0; i <= allgames.Count; i++)
+        for (int i = 0; i < allgames.Count; i++)
         {
             var obj = Instantiate(gameObject, allgames[i].transform);
             obj.gameObject.name = "Progress";
