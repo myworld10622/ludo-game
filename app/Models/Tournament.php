@@ -31,7 +31,7 @@ class Tournament extends Model
         'completed_at', 'cancelled_at',
     ];
 
-    protected $appends = ['can_join'];
+    protected $appends = ['can_join', 'uuid'];
 
     protected $casts = [
         'entry_fee'             => 'float',
@@ -117,6 +117,12 @@ class Tournament extends Model
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    // Unity expects a "uuid" field — expose id as uuid for compatibility
+    public function getUuidAttribute(): string
+    {
+        return (string) $this->id;
+    }
 
     public function getCanJoinAttribute(): bool
     {

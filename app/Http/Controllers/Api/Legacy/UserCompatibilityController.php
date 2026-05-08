@@ -3801,4 +3801,103 @@ class UserCompatibilityController extends Controller
             ->orderByRaw("CASE WHEN user_code = '12345678' THEN 0 ELSE 1 END")
             ->first();
     }
+
+    // ── Teen Patti game log history ───────────────────────────────────────────
+    public function walletHistoryTeenPatti(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json(['message' => 'Invalid User', 'TeenPattiGameLog' => [], 'code' => 411]);
+        }
+
+        $logs = $this->buildGenericGameLogs($user, 'Teen Patti');
+
+        return response()->json([
+            'message'          => 'Success',
+            'TeenPattiGameLog' => $logs,
+            'code'             => 200,
+        ]);
+    }
+
+    // ── Support Tickets (legacy createTicket / getTickets) ────────────────────
+    public function createTicket(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json(['message' => 'Invalid User', 'code' => 411]);
+        }
+
+        $description = trim((string) $request->input('description', ''));
+        $category    = trim((string) $request->input('category', ''));
+
+        if ($description === '' || $category === '') {
+            return response()->json(['message' => 'Invalid Parameter', 'code' => 406]);
+        }
+
+        $ticket = \App\Models\SupportTicket::create([
+            'user_id'  => $user->id,
+            'subject'  => $category,
+            'category' => $category,
+            'status'   => 'open',
+        ]);
+
+        \App\Models\SupportTicketMessage::create([
+            'support_ticket_id' => $ticket->id,
+            'sender_type'       => 'user',
+            'sender_user_id'    => $user->id,
+            'message'           => $description,
+        ]);
+
+        return response()->json([
+            'message' => 'Ticket Created Successfully, Team Will Response Shortly',
+            'id'      => $ticket->id,
+            'code'    => 200,
+        ]);
+    }
+
+    public function getTickets(Request $request): JsonResponse
+    {
+        $user = $this->resolveLegacyUser($request->input('user_id'), $request->input('token'));
+
+        if (! $user) {
+            return response()->json(['message' => 'Invalid User', 'tickets' => [], 'code' => 411]);
+        }
+
+        $tickets = \App\Models\SupportTicket::with('messages')
+            ->where('user_id', $user->id)
+            ->latest()
+            ->get()
+            ->map(fn ($t) => [
+                'id'          => $t->id,
+                'category'    => $t->category,
+                'description' => $t->messages->last()?->message ?? '',
+                'status'      => $t->status,
+                'added_date'  => $t->created_at?->format('Y-m-d H:i:s'),
+            ]);
+
+        return response()->json([
+            'message' => 'Success',
+            'tickets' => $tickets,
+            'code'    => 200,
+        ]);
+    }
+
+    // ── RummyDeal / RummyPool status (returns "not on table" — game runs on Node) ──
+    public function rummyDealStatus(Request $request): JsonResponse
+    {
+        return response()->json([
+            'message' => 'You Are Not On Table',
+            'code'    => 406,
+        ]);
+    }
+
+    public function rummyPoolStatus(Request $request): JsonResponse
+    {
+        return response()->json([
+            'message' => 'You Are Not On Table',
+            'code'    => 406,
+        ]);
+    }
 }

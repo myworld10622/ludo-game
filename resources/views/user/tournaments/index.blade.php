@@ -5,7 +5,7 @@
 @section('subheading', 'Create, review, and manage only your own tournaments')
 
 @section('content')
-@php($editing = $editingTournament ?? null)
+@php $editing = $editingTournament ?? null; @endphp
 
 <div class="panel page-hero" style="margin-bottom:24px;">
     <div>

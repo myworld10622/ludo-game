@@ -412,7 +412,10 @@ class UserPanelTournamentController extends Controller
     private function user(): User
     {
         /** @var User $user */
-        $user = Auth::guard('web')->user();
+        $user = Auth::user() ?? Auth::guard('web')->user();
+        if (! $user) {
+            abort(redirect()->route('user.login'));
+        }
         return $user;
     }
 }
