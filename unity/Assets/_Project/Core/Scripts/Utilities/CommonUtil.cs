@@ -376,6 +376,26 @@ public static class CommonUtil
         }
     }
 
+    public static void ForceHideExistingStatusPopup()
+    {
+        if (statusPopup == null)
+        {
+            TryBindExistingStatusPopup();
+        }
+
+        if (statusPopup != null)
+        {
+            statusPopup.SetActive(false);
+            return;
+        }
+
+        GameObject existingPopup = FindSceneObjectByName("CommonStatusPopup");
+        if (existingPopup != null)
+        {
+            existingPopup.SetActive(false);
+        }
+    }
+
     public static string GetFormattedWallet(string wallet = "")
     {
         /*  string walletString = wallet != string.Empty ? wallet : Configuration.GetWallet();

@@ -31,6 +31,7 @@ namespace LudoClassicOffline
         private GameObject _privatePopupLayer; // Canvas at 33000 — private popup layer (separate)
         private bool isLoading;
         private bool hasBuiltUi;
+        private bool isBakedPanel;   // true when using existing scene panel (skip layout overrides)
         private Font runtimeFont;
         private int lastResponsiveWidth = -1;
         private int lastResponsiveHeight = -1;
@@ -78,8 +79,15 @@ namespace LudoClassicOffline
 
         private void Awake()
         {
-            // If no data was provided, try to read it from the UI components of the manualRowObjects
-            if (manualTournaments.Count == 0 && manualRowObjects.Count > 0)
+            // Clear stale baked row objects so only live API data is shown
+            manualTournaments.Clear();
+            foreach (var obj in manualRowObjects)
+            {
+                if (obj != null) obj.SetActive(false);
+            }
+            manualRowObjects.Clear();
+
+            if (false) // disabled: never use hardcoded fallback data
             {
                 // Fallback: Default data matching your image if scraping is needed
                 string[] defaultTitles = { "Rox turnament", "Ludhiyana Ludo", "Sunday", "Ludo King Championship" };
@@ -148,10 +156,10 @@ namespace LudoClassicOffline
                 for (int i = 0; i < manualRowObjects.Count; i++)
                 {
                     if (i >= manualTournaments.Count) break;
-                    
+
                     GameObject row = manualRowObjects[i];
                     if (row == null) continue;
-                    
+
                     // Look for a button in the row (checks children too)
                     Button btn = row.GetComponentInChildren<Button>();
                     if (btn != null)
@@ -161,13 +169,23 @@ namespace LudoClassicOffline
                         btn.onClick.AddListener(() => OpenTournamentDetailsByIndex(index));
                     }
                 }
-            }
+            } // end if(false)
         }
 
         public void Initialize(DashBoardManagerOffline owner)
         {
             dashboard = owner;
             EnsureRuntimeUi();
+        }
+
+        private void OnEnable()
+        {
+            // Only refresh if UI is already properly built (dashboard assigned)
+            // Avoids premature build when component enables before Initialize() is called
+            if (Application.isPlaying && hasBuiltUi && dashboard != null)
+            {
+                RefreshTournaments();
+            }
         }
 
 #if UNITY_EDITOR
@@ -229,6 +247,11 @@ namespace LudoClassicOffline
             {
                 dashboard.SetTournamentSideMenuSuppressed(true);
             }
+            if (panelRoot == null)
+            {
+                Debug.LogError("[Tournament] OpenPanel: panelRoot is null after EnsureRuntimeUi");
+                return;
+            }
             panelRoot.transform.SetAsLastSibling();
             panelRoot.SetActive(true);
             isPanelOpen = true;
@@ -253,8 +276,9 @@ namespace LudoClassicOffline
             HidePanel();
             if (dashboard == null) return;
             dashboard.SetTournamentSideMenuSuppressed(false);
+            // Restore lobby panel but do NOT force-show the game-mode selection panel
+            // (selectGameModePanal shows old 2/4-player table UI which should not appear here)
             dashboard.lobbySelectPanal?.SetActive(true);
-            dashboard.selectGameModePanal?.SetActive(true);
         }
 
         /// Only hides this panel; does NOT restore the lobby.
@@ -313,7 +337,8 @@ namespace LudoClassicOffline
         {
             try
             {
-                if (privatePopup != null)
+                // Only destroy if it's a runtime-built popup, not the baked scene one
+                if (privatePopup != null && !isBakedPanel)
                 {
                     Destroy(privatePopup);
                     privatePopup      = null;
@@ -814,6 +839,7 @@ namespace LudoClassicOffline
 
                 Debug.Log($"[Tournament] Rows created: {rowsCreated}");
                 RefreshScrollLayout();
+                StartCoroutine(DelayedLayoutRebuild());
             }
             catch (Exception ex)
             {
@@ -1241,6 +1267,7 @@ namespace LudoClassicOffline
                 Destroy(detailPopup);           
                 detailPopup  = null; 
             }
+            isBakedPanel = false;
             listContent = null; titleText = null; statusText = null;
             closeButton = null; refreshButton = null; joinPrivateBtn = null;
             tournamentScroll = null; _popupLayer = null; _privatePopupLayer = null;
@@ -1847,12 +1874,20 @@ namespace LudoClassicOffline
             foreach (GameObject row in runtimeRows)
             {
                 if (row != null)
-                {
                     Destroy(row);
+            }
+            runtimeRows.Clear();
+
+            // Also clear any baked children in the content (manualRowObjects from scene)
+            if (listContent != null)
+            {
+                for (int i = listContent.childCount - 1; i >= 0; i--)
+                {
+                    Transform child = listContent.GetChild(i);
+                    if (child != null)
+                        Destroy(child.gameObject);
                 }
             }
-
-            runtimeRows.Clear();
         }
 
         private bool TryBindExistingRuntimeUi()
@@ -1868,20 +1903,32 @@ namespace LudoClassicOffline
 
             panelRoot = FindDirectChild(parent, TournamentPanelName)?.gameObject;
             openButton = FindButton(parent, "TournamentsButton");
-            if (panelRoot == null || openButton == null)
+            if (panelRoot == null)
             {
                 return false;
             }
 
-            titleText = FindText(panelRoot.transform, "HeaderLayer/HeaderBg/Label");
-            statusText = FindText(panelRoot.transform, "HeaderLayer/Label");
-            refreshButton = FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/↺  REFRESHButton");
-            closeButton = FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/✕  CLOSEButton");
-            joinPrivateBtn = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/🔒  PRIVATEButton");
-            tournamentScroll = FindComponent<ScrollRect>(panelRoot.transform, "ScrollView");
-            tournamentViewport = FindRectTransform(panelRoot.transform, "ScrollView/Viewport");
-            listContent = FindRectTransform(panelRoot.transform, "ScrollView/Viewport/Content");
-            tournamentGrid = FindComponent<GridLayoutGroup>(panelRoot.transform, "ScrollView/Viewport/Content");
+            // Try both with and without the "BG" wrapper layer (scene has BG intermediate node)
+            titleText = FindText(panelRoot.transform, "BG/HeaderLayer/HeaderBg/Label")
+                     ?? FindText(panelRoot.transform, "HeaderLayer/HeaderBg/Label");
+            statusText = FindText(panelRoot.transform, "BG/HeaderLayer/Label")
+                      ?? FindText(panelRoot.transform, "HeaderLayer/Label");
+            refreshButton = FindButton(panelRoot.transform, "BG/↺  REFRESHBtn")
+                         ?? FindButton(panelRoot.transform, "BG/HeaderLayer/HeaderBg/↺  REFRESHButton")
+                         ?? FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/↺  REFRESHButton");
+            closeButton = FindButton(panelRoot.transform, "BG/✕  CLOSEBtn")
+                       ?? FindButton(panelRoot.transform, "BG/HeaderLayer/HeaderBg/✕  CLOSEButton")
+                       ?? FindButton(panelRoot.transform, "HeaderLayer/HeaderBg/✕  CLOSEButton");
+            joinPrivateBtn = FindButton(panelRoot.transform, "BG/ActionBar/🔒  PRIVATEButton")
+                          ?? FindButton(panelRoot.transform, "HeaderLayer/ActionBar/🔒  PRIVATEButton");
+            tournamentScroll = FindComponent<ScrollRect>(panelRoot.transform, "BG/ScrollView")
+                            ?? FindComponent<ScrollRect>(panelRoot.transform, "ScrollView");
+            tournamentViewport = FindRectTransform(panelRoot.transform, "BG/ScrollView/Viewport")
+                              ?? FindRectTransform(panelRoot.transform, "ScrollView/Viewport");
+            listContent = FindRectTransform(panelRoot.transform, "BG/ScrollView/Viewport/Content")
+                       ?? FindRectTransform(panelRoot.transform, "ScrollView/Viewport/Content");
+            tournamentGrid = FindComponent<GridLayoutGroup>(panelRoot.transform, "BG/ScrollView/Viewport/Content")
+                          ?? FindComponent<GridLayoutGroup>(panelRoot.transform, "ScrollView/Viewport/Content");
             _popupLayer = FindDeepChild(panelRoot.transform, "DetailPopupLayer")?.gameObject;
             _privatePopupLayer = FindDeepChild(panelRoot.transform, "PrivatePopupLayer")?.gameObject;
 
@@ -1895,9 +1942,12 @@ namespace LudoClassicOffline
                 || listContent == null
                 || tournamentGrid == null)
             {
+                Debug.LogWarning($"[Tournament] TryBind failed — title={titleText!=null} status={statusText!=null} refresh={refreshButton!=null} close={closeButton!=null} private={joinPrivateBtn!=null} scroll={tournamentScroll!=null} viewport={tournamentViewport!=null} content={listContent!=null} grid={tournamentGrid!=null}");
                 return false;
             }
 
+            Debug.Log("[Tournament] Bound to baked TournamentPanel successfully");
+            isBakedPanel = true;
             WirePersistentUiListeners();
             EnsurePrivatePopup();
             EnsureDetailPopup();
@@ -1918,10 +1968,15 @@ namespace LudoClassicOffline
             Text[] labels = card != null ? card.GetComponentsInChildren<Text>(true) : new Text[0];
             inviteCodeField = inputs.Length > 0 ? inputs[0] : null;
             invitePasswordField = inputs.Length > 1 ? inputs[1] : null;
-            privateStatusText = labels.Length > 5 ? labels[5] : null;
-            Button confirmButton = FindButton(privatePopup.transform, "Card/BtnRow/🔍  FIND TOURNAMENTButton");
-            Button cancelButton = FindButton(privatePopup.transform, "Card/BtnRow/CANCELButton");
-            Button closePopupButton = FindButton(privatePopup.transform, "Card/TitleRow/✕Button");
+            // Status text: last Text component that is NOT inside a button or input field
+            privateStatusText = labels.Length > 5 ? labels[5] : (labels.Length > 0 ? labels[labels.Length - 1] : null);
+            // Try BG-prefixed paths first (baked panel has Card/BG/... structure)
+            Button confirmButton = FindButton(privatePopup.transform, "Card/BG/BtnRow/🔍  FIND TOURNAMENTButton")
+                                ?? FindButton(privatePopup.transform, "Card/BtnRow/🔍  FIND TOURNAMENTButton");
+            Button cancelButton = FindButton(privatePopup.transform, "Card/BG/BtnRow/CANCELButton")
+                               ?? FindButton(privatePopup.transform, "Card/BtnRow/CANCELButton");
+            Button closePopupButton = FindButton(privatePopup.transform, "Card/BG/TitleRow/✕Button")
+                                   ?? FindButton(privatePopup.transform, "Card/TitleRow/✕Button");
 
             if (inviteCodeField == null
                 || invitePasswordField == null
@@ -1995,23 +2050,37 @@ namespace LudoClassicOffline
 
         private void WirePersistentUiListeners()
         {
-            openButton.onClick.RemoveAllListeners();
-            openButton.onClick.AddListener(OpenPanel);
-            refreshButton.onClick.RemoveAllListeners();
-            refreshButton.onClick.AddListener(RefreshTournaments);
-            closeButton.onClick.RemoveAllListeners();
-            closeButton.onClick.AddListener(ClosePanel);
-            joinPrivateBtn.onClick.RemoveAllListeners();
-            joinPrivateBtn.onClick.AddListener(OpenPrivatePopup);
+            if (openButton != null)
+            {
+                openButton.onClick.RemoveAllListeners();
+                openButton.onClick.AddListener(OpenPanel);
+            }
+            if (refreshButton != null)
+            {
+                refreshButton.onClick.RemoveAllListeners();
+                refreshButton.onClick.AddListener(RefreshTournaments);
+            }
+            if (closeButton != null)
+            {
+                closeButton.onClick.RemoveAllListeners();
+                closeButton.onClick.AddListener(ClosePanel);
+            }
+            if (joinPrivateBtn != null)
+            {
+                joinPrivateBtn.onClick.RemoveAllListeners();
+                joinPrivateBtn.onClick.AddListener(OpenPrivatePopup);
+            }
 
-            Button createButton = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/＋  CREATEButton");
+            Button createButton = FindButton(panelRoot.transform, "BG/ActionBar/＋  CREATEButton")
+                               ?? FindButton(panelRoot.transform, "HeaderLayer/ActionBar/＋  CREATEButton");
             if (createButton != null)
             {
                 createButton.onClick.RemoveAllListeners();
                 createButton.onClick.AddListener(() => dashboard?.OpenCreateTournamentPanel());
             }
 
-            Button historyButton = FindButton(panelRoot.transform, "HeaderLayer/ActionBar/📋  HISTORYButton");
+            Button historyButton = FindButton(panelRoot.transform, "BG/ActionBar/📋  HISTORYButton")
+                                ?? FindButton(panelRoot.transform, "HeaderLayer/ActionBar/📋  HISTORYButton");
             if (historyButton != null)
             {
                 historyButton.onClick.RemoveAllListeners();
@@ -2150,10 +2219,27 @@ namespace LudoClassicOffline
             }
         }
 
+        private System.Collections.IEnumerator DelayedLayoutRebuild()
+        {
+            yield return null;
+            yield return null;
+            if (panelRoot != null && panelRoot.activeSelf)
+            {
+                RefreshScrollLayout();
+            }
+        }
+
         private void ApplyResponsiveTournamentLayout(bool force)
         {
             if (panelRoot == null)
             {
+                return;
+            }
+
+            // Baked panel already has correct layout from Editor — only update card sizes
+            if (isBakedPanel)
+            {
+                UpdateTournamentGridSizing();
                 return;
             }
 
@@ -2552,7 +2638,9 @@ namespace LudoClassicOffline
                 tournamentGrid.constraintCount = 1;
                 tournamentGrid.padding = new RectOffset(10, 10, 10, 24);
                 tournamentGrid.spacing = new Vector2(0f, 14f);
-                float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right;
+                // Extra 8px margin for baked panel to avoid overflow (baked viewport has internal borders)
+                float extraMargin = isBakedPanel ? 8f : 0f;
+                float usableWidth = viewportWidth - tournamentGrid.padding.left - tournamentGrid.padding.right - extraMargin;
                 float cardWidth = Mathf.Max(usableWidth, 200f);
                 float compactHeight = Mathf.Clamp(viewportHeight * 0.42f, 360f, 430f);
                 listContent.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, viewportWidth);

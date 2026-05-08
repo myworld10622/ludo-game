@@ -13,6 +13,7 @@ namespace LudoClassicOffline
         private DashBoardManagerOffline dashboard;
         private GameObject panelRoot;
         private bool hasBuiltUi;
+        private bool isBakedPanel;
         private Font runtimeFont;
         private const string PanelName = "CreateTournamentPanel";
 
@@ -255,6 +256,7 @@ namespace LudoClassicOffline
             }
 
             panelRoot = existing;
+            isBakedPanel = true;
             urlLabel = FindTextContaining(panelRoot.transform, Configuration.Website)
                 ?? FindTextContaining(panelRoot.transform, "login");
 
@@ -286,6 +288,12 @@ namespace LudoClassicOffline
         private void ApplyResponsiveLayout()
         {
             if (panelRoot == null)
+            {
+                return;
+            }
+
+            // Baked panel already has correct layout from Editor — do not override
+            if (isBakedPanel)
             {
                 return;
             }

@@ -27,6 +27,8 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/home', fn() => redirect()->route('panel.index'))->name('home');
+
 Route::get('/tournament-guide', fn() => response()->file(base_path('docs/user-tournament-guide.html')))->name('tournament.guide');
 
 Route::get('/terms', fn() => view('ludo.terms'))->name('terms');

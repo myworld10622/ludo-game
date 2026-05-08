@@ -19,6 +19,7 @@ namespace LudoClassicOffline
         private Text statusText;
         private bool isLoading;
         private bool hasBuiltUi;
+        private bool isBakedPanel;
         private Font runtimeFont;
         private const string PanelName = "MyTournamentsPanel";
 
@@ -404,6 +405,7 @@ namespace LudoClassicOffline
             }
 
             panelRoot = existing;
+            isBakedPanel = true;
             listContent = FindChildRect(panelRoot.transform, "Content");
             statusText = FindStatusText(panelRoot.transform, listContent);
 
@@ -436,6 +438,12 @@ namespace LudoClassicOffline
         private void ApplyResponsiveLayout()
         {
             if (panelRoot == null)
+            {
+                return;
+            }
+
+            // Baked panel already has correct layout from Editor — do not override
+            if (isBakedPanel)
             {
                 return;
             }

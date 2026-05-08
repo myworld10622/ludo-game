@@ -103,6 +103,9 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/collect_welcome_bonus', [UserCompatibilityController::class, 'collectWelcomeBonus']);
         Route::post('/reffer_level', [UserCompatibilityController::class, 'refferLevel']);
         Route::post('/withdrawal_log', [UserCompatibilityController::class, 'withdrawalLog']);
+        Route::post('/teenpatti_gamelog_history', [UserCompatibilityController::class, 'walletHistoryTeenPatti']);
+        Route::post('/createTicket', [UserCompatibilityController::class, 'createTicket']);
+        Route::post('/getTickets', [UserCompatibilityController::class, 'getTickets']);
     });
 }
 
@@ -131,6 +134,14 @@ Route::prefix('ludo')->group(function () {
     Route::post('/get_table_master_bachpan', [LudoCompatibilityController::class, 'getTableMasterBachpan']);
     Route::post('/status', [LudoCompatibilityController::class, 'status']);
     Route::post('/user_game_history', [LudoCompatibilityController::class, 'userGameHistory']);
+});
+
+Route::prefix('RummyDeal')->group(function () {
+    Route::post('/status', [UserCompatibilityController::class, 'rummyDealStatus']);
+});
+
+Route::prefix('RummyPool')->group(function () {
+    Route::post('/status', [UserCompatibilityController::class, 'rummyPoolStatus']);
 });
 
 // ── API v1 Routes ─────────────────────────────────────────────────────────────

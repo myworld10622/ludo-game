@@ -133,16 +133,14 @@ namespace LudoClassicOffline
             isVoiceAvailable = available;
             TryBuildUi();
 
-            // Always keep button visible — visual state communicates availability
             if (toggleButton != null)
             {
-                toggleButton.gameObject.SetActive(true);
+                toggleButton.gameObject.SetActive(available);
             }
 
             if (!available)
             {
                 SetPanelOpen(false);
-                UpdateStatus("Voice: online rooms only");
             }
 
             UpdateButtonStates();
