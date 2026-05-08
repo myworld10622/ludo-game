@@ -9,12 +9,12 @@ using static System.Net.WebRequestMethods;
 public class Configuration : MonoBehaviour
 {
 
-    public const string BaseUrl = "http://localhost:8000/";
-    public const string Website = "http://localhost:8000/";
-    public const string BaseSocketUrl = "http://localhost:3002";
-    // public const string BaseUrl = "https://roxludo.com/";
-    // public const string Website = "https://roxludo.com/";
-    // public const string BaseSocketUrl = "https://socket.roxludo.com/";
+    // public const string BaseUrl = "http://localhost:8000/";
+    // public const string Website = "http://localhost:8000/";
+    // public const string BaseSocketUrl = "http://localhost:3002";
+    public const string BaseUrl = "https://roxludo.com/";
+    public const string Website = "https://roxludo.com/";
+    public const string BaseSocketUrl = "https://socket.roxludo.com/";
     public const string LudoTournamentListUrl = BaseUrl + "api/v1/tournaments";
     public const string LudoTournamentInfoUrl = BaseUrl + "api/v1/tournaments/";
 
