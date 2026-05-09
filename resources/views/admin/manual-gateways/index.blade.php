@@ -7,18 +7,31 @@
 @section('content')
 <div class="panel stack">
 
-    {{-- Global ON/OFF --}}
+    {{-- Payment Option Toggles --}}
     <div class="panel" style="padding:16px 20px;">
-        <div style="display:flex;align-items:center;gap:16px;">
-            <strong>Manual Gateway (Option 1) :</strong>
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px;">Payment Options — Show / Hide in App</div>
+
+        @php
+        $options = [
+            ['id' => 'globalToggle',  'label' => 'Option 1 — Manual UPI / Bank',  'checked' => $globalEnabled,  'ajax' => route('admin.manual-gateways.toggle-global'),  'field' => null,  'num' => 1],
+            ['id' => 'option2Toggle', 'label' => 'Option 2 — Automatic Gateway',  'checked' => $option2Enabled, 'ajax' => route('admin.manual-gateways.toggle-option', 2), 'field' => null,  'num' => 2],
+            ['id' => 'option3Toggle', 'label' => 'Option 3 — USDT Manual',        'checked' => $option3Enabled, 'ajax' => route('admin.manual-gateways.toggle-option', 3), 'field' => null,  'num' => 3],
+            ['id' => 'option4Toggle', 'label' => 'Option 4 — BEP20 USDT',         'checked' => $option4Enabled, 'ajax' => route('admin.manual-gateways.toggle-option', 4), 'field' => null,  'num' => 4],
+        ];
+        @endphp
+
+        @foreach($options as $opt)
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+            <span style="min-width:240px;font-weight:600;">{{ $opt['label'] }}</span>
             <label class="toggle-switch">
-                <input type="checkbox" id="globalToggle" {{ $globalEnabled ? 'checked' : '' }}>
+                <input type="checkbox" id="{{ $opt['id'] }}" data-url="{{ $opt['ajax'] }}" data-num="{{ $opt['num'] }}" class="optionToggle" {{ $opt['checked'] ? 'checked' : '' }}>
                 <span class="slider"></span>
             </label>
-            <span id="globalToggleLabel" style="font-weight:600;color:{{ $globalEnabled ? '#22c55e' : '#ef4444' }}">
-                {{ $globalEnabled ? 'ON — Showing to users' : 'OFF — Hidden from users' }}
+            <span id="{{ $opt['id'] }}Label" style="font-weight:600;color:{{ $opt['checked'] ? '#22c55e' : '#ef4444' }}">
+                {{ $opt['checked'] ? 'ON' : 'OFF' }}
             </span>
         </div>
+        @endforeach
     </div>
 
     <div class="panel">
@@ -110,17 +123,21 @@ input:checked + .slider:before { transform:translateX(20px); }
 </style>
 
 <script>
-document.getElementById('globalToggle').addEventListener('change', function() {
-    const enabled = this.checked;
-    document.getElementById('globalToggleLabel').textContent = enabled ? 'ON — Showing to users' : 'OFF — Hidden from users';
-    document.getElementById('globalToggleLabel').style.color = enabled ? '#22c55e' : '#ef4444';
-    fetch('{{ route("admin.manual-gateways.toggle-global") }}', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-        body: JSON.stringify({ enabled })
+// Payment option on/off toggles
+document.querySelectorAll('.optionToggle').forEach(function(el) {
+    el.addEventListener('change', function() {
+        const enabled = this.checked;
+        const labelEl = document.getElementById(this.id + 'Label');
+        if (labelEl) { labelEl.textContent = enabled ? 'ON' : 'OFF'; labelEl.style.color = enabled ? '#22c55e' : '#ef4444'; }
+        fetch(this.dataset.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+            body: JSON.stringify({ enabled })
+        });
     });
 });
 
+// Individual gateway account active toggles
 document.querySelectorAll('.activeToggle').forEach(function(el) {
     el.addEventListener('change', function() {
         const id = this.dataset.id;

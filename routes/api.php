@@ -107,6 +107,7 @@ foreach (['user', 'User'] as $legacyUserPrefix) {
         Route::post('/teenpatti_gamelog_history', [UserCompatibilityController::class, 'walletHistoryTeenPatti']);
         Route::post('/createTicket', [UserCompatibilityController::class, 'createTicket']);
         Route::post('/getTickets', [UserCompatibilityController::class, 'getTickets']);
+        Route::post('/payment_options', [UserCompatibilityController::class, 'paymentOptions']);
     });
 }
 
