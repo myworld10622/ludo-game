@@ -37,13 +37,22 @@ function parseBody(body) {
     try { return JSON.parse(body); } catch (e) { return null; }
 }
 
+function normalizeMsg(msg) {
+    if (!msg) return {};
+    if (typeof msg === 'string') {
+        try { return JSON.parse(msg); } catch (e) { return {}; }
+    }
+    return msg;
+}
+
 module.exports = function (ludo_socket) {
 
     ludo_socket.on('connection', (socket) => {
 
         // ── Create Private Table ────────────────────────────────────────────
         // Client emits: { user_id, token, fee_amount, max_players }
-        socket.on('create-private-table', (msg) => {
+        socket.on('create-private-table', (rawMsg) => {
+            const msg = normalizeMsg(rawMsg);
             const { user_id, token, fee_amount, max_players } = msg;
 
             UserModel.findOne({ where: { id: user_id, token, isDeleted: 0 } }).then(user => {
@@ -98,7 +107,8 @@ module.exports = function (ludo_socket) {
 
         // ── Join Private Table by Code ──────────────────────────────────────
         // Client emits: { user_id, token, code }
-        socket.on('join-private-table', (msg) => {
+        socket.on('join-private-table', (rawMsg) => {
+            const msg = normalizeMsg(rawMsg);
             const { user_id, token, code } = msg;
 
             UserModel.findOne({ where: { id: user_id, token, isDeleted: 0 } }).then(user => {
@@ -188,7 +198,8 @@ module.exports = function (ludo_socket) {
 
         // ── Leave Private Table ─────────────────────────────────────────────
         // Client emits: { user_id, token, code }
-        socket.on('leave-private-table', (msg) => {
+        socket.on('leave-private-table', (rawMsg) => {
+            const msg = normalizeMsg(rawMsg);
             const { user_id, token, code } = msg;
 
             UserModel.findOne({ where: { id: user_id, token, isDeleted: 0 } }).then(user => {
@@ -241,7 +252,8 @@ module.exports = function (ludo_socket) {
 
         // ── Get Table Info by Code ──────────────────────────────────────────
         // Client emits: { code }
-        socket.on('get-private-table-info', (msg) => {
+        socket.on('get-private-table-info', (rawMsg) => {
+            const msg = normalizeMsg(rawMsg);
             const { code } = msg;
             const upperCode = code.toUpperCase();
             const roomName = `private_table_${upperCode}`;
@@ -260,7 +272,8 @@ module.exports = function (ludo_socket) {
         // ── Complete Private Table ──────────────────────────────────────────
         // Called by Ludo game logic after winner determined
         // msg: { table_id, winner_id }
-        socket.on('complete-private-table', (msg) => {
+        socket.on('complete-private-table', (rawMsg) => {
+            const msg = normalizeMsg(rawMsg);
             const { table_id, winner_id } = msg;
 
             laravelInternalPost(
