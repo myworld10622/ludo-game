@@ -12,12 +12,42 @@ public static class AssignManualPaymentReferences
     [MenuItem("Tools/Assign Manual Payment References")]
     public static void Assign()
     {
-        // ── Find PaymentManager in scene ─────────────────────────────────────
+        // ── Auto-open HomePage scene if PaymentManager not found ─────────────
         PaymentManager pm = Object.FindFirstObjectByType<PaymentManager>();
         if (pm == null)
         {
+            string[] guids = AssetDatabase.FindAssets("HomePage t:Scene");
+            string scenePath = null;
+            foreach (var guid in guids)
+            {
+                string p = AssetDatabase.GUIDToAssetPath(guid);
+                if (p.Contains("_Project") || p.Contains("Core"))
+                { scenePath = p; break; }
+            }
+            if (scenePath == null && guids.Length > 0)
+                scenePath = AssetDatabase.GUIDToAssetPath(guids[0]);
+
+            if (scenePath == null)
+            {
+                EditorUtility.DisplayDialog("Error",
+                    "HomePage scene not found in project!\nPlease open the scene manually and retry.", "OK");
+                return;
+            }
+
+            bool save = EditorUtility.DisplayDialog("Open Scene?",
+                "PaymentManager is in:\n" + scenePath +
+                "\n\nOpen it now? (Unsaved changes in current scene will be prompted to save.)", "Open", "Cancel");
+            if (!save) return;
+
+            UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
+            UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
+            pm = Object.FindFirstObjectByType<PaymentManager>();
+        }
+
+        if (pm == null)
+        {
             EditorUtility.DisplayDialog("Error",
-                "PaymentManager not found in scene!\nMake sure the HomePage scene is open.", "OK");
+                "PaymentManager still not found after opening HomePage scene.\nCheck the scene is correct.", "OK");
             return;
         }
 
