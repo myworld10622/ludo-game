@@ -98,8 +98,15 @@ public class GetQRApiResponse
 {
     public int code;
     public string message;
-    public string qr_image;
+    public bool gateway_enabled;
+    public string gateway_name;
+    public string type;           // "upi" or "bank"
     public string upi_id;
+    public string bank_name;
+    public string account_holder;
+    public string account_number;
+    public string ifsc_code;
+    public string qr_image;
 }
 
 [System.Serializable]

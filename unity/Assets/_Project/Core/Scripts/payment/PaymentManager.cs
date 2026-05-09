@@ -57,6 +57,17 @@ public class PaymentManager : MonoBehaviour
     public List<GameObject> buttonsobjs;
 
     public GameObject USDT_AUTO;
+
+    [Header("Manual Gateway UI")]
+    public TextMeshProUGUI manualGatewayNameText;
+    public TextMeshProUGUI manualUpiIdText;
+    public TextMeshProUGUI manualBankNameText;
+    public TextMeshProUGUI manualAccountHolderText;
+    public TextMeshProUGUI manualAccountNumberText;
+    public TextMeshProUGUI manualIfscCodeText;
+    public GameObject manualUpiSection;
+    public GameObject manualBankSection;
+
     // payment method: 0 = UPI/Bank, 1 = Crypto
     private int _paymentMethod = 0;
     private GameObject _upiTab, _cryptoTab;
@@ -3535,8 +3546,7 @@ public class PaymentManager : MonoBehaviour
             { "user_id", Configuration.GetId() },
             { "token", Configuration.GetToken() },
         };
-        GetQRApiResponse response = new GetQRApiResponse();
-        response = await APIManager.Instance.Post<GetQRApiResponse>(Url, formData);
+        GetQRApiResponse response = await APIManager.Instance.Post<GetQRApiResponse>(Url, formData);
 
         if (response == null)
         {
@@ -3544,10 +3554,42 @@ public class PaymentManager : MonoBehaviour
             return;
         }
 
-        Debug.Log(response.message);
-        Debug.Log(response.qr_image);
-        //StartDownloadQR(response.qr_image);
-        StartCoroutine(DownloadQR(response.qr_image));
+        if (response.code == 503 || response.gateway_enabled == false)
+        {
+            if (manual_panel != null) manual_panel.SetActive(false);
+            CommonUtil.ShowStyledMessage("Manual payment is currently unavailable. Please use Automatic Gateway.", "Unavailable", isError: true);
+            return;
+        }
+
+        // Gateway name
+        if (manualGatewayNameText != null)
+            manualGatewayNameText.text = string.IsNullOrEmpty(response.gateway_name) ? "UPI / Bank Transfer" : response.gateway_name;
+
+        bool isUpi = string.IsNullOrEmpty(response.type) || response.type == "upi";
+
+        // Show/hide UPI vs Bank sections
+        if (manualUpiSection != null) manualUpiSection.SetActive(isUpi);
+        if (manualBankSection != null) manualBankSection.SetActive(!isUpi);
+
+        if (isUpi)
+        {
+            if (manualUpiIdText != null)
+                manualUpiIdText.text = string.IsNullOrEmpty(response.upi_id) ? "—" : response.upi_id;
+        }
+        else
+        {
+            if (manualBankNameText != null)
+                manualBankNameText.text = string.IsNullOrEmpty(response.bank_name) ? "—" : response.bank_name;
+            if (manualAccountHolderText != null)
+                manualAccountHolderText.text = string.IsNullOrEmpty(response.account_holder) ? "—" : response.account_holder;
+            if (manualAccountNumberText != null)
+                manualAccountNumberText.text = string.IsNullOrEmpty(response.account_number) ? "—" : response.account_number;
+            if (manualIfscCodeText != null)
+                manualIfscCodeText.text = string.IsNullOrEmpty(response.ifsc_code) ? "—" : response.ifsc_code;
+        }
+
+        if (!string.IsNullOrEmpty(response.qr_image))
+            StartCoroutine(DownloadQR(response.qr_image));
     }
 
     public async Task Manual_Payment_API()

@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\Web\ManualDepositController;
 use App\Http\Controllers\Admin\Web\WalletTransactionController;
 use App\Http\Controllers\Admin\Web\WalletTransferController;
 use App\Http\Controllers\Admin\Web\GatewayController;
+use App\Http\Controllers\Admin\Web\ManualGatewayController;
 use App\Http\Controllers\Admin\Web\SettingController;
 use App\Http\Controllers\Admin\Web\AgentController;
 use App\Http\Controllers\Admin\Web\DistributorController;
@@ -91,6 +92,16 @@ Route::middleware('web')->group(function () {
             Route::get('/withdrawals/redeem/{redeem}/edit', [WithdrawalController::class, 'redeemEdit'])->name('withdrawals.redeem.edit');
             Route::put('/withdrawals/redeem/{redeem}', [WithdrawalController::class, 'redeemUpdate'])->name('withdrawals.redeem.update');
             Route::delete('/withdrawals/redeem/{redeem}', [WithdrawalController::class, 'redeemDelete'])->name('withdrawals.redeem.delete');
+            // UPI / Bank Manual Payment Gateways
+            Route::get('/manual-gateways', [ManualGatewayController::class, 'index'])->name('manual-gateways.index');
+            Route::get('/manual-gateways/create', [ManualGatewayController::class, 'create'])->name('manual-gateways.create');
+            Route::post('/manual-gateways', [ManualGatewayController::class, 'store'])->name('manual-gateways.store');
+            Route::get('/manual-gateways/{manualGateway}/edit', [ManualGatewayController::class, 'edit'])->name('manual-gateways.edit');
+            Route::put('/manual-gateways/{manualGateway}', [ManualGatewayController::class, 'update'])->name('manual-gateways.update');
+            Route::delete('/manual-gateways/{manualGateway}', [ManualGatewayController::class, 'destroy'])->name('manual-gateways.destroy');
+            Route::post('/manual-gateways/{manualGateway}/toggle', [ManualGatewayController::class, 'toggleActive'])->name('manual-gateways.toggle');
+            Route::post('/manual-gateways/toggle-global', [ManualGatewayController::class, 'toggleGlobal'])->name('manual-gateways.toggle-global');
+
             Route::get('/gateways/manual', [GatewayController::class, 'manualIndex'])->name('gateways.manual.index');
             Route::get('/gateways/manual/create', [GatewayController::class, 'manualCreate'])->name('gateways.manual.create');
             Route::post('/gateways/manual', [GatewayController::class, 'manualStore'])->name('gateways.manual.store');
