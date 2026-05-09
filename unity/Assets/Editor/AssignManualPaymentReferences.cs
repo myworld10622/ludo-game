@@ -13,7 +13,8 @@ public static class AssignManualPaymentReferences
     public static void Assign()
     {
         // ── Auto-open HomePage scene if PaymentManager not found ─────────────
-        PaymentManager pm = Object.FindFirstObjectByType<PaymentManager>();
+        // FindObjectsInactive.Include — finds even inactive GameObjects (ADD Chip is inactive by default)
+        PaymentManager pm = Object.FindFirstObjectByType<PaymentManager>(FindObjectsInactive.Include);
         if (pm == null)
         {
             string[] guids = AssetDatabase.FindAssets("HomePage t:Scene");
@@ -41,7 +42,7 @@ public static class AssignManualPaymentReferences
 
             UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo();
             UnityEditor.SceneManagement.EditorSceneManager.OpenScene(scenePath);
-            pm = Object.FindFirstObjectByType<PaymentManager>();
+            pm = Object.FindFirstObjectByType<PaymentManager>(FindObjectsInactive.Include);
         }
 
         if (pm == null)
@@ -51,14 +52,25 @@ public static class AssignManualPaymentReferences
             return;
         }
 
-        // ── Find the panel root ───────────────────────────────────────────────
-        // Search all root objects in scene
+        // ── Find panel root — search ALL objects including inactive ───────────
         Transform panelRoot = null;
-        foreach (var root in UnityEngine.SceneManagement.SceneManager
-                     .GetActiveScene().GetRootGameObjects())
+        // Search via canvas children (panel is child of canvas)
+        Canvas[] allCanvases = Object.FindObjectsByType<Canvas>(
+            FindObjectsInactive.Include, FindObjectsSortMode.None);
+        foreach (var c in allCanvases)
         {
-            panelRoot = FindDeep(root.transform, "ManualPaymentPanel");
+            panelRoot = FindDeep(c.transform, "ManualPaymentPanel");
             if (panelRoot != null) break;
+        }
+        // Fallback: search entire scene
+        if (panelRoot == null)
+        {
+            foreach (var root in UnityEngine.SceneManagement.SceneManager
+                         .GetActiveScene().GetRootGameObjects())
+            {
+                panelRoot = FindDeep(root.transform, "ManualPaymentPanel");
+                if (panelRoot != null) break;
+            }
         }
 
         if (panelRoot == null)
