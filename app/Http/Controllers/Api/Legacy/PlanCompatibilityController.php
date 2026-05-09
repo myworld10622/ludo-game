@@ -194,12 +194,15 @@ class PlanCompatibilityController extends Controller
                 ]);
             }
 
+            $callbackBase = rtrim(config('services.betzono.callback_base_url') ?: config('app.url'), '/');
             $payload = [
                 'userId' => $proxyUserId,
                 'merchantId' => $merchantId,
                 'amount' => $amount,
                 'phoneNumber' => $proxyPhone,
                 'email' => $proxyEmail,
+                'callbackUrl' => $callbackBase.'/api/v1/payment/betzono/deposit',
+                'redirectUrl' => $callbackBase.'/payment/deposit/'.$transactionId,
                 'metaData' => [
                     'TransactionId' => $transactionId,
                     'rox_user_id' => $legacyUser->id,
