@@ -3230,6 +3230,12 @@ public class PaymentManager : MonoBehaviour
         ApplyResponsiveAddCashLayout();
     }
 
+    public void HideManualPanel()
+    {
+        if (manual_panel != null)
+            manual_panel.SetActive(false);
+    }
+
     public async void OpenManual()
     {
         HidePaymentFlowPanels();
@@ -3590,6 +3596,62 @@ public class PaymentManager : MonoBehaviour
 
         if (!string.IsNullOrEmpty(response.qr_image))
             StartCoroutine(DownloadQR(response.qr_image));
+
+        // Update amount display
+        if (manual_panel != null)
+        {
+            var amountVal = manual_panel.transform.Find("Card/Body/AmountRow/AmountValue")
+                ?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (amountVal != null)
+                amountVal.text = "₹ " + manual_amount;
+        }
+
+        // Wire copy buttons (safe — buttons already exist in hierarchy)
+        WireManualCopyButtons(response, isUpi);
+    }
+
+    private void WireManualCopyButtons(GetQRApiResponse resp, bool isUpi)
+    {
+        if (manual_panel == null) return;
+        Transform body = manual_panel.transform.Find("Card/Body");
+        if (body == null) return;
+
+        if (isUpi)
+        {
+            var copyUpi = body.Find("UPISection/UPIRow/CopyUPIButton")?.GetComponent<Button>();
+            if (copyUpi != null)
+            {
+                string upiToCopy = resp.upi_id ?? "";
+                copyUpi.onClick.RemoveAllListeners();
+                copyUpi.onClick.AddListener(() => {
+                    GUIUtility.systemCopyBuffer = upiToCopy;
+                    CommonUtil.ShowToast("UPI ID copied!");
+                });
+            }
+        }
+        else
+        {
+            var copyAcc = body.Find("BankSection/AccountNumberTextRow/CopyAccountNumberTextButton")?.GetComponent<Button>();
+            if (copyAcc != null)
+            {
+                string accToCopy = resp.account_number ?? "";
+                copyAcc.onClick.RemoveAllListeners();
+                copyAcc.onClick.AddListener(() => {
+                    GUIUtility.systemCopyBuffer = accToCopy;
+                    CommonUtil.ShowToast("Account number copied!");
+                });
+            }
+            var copyIfsc = body.Find("BankSection/IfscCodeTextRow/CopyIfscCodeTextButton")?.GetComponent<Button>();
+            if (copyIfsc != null)
+            {
+                string ifscToCopy = resp.ifsc_code ?? "";
+                copyIfsc.onClick.RemoveAllListeners();
+                copyIfsc.onClick.AddListener(() => {
+                    GUIUtility.systemCopyBuffer = ifscToCopy;
+                    CommonUtil.ShowToast("IFSC copied!");
+                });
+            }
+        }
     }
 
     public async Task Manual_Payment_API()
