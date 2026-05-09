@@ -312,7 +312,7 @@ namespace LudoClassicOffline
         {
             DisconnectSocket();
 
-            string socketUrl = Configuration.BaseSocketUrl + "/socket.io/";
+            string socketUrl = Configuration.BaseSocketUrl.TrimEnd('/') + "/socket.io/";
             socketManager = new SocketManager(new Uri(socketUrl), BuildSocketOptions());
             namespaceSocket = socketManager.GetSocket(Configuration.LudoV2SocketNamespace);
             namespaceSocket.On(SocketIOEventTypes.Connect, () => OnSocketConnected(maxPlayers, entryFee, gameMode));
@@ -333,7 +333,7 @@ namespace LudoClassicOffline
         {
             DisconnectSocket();
 
-            string socketUrl = Configuration.BaseSocketUrl + "/socket.io/";
+            string socketUrl = Configuration.BaseSocketUrl.TrimEnd('/') + "/socket.io/";
             socketManager = new SocketManager(new Uri(socketUrl), BuildSocketOptions());
             namespaceSocket = socketManager.GetSocket(Configuration.LudoV2SocketNamespace);
             namespaceSocket.On(SocketIOEventTypes.Connect, OnTournamentSocketConnected);

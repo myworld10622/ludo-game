@@ -156,7 +156,7 @@ namespace LudoClassicOffline
             }
 
             isConnecting = true;
-            string socketUrl = Configuration.BaseSocketUrl + "/socket.io/";
+            string socketUrl = Configuration.BaseSocketUrl.TrimEnd('/') + "/socket.io/";
             var options = new SocketOptions { Reconnection = false, AutoConnect = true };
             socketManager = new SocketManager(new Uri(socketUrl), options);
             socket = socketManager.GetSocket(Configuration.PrivateTableSocketNamespace);
