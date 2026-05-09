@@ -123,7 +123,6 @@ namespace LudoClassicOffline
 
             if (isQueueing || hasStartedMatch)
             {
-                CommonUtil.ShowToast("Ludo matchmaking already in progress");
                 return true;
             }
 
@@ -174,7 +173,6 @@ namespace LudoClassicOffline
 
             if (isQueueing || hasStartedMatch)
             {
-                CommonUtil.ShowToast("Match already in progress");
                 return true;
             }
 
@@ -223,7 +221,6 @@ namespace LudoClassicOffline
 
             if (isQueueing || hasStartedMatch)
             {
-                CommonUtil.ShowToast("Ludo matchmaking already in progress");
                 return true;
             }
 
@@ -1056,6 +1053,20 @@ namespace LudoClassicOffline
             namespaceSocket = null;
             socketManager = null;
             isIntentionalDisconnect = false;
+        }
+
+        // Call when user returns to lobby after a match (win panel home btn, back button, etc.)
+        public void ForceResetMatchState()
+        {
+            isQueueing = false;
+            hasStartedMatch = false;
+            hasEnteredWaitingBoard = false;
+            hasReportedMatchCompletion = false;
+            isClaimingNextTournamentRound = false;
+            latestSnapshot = null;
+            lastAnnouncedSeatCount = 0;
+            CancelInvoke(nameof(ClaimNextTournamentRound));
+            DisconnectSocket();
         }
 
         public string GetActiveRoomId()
