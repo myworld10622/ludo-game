@@ -13,9 +13,15 @@ class ManualGatewayController extends Controller
     public function index()
     {
         $gateways = ManualPaymentGateway::orderBy('sort_order')->orderByDesc('id')->get();
-        $globalEnabled = (bool) DB::table('tbl_setting')->value('manual_gateway_enabled') ?? true;
+        $s = DB::table('tbl_setting')->first();
 
-        return view('admin.manual-gateways.index', compact('gateways', 'globalEnabled'));
+        $globalEnabled  = (bool) ($s->manual_gateway_enabled ?? true);
+        $option2Enabled = (bool) ($s->option_2_enabled ?? true);
+        $option3Enabled = (bool) ($s->option_3_enabled ?? true);
+        $option4Enabled = (bool) ($s->option_4_enabled ?? true);
+
+        return view('admin.manual-gateways.index',
+            compact('gateways', 'globalEnabled', 'option2Enabled', 'option3Enabled', 'option4Enabled'));
     }
 
     public function create()
@@ -113,5 +119,24 @@ class ManualGatewayController extends Controller
         DB::table('tbl_setting')->update(['manual_gateway_enabled' => $enabled]);
 
         return response()->json(['manual_gateway_enabled' => $enabled]);
+    }
+
+    public function toggleOption(Request $request, int $option)
+    {
+        $column = match($option) {
+            2 => 'option_2_enabled',
+            3 => 'option_3_enabled',
+            4 => 'option_4_enabled',
+            default => null,
+        };
+
+        if (! $column) {
+            return response()->json(['error' => 'Invalid option'], 422);
+        }
+
+        $enabled = $request->boolean('enabled');
+        DB::table('tbl_setting')->update([$column => $enabled]);
+
+        return response()->json([$column => $enabled]);
     }
 }

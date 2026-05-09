@@ -101,6 +101,7 @@ Route::middleware('web')->group(function () {
             Route::delete('/manual-gateways/{manualGateway}', [ManualGatewayController::class, 'destroy'])->name('manual-gateways.destroy');
             Route::post('/manual-gateways/{manualGateway}/toggle', [ManualGatewayController::class, 'toggleActive'])->name('manual-gateways.toggle');
             Route::post('/manual-gateways/toggle-global', [ManualGatewayController::class, 'toggleGlobal'])->name('manual-gateways.toggle-global');
+            Route::post('/manual-gateways/toggle-option/{option}', [ManualGatewayController::class, 'toggleOption'])->name('manual-gateways.toggle-option');
 
             Route::get('/gateways/manual', [GatewayController::class, 'manualIndex'])->name('gateways.manual.index');
             Route::get('/gateways/manual/create', [GatewayController::class, 'manualCreate'])->name('gateways.manual.create');

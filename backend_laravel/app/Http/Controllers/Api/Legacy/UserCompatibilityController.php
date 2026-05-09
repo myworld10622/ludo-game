@@ -3917,4 +3917,18 @@ class UserCompatibilityController extends Controller
             'code'    => 406,
         ]);
     }
+
+    public function paymentOptions(): JsonResponse
+    {
+        $s = DB::table('tbl_setting')->first();
+
+        return response()->json([
+            'code'              => 200,
+            'message'           => 'OK',
+            'option_1_enabled'  => (bool) ($s->manual_gateway_enabled ?? true),
+            'option_2_enabled'  => (bool) ($s->option_2_enabled ?? true),
+            'option_3_enabled'  => (bool) ($s->option_3_enabled ?? true),
+            'option_4_enabled'  => (bool) ($s->option_4_enabled ?? true),
+        ]);
+    }
 }
