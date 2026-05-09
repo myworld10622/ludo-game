@@ -7,7 +7,7 @@ using UnityEngine;
 
 public static class AndroidProductionBuild
 {
-    private const string DefaultOutputPath = @"E:\New Rox APK\ROX_Ludo.apk";
+    private const string DefaultOutputPath = @"E:\New Rox APK\ROX 1.2\ROX_Ludo.apk";
     private const string BundleId = "com.roxludo.roxludo";
 
     [UnityEditor.MenuItem("Tools/Build Android APK (E:/New Rox APK)")]
@@ -41,7 +41,8 @@ public static class AndroidProductionBuild
 
         PlayerSettings.companyName = "RoxLudo";
         PlayerSettings.productName = "ROX Ludo";
-        PlayerSettings.bundleVersion = "1.0.0";
+        PlayerSettings.bundleVersion = "1.2.0";
+        PlayerSettings.Android.bundleVersionCode = 12;
         PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, BundleId);
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;

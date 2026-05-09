@@ -80,11 +80,13 @@ public static class AssignManualPaymentReferences
             return;
         }
 
-        Transform body = panelRoot.Find("Card/Body");
+        // Body can be Card/Body (old) or Card/ScrollView/Viewport/Content (new)
+        Transform body = panelRoot.Find("Card/ScrollView/Viewport/Content")
+                      ?? panelRoot.Find("Card/Body");
         if (body == null)
         {
             EditorUtility.DisplayDialog("Error",
-                "Card/Body not found inside ManualPaymentPanel.\nTry recreating the panel.", "OK");
+                "Content area not found inside ManualPaymentPanel.\nTry recreating the panel.", "OK");
             return;
         }
 
@@ -106,21 +108,29 @@ public static class AssignManualPaymentReferences
         SetRef(so, "manualUpiIdText",
             body.Find("UPISection/UPIRow/UpiIdText")?.GetComponent<TextMeshProUGUI>());
 
-        // manualBankNameText
+        // manualBankNameText  (new: BankNameTextRow, old: BankNameTextRow)
         SetRef(so, "manualBankNameText",
-            body.Find("BankSection/BankNameTextRow/BankNameText")?.GetComponent<TextMeshProUGUI>());
+            (body.Find("BankSection/BankNameTextRow/BankNameText")
+          ?? body.Find("BankSection/BankNameText_LblRow/BankNameText"))
+            ?.GetComponent<TextMeshProUGUI>());
 
         // manualAccountHolderText
         SetRef(so, "manualAccountHolderText",
-            body.Find("BankSection/AccountHolderTextRow/AccountHolderText")?.GetComponent<TextMeshProUGUI>());
+            (body.Find("BankSection/AccountHolderTextRow/AccountHolderText")
+          ?? body.Find("BankSection/AccountHolderText_LblRow/AccountHolderText"))
+            ?.GetComponent<TextMeshProUGUI>());
 
         // manualAccountNumberText
         SetRef(so, "manualAccountNumberText",
-            body.Find("BankSection/AccountNumberTextRow/AccountNumberText")?.GetComponent<TextMeshProUGUI>());
+            (body.Find("BankSection/AccountNumberTextRow/AccountNumberText")
+          ?? body.Find("BankSection/AccountNumberText_LblRow/AccountNumberText"))
+            ?.GetComponent<TextMeshProUGUI>());
 
         // manualIfscCodeText
         SetRef(so, "manualIfscCodeText",
-            body.Find("BankSection/IfscCodeTextRow/IfscCodeText")?.GetComponent<TextMeshProUGUI>());
+            (body.Find("BankSection/IfscCodeTextRow/IfscCodeText")
+          ?? body.Find("BankSection/IfscCodeText_LblRow/IfscCodeText"))
+            ?.GetComponent<TextMeshProUGUI>());
 
         // manualUpiSection
         SetRef(so, "manualUpiSection", body.Find("UPISection")?.gameObject);
@@ -189,7 +199,8 @@ public static class AssignManualPaymentReferences
 
     static void WireCloseButton(Transform panelRoot, PaymentManager pm)
     {
-        var closeBtn = panelRoot.Find("Card/TitleBar/CloseButton")?.GetComponent<Button>();
+        var closeBtn = (panelRoot.Find("Card/TitleBar/CloseButton")
+                     ?? panelRoot.Find("Card/CloseButton"))?.GetComponent<Button>();
         if (closeBtn == null) { Debug.LogWarning("[AssignManualPayment] CloseButton not found"); return; }
 
         var so = new SerializedObject(closeBtn);
