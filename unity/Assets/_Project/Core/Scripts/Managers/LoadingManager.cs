@@ -27,8 +27,21 @@ public class LoadingManager : MonoBehaviour
     {
 #if UNITY_ANDROID
         Screen.orientation = ScreenOrientation.Portrait;
+        RequestMicPermissionEarly();
 #endif
     }
+
+#if UNITY_ANDROID && !UNITY_EDITOR
+    private void RequestMicPermissionEarly()
+    {
+        if (!UnityEngine.Android.Permission.HasUserAuthorizedPermission(UnityEngine.Android.Permission.Microphone))
+        {
+            UnityEngine.Android.Permission.RequestUserPermission(UnityEngine.Android.Permission.Microphone);
+        }
+    }
+#else
+    private void RequestMicPermissionEarly() { }
+#endif
 
     void Start()
     {

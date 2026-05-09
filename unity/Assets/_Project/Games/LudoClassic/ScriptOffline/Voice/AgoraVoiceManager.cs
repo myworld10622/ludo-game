@@ -82,7 +82,6 @@ namespace LudoClassicOffline
             roomChatController = GetComponent<LudoRoomChatController>();
             TryBuildUi();
             SetVoiceAvailability(false);
-            RequestMicrophonePermissionIfNeeded();
         }
 
 #if UNITY_EDITOR
@@ -135,7 +134,7 @@ namespace LudoClassicOffline
 
             if (toggleButton != null)
             {
-                toggleButton.gameObject.SetActive(true); // always visible — dimmed when unavailable
+                toggleButton.gameObject.SetActive(available);
             }
 
             if (!available)
@@ -835,6 +834,11 @@ namespace LudoClassicOffline
             if (panelAnimationCoroutine != null)
             {
                 StopCoroutine(panelAnimationCoroutine);
+            }
+
+            if (!gameObject.activeInHierarchy)
+            {
+                return;
             }
 
             panelAnimationCoroutine = StartCoroutine(AnimatePanelVisibility(isPanelOpen));
