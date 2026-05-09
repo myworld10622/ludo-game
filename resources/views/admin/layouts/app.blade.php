@@ -499,6 +499,9 @@
         <a class="nav-link sub {{ request()->routeIs('admin.withdrawals.redeem.*') ? 'active' : '' }}" href="{{ route('admin.withdrawals.redeem.index') }}">↳ Redeem Presets</a>
 
         <div class="nav-section">Gateways</div>
+        <a class="nav-link {{ request()->routeIs('admin.manual-gateways.*') ? 'active' : '' }}" href="{{ route('admin.manual-gateways.index') }}">
+            <span class="ni">🏦</span> UPI / Bank Accounts
+        </a>
         <a class="nav-link {{ request()->routeIs('admin.gateways.manual.*') ? 'active' : '' }}" href="{{ route('admin.gateways.manual.index') }}">
             <span class="ni">🔌</span> Manual Gateways
         </a>

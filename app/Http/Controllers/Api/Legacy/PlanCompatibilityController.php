@@ -345,17 +345,66 @@ class PlanCompatibilityController extends Controller
         );
 
         if (! $user) {
+            return response()->json(['message' => 'Invalid User', 'code' => 404]);
+        }
+
+        // Check global manual gateway toggle
+        $globalEnabled = true;
+        if ($this->legacyTableExists('tbl_setting')) {
+            $setting = DB::table('tbl_setting')->first();
+            $globalEnabled = isset($setting->manual_gateway_enabled)
+                ? (bool) $setting->manual_gateway_enabled
+                : true;
+        }
+
+        if (! $globalEnabled) {
             return response()->json([
-                'message' => 'Invalid User',
-                'code' => 404,
+                'code' => 503,
+                'message' => 'Manual gateway is currently unavailable.',
+                'gateway_enabled' => false,
             ]);
         }
 
-        $qrUrl = (string) env('MANUAL_QR_URL', '');
-        $upiId = (string) env('MANUAL_UPI_ID', '');
+        // Fetch from new manual_payment_gateways table
+        if (Schema::hasTable('manual_payment_gateways')) {
+            $active = DB::table('manual_payment_gateways')
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->get();
+
+            if ($active->isNotEmpty()) {
+                // Pick random among all active, or first if only one
+                $gw = $active->count() > 1 ? $active->random() : $active->first();
+
+                $qrUrl = '';
+                if ($gw->qr_image) {
+                    $qrUrl = str_starts_with($gw->qr_image, 'http')
+                        ? $gw->qr_image
+                        : url('storage/manual_gateways/'.$gw->qr_image);
+                }
+
+                return response()->json([
+                    'code'            => 200,
+                    'message'         => 'Success',
+                    'gateway_enabled' => true,
+                    'gateway_name'    => $gw->gateway_name,
+                    'type'            => $gw->type,         // 'upi' or 'bank'
+                    'upi_id'          => $gw->upi_id ?? '',
+                    'bank_name'       => $gw->bank_name ?? '',
+                    'account_holder'  => $gw->account_holder ?? '',
+                    'account_number'  => $gw->account_number ?? '',
+                    'ifsc_code'       => $gw->ifsc_code ?? '',
+                    'qr_image'        => $qrUrl,
+                ]);
+            }
+        }
+
+        // Fallback to old tbl_setting
+        $qrUrl = (string) config('services.manual.qr_url', env('MANUAL_QR_URL', ''));
+        $upiId = (string) config('services.manual.upi_id', env('MANUAL_UPI_ID', ''));
 
         if ($qrUrl === '' && $this->legacyTableExists('tbl_setting')) {
-            $setting = DB::table('tbl_setting')->first();
+            $setting = $setting ?? DB::table('tbl_setting')->first();
             if ($setting) {
                 $upiId = $upiId !== '' ? $upiId : (string) ($setting->upi_id ?? '');
                 $qrImage = (string) ($setting->qr_image ?? '');
@@ -368,10 +417,17 @@ class PlanCompatibilityController extends Controller
         }
 
         return response()->json([
-            'code' => 200,
-            'message' => 'Success',
-            'qr_image' => $qrUrl,
-            'upi_id' => $upiId,
+            'code'            => 200,
+            'message'         => 'Success',
+            'gateway_enabled' => true,
+            'gateway_name'    => 'UPI / Bank',
+            'type'            => 'upi',
+            'upi_id'          => $upiId,
+            'bank_name'       => '',
+            'account_holder'  => '',
+            'account_number'  => '',
+            'ifsc_code'       => '',
+            'qr_image'        => $qrUrl,
         ]);
     }
 
