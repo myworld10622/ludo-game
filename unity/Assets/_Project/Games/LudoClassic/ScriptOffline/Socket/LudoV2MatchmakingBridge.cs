@@ -469,6 +469,11 @@ namespace LudoClassicOffline
             }
 
             hasEnteredWaitingBoard = true;
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
             dashBoardManager.fTUEPanal.SetActive(false);
             dashBoardManager.fTUEManager.SetActive(false);
             dashBoardManager.selectGameModePanal.SetActive(false);

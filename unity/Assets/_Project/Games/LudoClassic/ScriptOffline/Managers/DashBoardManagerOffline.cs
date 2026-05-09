@@ -527,6 +527,9 @@ public class DashBoardManagerOffline : MonoBehaviour
             selectGameModePanal.SetActive(true);
             lobbySelectPanal.SetActive(false);
             onlineLobbySelectionPanel.SetActive(false);
+            // Reset matchmaking state so user can join again after returning from a match
+            if (LudoV2MatchmakingBridge.Instance != null)
+                LudoV2MatchmakingBridge.Instance.ForceResetMatchState();
         }
 
         //public void ClickOnButton(int no)
@@ -2198,7 +2201,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
             {
                 byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
-                req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
+                req.uploadHandler = new UploadHandlerRaw(bodyRaw);
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");
                 req.SetRequestHeader("Accept", "application/json");
@@ -2282,7 +2285,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
             {
                 byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
-                req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
+                req.uploadHandler = new UploadHandlerRaw(bodyRaw);
                 req.downloadHandler = new DownloadHandlerBuffer();
                 req.SetRequestHeader("Content-Type", "application/json");
                 req.SetRequestHeader("Accept", "application/json");
@@ -3280,6 +3283,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             dashBordPanal.SetActive(true);
             dashBordPanal.GetComponent<Canvas>().enabled = true;
             SetLobbyUiBlocking(true);
+            if (LudoV2MatchmakingBridge.Instance != null)
+                LudoV2MatchmakingBridge.Instance.ForceResetMatchState();
         }
         #endregion
 
