@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Best.HTTP;
 using Best.SocketIO;
 using Best.SocketIO.Events;
@@ -71,12 +72,12 @@ namespace LudoClassicOffline
 
             ConnectAndEmit(() =>
             {
-                socket.Emit("create-private-table", JsonConvert.SerializeObject(new
+                socket.Emit("create-private-table", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    user_id = int.Parse(Configuration.GetId()),
-                    token = Configuration.GetToken(),
-                    fee_amount = fee,
-                    max_players = maxPlayers,
+                    { "user_id", int.Parse(Configuration.GetId()) },
+                    { "token", Configuration.GetToken() },
+                    { "fee_amount", fee },
+                    { "max_players", maxPlayers },
                 }));
             });
         }
@@ -96,11 +97,11 @@ namespace LudoClassicOffline
 
             ConnectAndEmit(() =>
             {
-                socket.Emit("join-private-table", JsonConvert.SerializeObject(new
+                socket.Emit("join-private-table", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    user_id = int.Parse(Configuration.GetId()),
-                    token = Configuration.GetToken(),
-                    code = code,
+                    { "user_id", int.Parse(Configuration.GetId()) },
+                    { "token", Configuration.GetToken() },
+                    { "code", code },
                 }));
             });
         }
@@ -120,11 +121,11 @@ namespace LudoClassicOffline
 
             if (socket != null && socket.IsOpen)
             {
-                socket.Emit("leave-private-table", JsonConvert.SerializeObject(new
+                socket.Emit("leave-private-table", JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    user_id = int.Parse(Configuration.GetId()),
-                    token = Configuration.GetToken(),
-                    code = currentTableCode,
+                    { "user_id", int.Parse(Configuration.GetId()) },
+                    { "token", Configuration.GetToken() },
+                    { "code", currentTableCode },
                 }));
             }
             else

@@ -2196,7 +2196,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         private IEnumerator JoinPrivateTableRequest(string code)
         {
             string url = Configuration.PrivateTableJoinUrl;
-            string body = JsonConvert.SerializeObject(new { code = code });
+            var bodyDict = new Dictionary<string, object> { { "code", code } };
+            string body = JsonConvert.SerializeObject(bodyDict);
             byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
 
             var request = HTTPRequest.CreatePost(new Uri(url));
@@ -2279,7 +2280,8 @@ public class DashBoardManagerOffline : MonoBehaviour
         private IEnumerator CreatePrivateTableRequest(int playerCount, int fee)
         {
             string url = Configuration.PrivateTableCreateUrl;
-            string body = JsonConvert.SerializeObject(new { fee_amount = fee, max_players = playerCount });
+            var bodyDict = new Dictionary<string, object> { { "fee_amount", fee }, { "max_players", playerCount } };
+            string body = JsonConvert.SerializeObject(bodyDict);
             byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
 
             var request = HTTPRequest.CreatePost(new Uri(url));
