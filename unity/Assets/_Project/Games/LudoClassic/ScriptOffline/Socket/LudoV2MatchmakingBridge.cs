@@ -6,6 +6,7 @@ using Best.SocketIO;
 using Best.SocketIO.Events;
 using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace LudoClassicOffline
 {
