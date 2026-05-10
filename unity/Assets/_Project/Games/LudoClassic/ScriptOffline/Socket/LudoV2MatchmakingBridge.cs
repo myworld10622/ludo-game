@@ -272,14 +272,14 @@ namespace LudoClassicOffline
             request.SetHeader("Content-Type", "application/json");
             request.UploadSettings.UploadStream = new MemoryStream(
                 System.Text.Encoding.UTF8.GetBytes(
-                    JsonConvert.SerializeObject(new
+                    JsonConvert.SerializeObject(new Dictionary<string, object>
                     {
-                        room_type = "public",
-                        play_mode = playMode,
-                        game_mode = gameMode,
-                        max_players = maxPlayers,
-                        entry_fee = entryFee,
-                        allow_bots = true,
+                        { "room_type", "public" },
+                        { "play_mode", playMode },
+                        { "game_mode", gameMode },
+                        { "max_players", maxPlayers },
+                        { "entry_fee", entryFee },
+                        { "allow_bots", true },
                     })
                 )
             );
@@ -364,17 +364,17 @@ namespace LudoClassicOffline
         {
             namespaceSocket.Emit(
                 "ludo.queue.join",
-                JsonConvert.SerializeObject(new
+                JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    userId = int.Parse(Configuration.GetId()),
-                    displayName = LudoDisplayNameUtility.LocalPlayerLabel(),
-                    roomUuid = queuedRoom.data.room_uuid,
-                    roomType = isPrivateTableMode ? "private" : "public",
-                    playMode = entryFee > 0 ? "cash" : "practice",
-                    gameMode = gameMode,
-                    maxPlayers = maxPlayers,
-                    entryFee = entryFee,
-                    allowBots = !isPrivateTableMode,
+                    { "userId", int.Parse(Configuration.GetId()) },
+                    { "displayName", LudoDisplayNameUtility.LocalPlayerLabel() },
+                    { "roomUuid", queuedRoom.data.room_uuid },
+                    { "roomType", isPrivateTableMode ? "private" : "public" },
+                    { "playMode", entryFee > 0 ? "cash" : "practice" },
+                    { "gameMode", gameMode },
+                    { "maxPlayers", maxPlayers },
+                    { "entryFee", entryFee },
+                    { "allowBots", !isPrivateTableMode },
                 })
             );
         }
@@ -383,12 +383,12 @@ namespace LudoClassicOffline
         {
             namespaceSocket.Emit(
                 "ludo.tournament.claim_room",
-                JsonConvert.SerializeObject(new
+                JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    userId = int.Parse(Configuration.GetId()),
-                    accessToken = Configuration.GetToken(),
-                    tournamentUuid = activeTournamentUuid,
-                    tournamentEntryUuid = activeTournamentEntryUuid,
+                    { "userId", int.Parse(Configuration.GetId()) },
+                    { "accessToken", Configuration.GetToken() },
+                    { "tournamentUuid", activeTournamentUuid },
+                    { "tournamentEntryUuid", activeTournamentEntryUuid },
                 })
             );
         }
@@ -722,11 +722,11 @@ namespace LudoClassicOffline
 
             namespaceSocket.Emit(
                 "ludo.chat.emoji",
-                JsonConvert.SerializeObject(new
+                JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    room_id = roomId,
-                    emoji_id = emojiId,
-                    seat_index = seatIndex
+                    { "room_id", roomId },
+                    { "emoji_id", emojiId },
+                    { "seat_index", seatIndex },
                 })
             );
 
@@ -748,11 +748,11 @@ namespace LudoClassicOffline
 
             namespaceSocket.Emit(
                 "ludo.chat.send",
-                JsonConvert.SerializeObject(new
+                JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    room_id = roomId,
-                    message = message.Trim(),
-                    client_message_id = Guid.NewGuid().ToString("N")
+                    { "room_id", roomId },
+                    { "message", message.Trim() },
+                    { "client_message_id", Guid.NewGuid().ToString("N") },
                 })
             );
 
@@ -774,10 +774,10 @@ namespace LudoClassicOffline
 
             namespaceSocket.Emit(
                 "ludo.chat.history",
-                JsonConvert.SerializeObject(new
+                JsonConvert.SerializeObject(new Dictionary<string, object>
                 {
-                    room_id = roomId,
-                    limit = Mathf.Clamp(limit, 1, 100)
+                    { "room_id", roomId },
+                    { "limit", Mathf.Clamp(limit, 1, 100) },
                 })
             );
 
@@ -1208,12 +1208,12 @@ namespace LudoClassicOffline
                 }
             }
 
-            string payload = JsonConvert.SerializeObject(new
+            string payload = JsonConvert.SerializeObject(new Dictionary<string, object>
             {
-                tournament_uuid = isTournamentMode ? activeTournamentUuid : null,
-                tournament_entry_uuid = isTournamentMode ? activeTournamentEntryUuid : null,
-                winner = winnerPayload,
-                placements,
+                { "tournament_uuid", isTournamentMode ? activeTournamentUuid : null },
+                { "tournament_entry_uuid", isTournamentMode ? activeTournamentEntryUuid : null },
+                { "winner", winnerPayload },
+                { "placements", placements },
             });
 
             HideWaitingBoardMessage();
