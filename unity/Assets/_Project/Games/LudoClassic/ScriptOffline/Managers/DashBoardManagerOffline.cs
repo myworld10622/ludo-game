@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using Best.HTTP;
 using DG.Tweening;
 using Mkey;
 using Newtonsoft.Json;
@@ -2195,44 +2196,44 @@ public class DashBoardManagerOffline : MonoBehaviour
         private IEnumerator JoinPrivateTableRequest(string code)
         {
             string url = Configuration.PrivateTableJoinUrl;
-            string token = Configuration.GetToken();
             string body = JsonConvert.SerializeObject(new { code = code });
+            byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
 
-            using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
+            var request = HTTPRequest.CreatePost(new Uri(url));
+            request.SetHeader("Authorization", "Bearer " + Configuration.GetToken());
+            request.SetHeader("Accept", "application/json");
+            request.SetHeader("Content-Type", "application/json");
+            request.UploadSettings.UploadStream = new MemoryStream(bodyBytes);
+
+            bool done = false;
+            string responseText = null;
+
+            request.Callback = (req, resp) =>
             {
-                byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
-                req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
-                req.downloadHandler = new DownloadHandlerBuffer();
-                req.SetRequestHeader("Accept", "application/json");
-                req.SetRequestHeader("Authorization", "Bearer " + token);
+                responseText = resp?.DataAsText;
+                done = true;
+            };
+            request.Send();
 
-                yield return req.SendWebRequest();
+            yield return new WaitUntil(() => done);
 
-                string errMsg = ParseErrorMessage(req, "Failed to join table. Please try again.");
-                if (errMsg != null)
+            var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(responseText ?? "{}");
+            if (resp == null || !resp.success)
+            {
+                string msg = resp?.message ?? "Failed to join table. Please try again.";
+                if (msg.ToLower().Contains("already joined"))
                 {
-                    // "Already joined" = player re-entering their own waiting room → rejoin
-                    if (errMsg.ToLower().Contains("already joined"))
-                    {
-                        Debug.Log($"[PrivateTable] Already in table — rejoining waiting room for {code}");
-                        StartCoroutine(RejoinPrivateTableWaiting(code));
-                        yield break;
-                    }
-                    ShowPrivateTableError("Error", errMsg);
+                    Debug.Log($"[PrivateTable] Already in table — rejoining waiting room for {code}");
+                    StartCoroutine(RejoinPrivateTableWaiting(code));
                     yield break;
                 }
-
-                var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(req.downloadHandler.text);
-                if (resp == null || resp.data == null || !resp.success)
-                {
-                    ShowPrivateTableError("Error", resp?.message ?? "Server error.");
-                    yield break;
-                }
-
-                Debug.Log($"[PrivateTable] Joined! Code: {resp.data.code}");
-                EnterPrivateTableBoard(resp.data.code, resp.data.max_players, resp.data.table_id,
-                    fee: resp.data.fee_amount, currentPlayers: resp.data.current_players, isCreator: false);
+                ShowPrivateTableError("Error", msg);
+                yield break;
             }
+
+            Debug.Log($"[PrivateTable] Joined! Code: {resp.data.code}");
+            EnterPrivateTableBoard(resp.data.code, resp.data.max_players, resp.data.table_id,
+                fee: resp.data.fee_amount, currentPlayers: resp.data.current_players, isCreator: false);
         }
 
         // Re-enter waiting room without paying again (user already in DB as joined)
@@ -2278,32 +2279,44 @@ public class DashBoardManagerOffline : MonoBehaviour
         private IEnumerator CreatePrivateTableRequest(int playerCount, int fee)
         {
             string url = Configuration.PrivateTableCreateUrl;
-            string token = Configuration.GetToken();
             string body = JsonConvert.SerializeObject(new { fee_amount = fee, max_players = playerCount });
+            byte[] bodyBytes = System.Text.Encoding.UTF8.GetBytes(body);
 
-            using (UnityWebRequest req = new UnityWebRequest(url, "POST"))
+            var request = HTTPRequest.CreatePost(new Uri(url));
+            request.SetHeader("Authorization", "Bearer " + Configuration.GetToken());
+            request.SetHeader("Accept", "application/json");
+            request.SetHeader("Content-Type", "application/json");
+            request.UploadSettings.UploadStream = new MemoryStream(bodyBytes);
+
+            bool done = false;
+            string responseText = null;
+            bool isError = false;
+
+            request.Callback = (req, resp) =>
             {
-                byte[] bodyRaw = System.Text.Encoding.UTF8.GetBytes(body);
-                req.uploadHandler = new UploadHandlerRaw(bodyRaw) { contentType = "application/json" };
-                req.downloadHandler = new DownloadHandlerBuffer();
-                req.SetRequestHeader("Accept", "application/json");
-                req.SetRequestHeader("Authorization", "Bearer " + token);
+                isError = resp == null || resp.StatusCode >= 400;
+                responseText = resp?.DataAsText;
+                done = true;
+            };
+            request.Send();
 
-                yield return req.SendWebRequest();
+            yield return new WaitUntil(() => done);
 
-                string errMsg = ParseErrorMessage(req, "Failed to create table. Please try again.");
-                if (errMsg != null) { ShowPrivateTableError("Error", errMsg); yield break; }
-
-                var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(req.downloadHandler.text);
-                if (resp == null || resp.data == null || !resp.success)
-                {
-                    ShowPrivateTableError("Error", resp?.message ?? "Server error.");
-                    yield break;
-                }
-
-                Debug.Log($"[PrivateTable] Created! Code: {resp.data.code}");
-                ShowPrivateTableCreatedPopup(resp.data.code, playerCount, resp.data.fee_amount);
+            if (isError && string.IsNullOrEmpty(responseText))
+            {
+                ShowPrivateTableError("Error", "Failed to create table. Please try again.");
+                yield break;
             }
+
+            var parsed = JsonConvert.DeserializeObject<PrivateTableApiResponse>(responseText ?? "{}");
+            if (parsed == null || !parsed.success || parsed.data == null)
+            {
+                ShowPrivateTableError("Error", parsed?.message ?? "Server error.");
+                yield break;
+            }
+
+            Debug.Log($"[PrivateTable] Created! Code: {parsed.data.code}");
+            ShowPrivateTableCreatedPopup(parsed.data.code, playerCount, parsed.data.fee_amount);
         }
 
         // ── Private Table fields ─────────────────────────────────────────────
