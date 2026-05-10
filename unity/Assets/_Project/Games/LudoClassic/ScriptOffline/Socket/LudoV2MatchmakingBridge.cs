@@ -490,7 +490,10 @@ namespace LudoClassicOffline
                 dashboardCanvas.enabled = false;
             }
             socketNumberEventReceiver.ludoNumberGsNew.board.SetActive(true);
-            SetBoardCanvasScalerForLandscape(socketNumberEventReceiver.ludoNumberGsNew.board);
+            GameObject board = socketNumberEventReceiver.ludoNumberGsNew.board;
+            if (board.transform.parent != null)
+                board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
+            SetBoardCanvasScalerForLandscape(board);
             socketNumberEventReceiver.ludoNumberGsNew.winPanel.SetActive(false);
             if (socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager != null)
             {
