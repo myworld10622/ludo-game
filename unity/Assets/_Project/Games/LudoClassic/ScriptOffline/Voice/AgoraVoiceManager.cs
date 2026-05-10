@@ -521,8 +521,9 @@ namespace LudoClassicOffline
 
             CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
-            scaler.matchWidthOrHeight = 0.5f;
+            bool landscape = Screen.width > Screen.height;
+            scaler.referenceResolution = landscape ? new Vector2(1920f, 1080f) : new Vector2(1080f, 1920f);
+            scaler.matchWidthOrHeight = landscape ? 1f : 0.5f;
 
             return rootCanvas;
         }
@@ -540,10 +541,10 @@ namespace LudoClassicOffline
             }
 
             RectTransform rect = toggleObject.GetComponent<RectTransform>();
-            rect.anchorMin = new Vector2(0.5f, 0.5f);
-            rect.anchorMax = new Vector2(0.5f, 0.5f);
-            rect.pivot     = new Vector2(0.5f, 0.5f);
-            rect.anchoredPosition = new Vector2(460f, -600f); // bottom-right area
+            rect.anchorMin = new Vector2(1f, 0f);
+            rect.anchorMax = new Vector2(1f, 0f);
+            rect.pivot     = new Vector2(1f, 0f);
+            rect.anchoredPosition = new Vector2(-20f, 80f); // bottom-right corner, above mic
             rect.sizeDelta = new Vector2(110f, 110f);
 
             ApplyToggleStyle(toggleObject);

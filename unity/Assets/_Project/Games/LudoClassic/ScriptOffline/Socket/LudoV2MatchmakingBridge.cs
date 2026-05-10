@@ -495,6 +495,8 @@ namespace LudoClassicOffline
                 board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
             SetBoardCanvasScalerForLandscape(board);
             socketNumberEventReceiver.ludoNumberGsNew.winPanel.SetActive(false);
+            if (socketNumberEventReceiver.ludoNumberGsNew.settingBtn != null)
+                socketNumberEventReceiver.ludoNumberGsNew.settingBtn.gameObject.SetActive(true);
             if (socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager != null)
             {
                 socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager.timerCountScreen.SetActive(false);
