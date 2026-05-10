@@ -489,6 +489,7 @@ namespace LudoClassicOffline
                 dashboardCanvas.enabled = false;
             }
             socketNumberEventReceiver.ludoNumberGsNew.board.SetActive(true);
+            SetBoardCanvasScalerForLandscape(socketNumberEventReceiver.ludoNumberGsNew.board);
             socketNumberEventReceiver.ludoNumberGsNew.winPanel.SetActive(false);
             if (socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager != null)
             {
@@ -503,6 +504,20 @@ namespace LudoClassicOffline
             agoraVoiceManager?.HandleRoomOpened();
             friendPanelController?.SetRoomActionAvailability(true);
             LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
+        }
+
+        private void SetBoardCanvasScalerForLandscape(GameObject boardObject)
+        {
+            Canvas rootCanvas = boardObject.GetComponentInParent<Canvas>(true);
+            if (rootCanvas != null) rootCanvas = rootCanvas.rootCanvas;
+            if (rootCanvas == null) rootCanvas = boardObject.GetComponentInChildren<Canvas>(true);
+            if (rootCanvas == null) return;
+
+            CanvasScaler scaler = rootCanvas.GetComponent<CanvasScaler>();
+            if (scaler == null) return;
+
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 1f;
         }
 
         private void RenderSeatsFromSnapshot(LudoV2RoomSnapshot snapshot)
