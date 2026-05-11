@@ -34,6 +34,13 @@ namespace LudoClassicOffline
         private bool isPrivateTableMode;
         private string privateTableCode;
         private bool isClaimingNextTournamentRound;
+        private bool isServerDrivenGameMode;
+        public bool IsServerDrivenGameMode => isServerDrivenGameMode;
+        // Server seat index of the local player (0-based). Used for ego-view remapping.
+        private int localSeatOffset;
+        // Translate a server seat index to a visual seat index (local player = 0).
+        private int ToVisualSeat(int serverSeat, int maxPlayers)
+            => (serverSeat - localSeatOffset + maxPlayers) % maxPlayers;
         private const float NextTournamentClaimDelaySeconds = 0.5f;
         private string activeTournamentUuid;
         private string activeTournamentEntryUuid;
@@ -161,6 +168,7 @@ namespace LudoClassicOffline
             }
 #endif
 
+            CommonUtil.ShowToast("Connecting to server...");
             QueueAndConnectAsync(entryFee, maxPlayers);
             return true;
         }
@@ -328,6 +336,10 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2RoomSnapshot>("ludo.game.snapshot", OnRoomSnapshot);
             namespaceSocket.On<LudoV2MatchResult>("ludo.game.result", OnMatchResult);
             namespaceSocket.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
+            namespaceSocket.On<LudoV2TurnStarted>("ludo.game.turn_started", OnTurnStarted);
+            namespaceSocket.On<LudoV2DiceRolled>("ludo.game.dice_rolled", OnDiceRolled);
+            namespaceSocket.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
+            namespaceSocket.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
         }
 
         private void ConnectTournamentSocket()
@@ -455,11 +467,24 @@ namespace LudoClassicOffline
                 seats = payload.seats ?? new List<LudoV2SeatData>(),
             };
 
+            bool allHumans = (payload.seats != null) &&
+                payload.seats.Count > 0 &&
+                payload.seats.TrueForAll(s => string.Equals(s.playerType, "human", StringComparison.OrdinalIgnoreCase));
+            isServerDrivenGameMode = allHumans;
+
+            // Ego-view: local player is always visual seat 0.
+            localSeatOffset = GetLocalSeatIndex(latestSnapshot);
+            Debug.Log($"[LudoV2] LocalSeatOffset={localSeatOffset} (server seatNo={localSeatOffset + 1})");
+
             EnsureWaitingBoardVisible(latestSnapshot);
             RenderSeatsFromSnapshot(latestSnapshot);
             socketNumberEventReceiver.maxPlayer = maxPlayers;
             socketNumberEventReceiver.ChangeCukiSeatIndex();
+            socketNumberEventReceiver.isServerDrivenGameMode = isServerDrivenGameMode;
             socketNumberEventReceiver.ludoNumberGsNew.GameTimerStart(5);
+            // In server-driven mode the 5-s countdown UI still shows; StartUserTurn()
+            // is suppressed in LudoNumberUiManagerOffline and instead server sends
+            // ludo.game.turn_started after ~5.5 s.
         }
 
         private void EnsureWaitingBoardVisible(LudoV2RoomSnapshot snapshot)
@@ -470,11 +495,13 @@ namespace LudoClassicOffline
             }
 
             hasEnteredWaitingBoard = true;
-            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            // Allow both landscape orientations; board is landscape-only but let the
+            // device auto-rotate between left and right so the user can hold naturally.
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = true;
             Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
             dashBoardManager.fTUEPanal.SetActive(false);
             dashBoardManager.fTUEManager.SetActive(false);
             dashBoardManager.selectGameModePanal.SetActive(false);
@@ -495,8 +522,6 @@ namespace LudoClassicOffline
                 board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
             SetBoardCanvasScalerForLandscape(board);
             socketNumberEventReceiver.ludoNumberGsNew.winPanel.SetActive(false);
-            if (socketNumberEventReceiver.ludoNumberGsNew.settingBtn != null)
-                socketNumberEventReceiver.ludoNumberGsNew.settingBtn.gameObject.SetActive(true);
             if (socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager != null)
             {
                 socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager.timerCountScreen.SetActive(false);
@@ -533,6 +558,9 @@ namespace LudoClassicOffline
                 return;
             }
 
+            // Always keep localSeatOffset current with the latest snapshot
+            localSeatOffset = GetLocalSeatIndex(snapshot);
+
             socketNumberEventReceiver.joinTableResponse = BuildJoinTableResponse(snapshot);
             socketNumberEventReceiver.signUpResponce = BuildSignUpResponse(snapshot);
             socketNumberEventReceiver.userTurnStart = BuildUserTurnStart();
@@ -542,33 +570,33 @@ namespace LudoClassicOffline
 
         private JoinTableResponse BuildJoinTableResponse(LudoV2RoomSnapshot snapshot)
         {
-            int localSeatIndex = GetLocalSeatIndex(snapshot);
+            int maxP = snapshot.max_players > 0 ? snapshot.max_players : 2;
             List<PlayerInfoData> playerInfo = new List<PlayerInfoData>();
             foreach (var seat in snapshot.seats)
             {
+                int serverIdx = Mathf.Max(0, seat.seatNo - 1);
+                int visualIdx = ToVisualSeat(serverIdx, maxP);
+                string uid = seat.userId?.ToString() ?? seat.botCode ?? string.Empty;
                 playerInfo.Add(new PlayerInfoData
                 {
-                    playerSeatIndex = Mathf.Max(0, seat.seatNo - 1),
-                    userId = seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                    username = LudoDisplayNameUtility.ResolveDisplayName(
-                        seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                        seat.displayName ?? ("Seat " + seat.seatNo),
-                        Mathf.Max(0, seat.seatNo - 1)
-                    ),
+                    playerSeatIndex = visualIdx,
+                    userId = uid,
+                    username = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx),
                     userProfile = DefaultSeatAvatarUrl,
                 });
+                Debug.Log($"[LudoV2] Seat serverIdx={serverIdx} visualIdx={visualIdx} userId={uid} name={seat.displayName}");
             }
 
             return new JoinTableResponse
             {
                 data = new JoinTableResponseData
                 {
-                    maxPlayerCount = snapshot.max_players,
+                    maxPlayerCount = maxP,
                     tableId = snapshot.room_id,
                     queueKey = snapshot.room_id,
                     playerInfo = playerInfo,
                     playerMoves = new List<int>(),
-                    thisPlayerSeatIndex = localSeatIndex,
+                    thisPlayerSeatIndex = 0, // local player is always visual seat 0
                     turnTimer = 15,
                     extraTimer = 5,
                 },
@@ -584,20 +612,19 @@ namespace LudoClassicOffline
 
         private SignUpResponceClass.SignUpResponce BuildSignUpResponse(LudoV2RoomSnapshot snapshot)
         {
-            int localSeatIndex = GetLocalSeatIndex(snapshot);
+            int maxP = snapshot.max_players > 0 ? snapshot.max_players : 2;
             List<SignUpResponceClass.PlayerInfo> players = new List<SignUpResponceClass.PlayerInfo>();
 
             foreach (var seat in snapshot.seats)
             {
+                int serverIdx = Mathf.Max(0, seat.seatNo - 1);
+                int visualIdx = ToVisualSeat(serverIdx, maxP);
+                string uid = seat.userId?.ToString() ?? seat.botCode ?? string.Empty;
                 players.Add(new SignUpResponceClass.PlayerInfo
                 {
-                    seatIndex = Mathf.Max(0, seat.seatNo - 1),
-                    userId = seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                    username = LudoDisplayNameUtility.ResolveDisplayName(
-                        seat.userId?.ToString() ?? seat.botCode ?? string.Empty,
-                        seat.displayName ?? ("Seat " + seat.seatNo),
-                        Mathf.Max(0, seat.seatNo - 1)
-                    ),
+                    seatIndex = visualIdx,
+                    userId = uid,
+                    username = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx),
                     avatar = DefaultSeatAvatarUrl,
                     tokenDetails = new List<int> { 0, 0, 0, 0 },
                     score = 0,
@@ -616,16 +643,16 @@ namespace LudoClassicOffline
                     isAbleToReconnect = false,
                     roomName = snapshot.room_id,
                     activePlayer = snapshot.current_players,
-                    numberOfPlayers = snapshot.max_players,
+                    numberOfPlayers = maxP,
                     tableState = snapshot.state == "starting" ? "PLAYING" : "WAITING_FOR_PLAYERS",
                     leftPlayerInfo = new List<object>(),
                     playerInfo = players,
                     movesLeft = 24,
-                    thisPlayerSeatIndex = localSeatIndex,
+                    thisPlayerSeatIndex = 0, // local player is always visual seat 0
                     playerMoves = new List<int>(),
                     userTurnDetails = new SignUpResponceClass.UserTurnDetails
                     {
-                        currentTurnSeatIndex = localSeatIndex,
+                        currentTurnSeatIndex = 0,
                         diceValue = 1,
                         isExtraTurn = false,
                         isExtraTime = false,
@@ -649,12 +676,11 @@ namespace LudoClassicOffline
 
         private UserTimeStart BuildUserTurnStart()
         {
-            int localSeatIndex = GetLocalSeatIndex(latestSnapshot);
             return new UserTimeStart
             {
                 data = new UserTimeStartData
                 {
-                    startTurnSeatIndex = localSeatIndex,
+                    startTurnSeatIndex = 0, // local player always visual seat 0 at game start
                     diceValue = 1,
                     isExtraTurn = false,
                     movesLeft = 24,
@@ -822,6 +848,90 @@ namespace LudoClassicOffline
             {
                 socketNumberEventReceiver.ludoNumberGsNew.EmojiSet();
             }
+        }
+
+        // ── Server-driven game events ──────────────────────────────────────────
+
+        private void OnTurnStarted(LudoV2TurnStarted payload)
+        {
+            if (!isServerDrivenGameMode || payload == null) return;
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+            int visualSeat = ToVisualSeat(payload.seat_index, maxP);
+            Debug.Log($"[LudoV2] turn_started serverSeat={payload.seat_index} visualSeat={visualSeat} localOffset={localSeatOffset}");
+            RunOnMainThread(() =>
+            {
+                socketNumberEventReceiver?.OnServerTurnStarted(visualSeat);
+            });
+        }
+
+        private void OnDiceRolled(LudoV2DiceRolled payload)
+        {
+            if (!isServerDrivenGameMode || payload == null) return;
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+            int visualSeat = ToVisualSeat(payload.seat_index, maxP);
+            Debug.Log($"[LudoV2] dice_rolled serverSeat={payload.seat_index} visualSeat={visualSeat} dice={payload.dice_value}");
+            RunOnMainThread(() =>
+            {
+                socketNumberEventReceiver?.OnServerDiceRolled(visualSeat, payload.dice_value);
+            });
+        }
+
+        private void OnTokenMoved(LudoV2TokenMoved payload)
+        {
+            if (!isServerDrivenGameMode || payload == null) return;
+            // Skip our own move — server seat matches local offset
+            if (payload.seat_index == localSeatOffset) return;
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+            int visualSeat = ToVisualSeat(payload.seat_index, maxP);
+            Debug.Log($"[LudoV2] token_moved serverSeat={payload.seat_index} visualSeat={visualSeat} token={payload.token_index}");
+            RunOnMainThread(() =>
+            {
+                socketNumberEventReceiver?.OnServerTokenMoved(visualSeat, payload.token_index, payload.dice_value, payload.extra_turn);
+            });
+        }
+
+        private void OnTurnMissed(LudoV2TurnMissed payload)
+        {
+            if (!isServerDrivenGameMode || payload == null) return;
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+            int visualSeat = ToVisualSeat(payload.seat_index, maxP);
+            Debug.Log($"[LudoV2] turn_missed serverSeat={payload.seat_index} visualSeat={visualSeat} reason={payload.reason}");
+            RunOnMainThread(() => CommonUtil.ShowToast("Turn missed"));
+        }
+
+        // ── Public API for dice & move ─────────────────────────────────────────
+
+        public void TryRollDice()
+        {
+            if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            Debug.Log($"[LudoV2] TryRollDice roomId={roomId} localUserId={Configuration.GetId()} localSeatOffset={localSeatOffset}");
+            namespaceSocket.Emit(
+                "ludo.game.roll_dice",
+                JsonConvert.SerializeObject(new Dictionary<string, object>
+                {
+                    { "room_id", roomId },
+                    { "user_id", int.Parse(Configuration.GetId()) },
+                })
+            );
+        }
+
+        public void TryMoveToken(int tokenIndex, bool extraTurn, bool isWin)
+        {
+            if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            Debug.Log($"[LudoV2] TryMoveToken tokenIndex={tokenIndex} extraTurn={extraTurn} isWin={isWin} roomId={roomId}");
+            namespaceSocket.Emit(
+                "ludo.game.move_token",
+                JsonConvert.SerializeObject(new Dictionary<string, object>
+                {
+                    { "room_id",     roomId },
+                    { "token_index", tokenIndex },
+                    { "extra_turn",  extraTurn },
+                    { "is_win",      isWin },
+                    { "user_id",     int.Parse(Configuration.GetId()) },
+                })
+            );
         }
 
         private void OnSocketPayloadError(LudoV2ErrorPayload payload)
@@ -1403,5 +1513,38 @@ namespace LudoClassicOffline
         public string uuid;
         public string status;
         public int current_active_entries;
+    }
+
+    // ── Server-driven game event payloads ──────────────────────────────────────
+
+    [Serializable]
+    public class LudoV2TurnStarted
+    {
+        public int  seat_index;
+        public bool is_bot;
+    }
+
+    [Serializable]
+    public class LudoV2DiceRolled
+    {
+        public int seat_index;
+        public int dice_value;
+    }
+
+    [Serializable]
+    public class LudoV2TokenMoved
+    {
+        public int  seat_index;
+        public int  token_index;
+        public int  dice_value;
+        public bool extra_turn;
+        public bool is_win;
+    }
+
+    [Serializable]
+    public class LudoV2TurnMissed
+    {
+        public int    seat_index;
+        public string reason;
     }
 }

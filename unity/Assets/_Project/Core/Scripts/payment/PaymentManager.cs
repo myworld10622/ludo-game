@@ -83,6 +83,7 @@ public class PaymentManager : MonoBehaviour
     private bool _isAutomaticStatusCheckRunning;
     private bool _automaticGatewayFlowOpen;
     private bool _isManualPaymentSubmitting;
+    private PaymentOptionsConfig _paymentOptionsConfig;
     private GameObject _transferQuickButton;
     private GameObject _transferPopupRoot;
     private GameObject _transferConfirmPopupRoot;
@@ -497,20 +498,40 @@ public class PaymentManager : MonoBehaviour
             _transferQuickButton.SetActive(false);
     }
 
-    private void ShowPaymentOptionsPanel()
+    private async void ShowPaymentOptionsPanel()
     {
         if (dialogue == null) return;
 
         CommonUtil.CheckLog("PAY_TRACE ShowPaymentOptionsPanel");
-        BindPaymentOptionDialogButtons();
+
+        // Fetch payment options visibility config (cached after first load)
+        if (_paymentOptionsConfig == null)
+        {
+            try
+            {
+                var cfg = await APIManager.Instance.Post<PaymentOptionsConfig>(
+                    Configuration.paymentOptionsConfig,
+                    new System.Collections.Generic.Dictionary<string, string>
+                    {
+                        { "user_id", Configuration.GetId() },
+                        { "token",   Configuration.GetToken() }
+                    });
+                if (cfg != null && cfg.code == 200)
+                    _paymentOptionsConfig = cfg;
+            }
+            catch { /* ignore — fall back to showing all options */ }
+        }
+
+        // Bind (show/hide) BEFORE layout so the layout counts active buttons correctly
+        BindPaymentOptionDialogButtons(_paymentOptionsConfig);
         HidePaymentFlowPanels();
         dialogue.SetActive(true);
         dialogue.transform.SetAsLastSibling();
         transform.SetAsLastSibling();
-        ApplyResponsiveAddCashLayout();
+        ApplyResponsiveAddCashLayout(); // repositions only active buttons
     }
 
-    private void BindPaymentOptionDialogButtons()
+    private void BindPaymentOptionDialogButtons(PaymentOptionsConfig cfg = null)
     {
         if (dialogue == null)
             return;
@@ -535,24 +556,37 @@ public class PaymentManager : MonoBehaviour
             return;
         }
 
-        float[] yPositions = { 148f, 33f, -82f, -197f };
-        for (int index = 0; index < 4; index++)
-        {
-            RectTransform rect = optionButtons[index].transform as RectTransform;
-            if (rect == null)
-                continue;
+        // Determine which options are enabled (default all on if no config)
+        bool[] enabled = {
+            cfg == null || cfg.option_1_enabled,
+            cfg == null || cfg.option_2_enabled,
+            cfg == null || cfg.option_3_enabled,
+            cfg == null || cfg.option_4_enabled,
+        };
 
-            optionButtons[index].gameObject.SetActive(true);
-            rect.anchoredPosition = new Vector2(0f, yPositions[index]);
-            rect.sizeDelta = new Vector2(700f, 104f);
+        System.Action[] actions = { OpenManual, OpenAutomaticGatewayFromOption, OpenUsdtManualOption, OpenUsdtAutoOption };
+        string[] labels = { "UPI / Bank (Option 1)", "UPI / Bank (Option 2)", "USDT Manual", "BEP20 USDT" };
+
+        // Hide disabled buttons; stack visible ones top-to-bottom with 115px gap
+        float startY = 148f;
+        float gap    = 115f;
+        int visible  = 0;
+        for (int i = 0; i < 4; i++)
+        {
+            optionButtons[i].gameObject.SetActive(enabled[i]);
+            if (!enabled[i]) continue;
+
+            RectTransform rect = optionButtons[i].transform as RectTransform;
+            if (rect != null)
+            {
+                rect.anchoredPosition = new Vector2(0f, startY - visible * gap);
+                rect.sizeDelta = new Vector2(700f, 104f);
+            }
+            ConfigurePaymentOptionButton(optionButtons[i], labels[i], actions[i]);
+            visible++;
         }
 
-        CommonUtil.CheckLog("PAY_TRACE BindPaymentOptionDialogButtons bound 4 option buttons");
-
-        ConfigurePaymentOptionButton(optionButtons[0], "UPI / Bank (Option 1)", OpenManual);
-        ConfigurePaymentOptionButton(optionButtons[1], "UPI / Bank (Option 2)", OpenAutomaticGatewayFromOption);
-        ConfigurePaymentOptionButton(optionButtons[2], "USDT Manual", OpenUsdtManualOption);
-        ConfigurePaymentOptionButton(optionButtons[3], "BEP20 USDT", OpenUsdtAutoOption);
+        CommonUtil.CheckLog("PAY_TRACE BindPaymentOptionDialogButtons visible=" + visible);
     }
 
     private void ConfigurePaymentOptionButton(Button button, string label, Action onClick)
@@ -1765,7 +1799,18 @@ public class PaymentManager : MonoBehaviour
         float buttonWidth = Mathf.Min(rootWidth * (portrait ? 0.72f : 0.46f), portrait ? 560f : 620f);
         float buttonHeight = portrait ? 86f : 82f;
         float spacing = portrait ? 18f : 14f;
-        float totalHeight = buttonHeight * 4f + spacing * 3f;
+
+        // Count only active option buttons so layout adjusts when admin disables options
+        int activeCount = 0;
+        for (int i = 0; i < table.childCount; i++)
+        {
+            var rt = table.GetChild(i) as RectTransform;
+            if (rt != null && rt.name == "unselected" && rt.gameObject.activeSelf)
+                activeCount++;
+        }
+        if (activeCount == 0) activeCount = 4; // fallback
+
+        float totalHeight = buttonHeight * activeCount + spacing * (activeCount - 1);
         float firstY = totalHeight * 0.5f - buttonHeight * 0.5f;
         int index = 0;
 
@@ -1773,6 +1818,7 @@ public class PaymentManager : MonoBehaviour
         {
             RectTransform option = table.GetChild(i) as RectTransform;
             if (option == null || option.name != "unselected") continue;
+            if (!option.gameObject.activeSelf) continue;  // skip hidden options
 
             SetCentered(option, new Vector2(buttonWidth, buttonHeight), new Vector2(0f, firstY - index * (buttonHeight + spacing)));
             ApplyButtonBackground(option);
@@ -3244,11 +3290,40 @@ public class PaymentManager : MonoBehaviour
         {
             manual_panel.SetActive(true);
             manual_panel.transform.SetAsLastSibling();
+            FixManualPanelLayout();
         }
         transform.SetAsLastSibling();
         ApplyResponsiveAddCashLayout();
         await QR_API();
         ApplyResponsiveAddCashLayout();
+    }
+
+    private void FixManualPanelLayout()
+    {
+        if (manual_panel == null) return;
+
+        // Ensure SSPreviewImage color is white so uploaded sprite is visible
+        if (manual_ss_img != null)
+            manual_ss_img.color = Color.white;
+
+        // Ensure SubmitButton has correct height (creation bug sets sizeDelta.y=0)
+        var content = manual_panel.transform.Find("Card/ScrollView/Viewport/Content");
+        if (content != null)
+        {
+            var submitRT = content.Find("SubmitButton")?.GetComponent<RectTransform>();
+            if (submitRT != null && submitRT.sizeDelta.y < 80f)
+                submitRT.sizeDelta = new Vector2(submitRT.sizeDelta.x, 100f);
+
+            // Ensure content is tall enough to contain all items including submit button
+            var cntRT = content.GetComponent<RectTransform>();
+            if (cntRT != null)
+            {
+                var submitAP = submitRT?.anchoredPosition.y ?? -1550f;
+                float minHeight = Mathf.Abs(submitAP) + 120f;
+                if (cntRT.sizeDelta.y < minHeight)
+                    cntRT.sizeDelta = new Vector2(cntRT.sizeDelta.x, minHeight);
+            }
+        }
     }
 
     // public async void StartDownloadQR(string qr_imag_url)
@@ -3572,17 +3647,17 @@ public class PaymentManager : MonoBehaviour
             manualGatewayNameText.text = string.IsNullOrEmpty(response.gateway_name) ? "UPI / Bank Transfer" : response.gateway_name;
 
         bool isUpi = string.IsNullOrEmpty(response.type) || response.type == "upi";
+        bool hasUpiId = !string.IsNullOrEmpty(response.upi_id);
 
-        // Show/hide UPI vs Bank sections
-        if (manualUpiSection != null) manualUpiSection.SetActive(isUpi);
+        // UPI section: show for UPI type, or for Bank type if upi_id is also provided
+        if (manualUpiSection != null) manualUpiSection.SetActive(isUpi || hasUpiId);
         if (manualBankSection != null) manualBankSection.SetActive(!isUpi);
 
-        if (isUpi)
-        {
-            if (manualUpiIdText != null)
-                manualUpiIdText.text = string.IsNullOrEmpty(response.upi_id) ? "—" : response.upi_id;
-        }
-        else
+        // Always populate UPI ID if available
+        if (manualUpiIdText != null)
+            manualUpiIdText.text = hasUpiId ? response.upi_id : "—";
+
+        if (!isUpi)
         {
             if (manualBankNameText != null)
                 manualBankNameText.text = string.IsNullOrEmpty(response.bank_name) ? "—" : response.bank_name;
@@ -3694,7 +3769,7 @@ public class PaymentManager : MonoBehaviour
             }
             else
             {
-                string errMsg = string.IsNullOrEmpty(response.message) ? "Submission failed. Please try again." : response.message;
+                string errMsg = GetFriendlyTransferApiMessage(response.message, "Submission failed. Please try again.");
                 CommonUtil.ShowStyledMessage(errMsg, "Submission Failed", isError: true);
             }
         }

@@ -439,7 +439,12 @@ namespace LudoClassicOffline
                             .transform.DOScale(Vector3.one, 1f)
                             .OnComplete(() =>
                             {
-                                socketNumberEventReceiver.StartUserTurn();
+                                // In server-driven mode the server sends ludo.game.turn_started
+                                // after the countdown; don't start locally.
+                                if (!socketNumberEventReceiver.isServerDrivenGameMode)
+                                {
+                                    socketNumberEventReceiver.StartUserTurn();
+                                }
                                 if (
                                     MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
                                         "DICE"

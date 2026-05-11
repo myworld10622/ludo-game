@@ -53,6 +53,7 @@ namespace LudoClassicOffline
 
         public int entryFee;
         public int winAmt;
+        public bool isServerDrivenGameMode;
 
         public int sixValueCount;
         public int tiePlayerCount;
@@ -504,6 +505,37 @@ namespace LudoClassicOffline
             }
             moveToken.data.isCapturedToken = false;
             ludoNumberGsNew.isTokenReachHome = false;
+        }
+
+        // ── Server-driven game methods ─────────────────────────────────────────
+
+        public void OnServerTurnStarted(int seatIndex)
+        {
+            userTurnStart.data.startTurnSeatIndex = seatIndex;
+            userStartIndex = seatIndex;
+            userTurnStart.data.diceValue = 1;
+            ludoNumberGsNew.UserTurnStart(userTurnStart);
+        }
+
+        public void OnServerDiceRolled(int seatIndex, int serverDiceValue)
+        {
+            diceValue = serverDiceValue;
+            userTurnStart.data.diceValue = serverDiceValue;
+            userTurnStart.data.startTurnSeatIndex = seatIndex;
+            userStartIndex = seatIndex;
+            DiceAnimationStart();
+        }
+
+        public void OnServerTokenMoved(int seatIndex, int tokenIndex, int serverDiceValue, bool extraTurn)
+        {
+            // Apply an opponent's move received from server
+            diceValue = serverDiceValue;
+            userTurnStart.data.diceValue = serverDiceValue;
+            userTurnStart.data.startTurnSeatIndex = seatIndex;
+            userStartIndex = seatIndex;
+            moveToken.data.movementValue = serverDiceValue;
+            moveToken.data.tokenMove = tokenIndex;
+            ludoNumberGsNew.TokenMoveFromServer(extraTurn);
         }
 
         public void DiceAnimationStart()

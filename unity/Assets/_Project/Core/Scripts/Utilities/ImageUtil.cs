@@ -342,9 +342,11 @@ public class ImageUtil : MonoBehaviour
             // Hide the loading logo or image
             logoimg.SetActive(false);
         }
-        else if (name == "manual_ss")
+        else if (name == "manual_ss" || name == "manual_screenshort")
         {
+            spriteimg.color = Color.white; // ensure sprite is visible regardless of image tint
             spriteimg.sprite = sprite;
+            spriteimg.preserveAspect = true;
 
             // Save the base64 string (if needed elsewhere in your code)
             SpriteManager.Instance.base64forimgmanualss = imgUrl;

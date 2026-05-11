@@ -235,9 +235,9 @@ namespace LudoClassicOffline
             socketNumberEventReceiver.moveToken.data.movementValue =
                 socketNumberEventReceiver.diceValue;
             socketNumberEventReceiver.moveToken.data.tokenMove = cookieStaticIndex;
+            // Apply move locally for immediate visual feedback.
+            // In server-driven mode, ChangeUserTurn() will report the result to the server.
             ludoNumberGsNew.TokenMove();
-            // gameManager.socketConnection.SendDataToSocket(gameManager.ludoNumberEventManager.MoveTokenCoockie(cookieStaticIndex),
-            //     AcknowledgementTokenMove, LudoNumberEventList.MOVE_TOKEN.ToString());
         }
 
         private void EnsureTapProxy()
@@ -396,10 +396,11 @@ namespace LudoClassicOffline
 
                 ludoNumberGsNew.homePartical.Play();
 
-                // Celebratory punch scale when token reaches home
+                // Celebratory punch scale when token reaches home; resize after settle.
                 transform.DOKill();
                 transform.localScale = Vector3.one;
-                transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0), 0.5f, 8, 0.4f);
+                transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0), 0.5f, 8, 0.4f)
+                    .OnComplete(() => CoockieManage());
                 //if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                 //{
                 //    ludoNumberGsNew.pointPanel.transform.DOScale(Vector3.one, 0.5f).OnComplete(() =>

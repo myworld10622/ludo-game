@@ -99,7 +99,7 @@ public static class CommonUtil
         cardRect.anchorMin = new Vector2(0.5f, 0.5f);
         cardRect.anchorMax = new Vector2(0.5f, 0.5f);
         cardRect.pivot = new Vector2(0.5f, 0.5f);
-        cardRect.sizeDelta = new Vector2(560f, 320f);
+        cardRect.sizeDelta = new Vector2(720f, 440f);
         Image cardImage = card.GetComponent<Image>();
         cardImage.color = new Color32(44, 10, 18, 245);
         Outline cardOutline = card.GetComponent<Outline>();
@@ -277,6 +277,14 @@ public static class CommonUtil
             overlayRect.anchorMax = Vector2.one;
             overlayRect.offsetMin = Vector2.zero;
             overlayRect.offsetMax = Vector2.zero;
+        }
+
+        // Always enforce card size so scene-saved dimensions don't override code
+        Transform cardT = existingPopup.transform.Find("Card");
+        if (cardT != null)
+        {
+            RectTransform cardRT = cardT.GetComponent<RectTransform>();
+            if (cardRT != null) cardRT.sizeDelta = new Vector2(720f, 440f);
         }
 
         statusPopup.SetActive(false);

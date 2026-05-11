@@ -97,6 +97,7 @@ public class Configuration : MonoBehaviour
     public const string addcash = Url + "Plan/addcash";
     public const string purchasehistory = Url + "User/purchase_history";
     public const string addcashgetQR = Url + "Plan/get_qr";
+    public const string paymentOptionsConfig = Url + "User/payment_options";
     public const string USDT_Get_QR = Url + "Plan/get_usdt_qr";
     public const string AutomaticPaymentStatus = Url + "Plan/payment_status";
     public const string WalletTransferLookup = Url + "User/transfer_lookup";

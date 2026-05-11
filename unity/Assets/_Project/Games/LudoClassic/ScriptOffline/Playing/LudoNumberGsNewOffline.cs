@@ -457,6 +457,37 @@ namespace LudoClassicOffline
         public void ChangeUserTurn()
         {
             Debug.Log("check 1");
+
+            // In server-driven mode: report move result to server; server drives next turn.
+            if (socketNumberEventReceiver.isServerDrivenGameMode)
+            {
+                HideExtraMoveAlert();
+                socketNumberEventReceiver.moveToken.data.capturedSeatIndex  = -1;
+                socketNumberEventReceiver.moveToken.data.capturedTokenIndex  = -1;
+                tokenMovement = false;
+
+                if (isServerOpponentMove)
+                {
+                    // Opponent's move applied locally — server already sent extra_turn info,
+                    // next turn will arrive via ludo.game.turn_started.
+                    isServerOpponentMove     = false;
+                    serverOpponentExtraTurn  = false;
+                    return;
+                }
+
+                // Local player's own move — report to server.
+                bool extraTurn = socketNumberEventReceiver.diceValue == 6
+                    || socketNumberEventReceiver.moveToken.data.isCapturedToken
+                    || isTokenReachHome;
+                bool isWin = CheckLocalWin(socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex);
+                LudoV2MatchmakingBridge.Instance?.TryMoveToken(
+                    socketNumberEventReceiver.moveToken.data.tokenMove,
+                    extraTurn,
+                    isWin
+                );
+                return;
+            }
+
             if (
                 MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
                     "NUMBER"
@@ -468,7 +499,6 @@ namespace LudoClassicOffline
                     isCukiKillNumberMode = true;
                     HideExtraMoveAlert();
                     socketNumberEventReceiver.StartUserTurn();
-                    //  ludoNumberUiManager.Invoke(nameof(ludoNumberUiManager.DisableMyBox), 0.8f);
                     Debug.Log("check 2");
                 }
                 else
@@ -497,6 +527,26 @@ namespace LudoClassicOffline
             socketNumberEventReceiver.moveToken.data.capturedTokenIndex = -1;
             tokenMovement = false;
         }
+
+        private bool CheckLocalWin(int seatIndex)
+        {
+            // Win is detected by the existing local game logic (winPanel activation).
+            // We return false here and let the server handle end-of-game via its own logic.
+            return false;
+        }
+
+        public void TokenMoveFromServer(bool serverExtraTurn)
+        {
+            // Apply an opponent's move (received via server relay).
+            // Runs TokenMove(), then handles turn advance using the server's extraTurn value
+            // instead of computing it locally.
+            isServerOpponentMove = true;
+            serverOpponentExtraTurn = serverExtraTurn;
+            TokenMove();
+        }
+
+        private bool isServerOpponentMove;
+        private bool serverOpponentExtraTurn;
 
         private void HideExtraMoveAlert()
         {

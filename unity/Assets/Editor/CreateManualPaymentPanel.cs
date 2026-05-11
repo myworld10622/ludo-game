@@ -1,5 +1,6 @@
 // Tools > Create Manual Payment Panel
-// Recreates the panel with proper mobile-first design.
+// Uses ABSOLUTE pixel positions (same pattern as existing Manual panel in ADD Chip).
+// No VerticalLayoutGroup on Content — avoids the layout collapse bug.
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -9,288 +10,418 @@ using TMPro;
 
 public static class CreateManualPaymentPanel
 {
-    // ── Colours — same as app popup style ─────────────────────────────────
-    static readonly Color32 C_OVERLAY    = new Color32(0,   0,   0,  200);
-    static readonly Color32 C_CARD       = new Color32(44,  10,  18, 255);
-    static readonly Color32 C_TITLEBAR   = new Color32(118, 18,  28, 255);
-    static readonly Color32 C_CLOSE      = new Color32(160, 30,  40, 255);
-    static readonly Color32 C_SECTION    = new Color32(62,  14,  24, 255);
-    static readonly Color32 C_INPUT      = new Color32(28,   6,  12, 255);
-    static readonly Color32 C_SUBMIT     = new Color32(190, 40,  50, 255);
-    static readonly Color32 C_COPY       = new Color32(150, 35,  45, 255);
-    static readonly Color32 C_OUTLINE    = new Color32(255,186,  92, 100);
-    static readonly Color32 C_DIVIDER    = new Color32(255,186,  92,  50);
-    static readonly Color32 C_WHITE      = new Color32(255,255, 255, 255);
-    static readonly Color32 C_GOLD       = new Color32(255,210, 100, 255);
-    static readonly Color32 C_GREY       = new Color32(180,150, 155, 255);
-    static readonly Color32 C_QRBG       = new Color32(255,255, 255, 255);
+    static readonly Color32 C_OVERLAY  = new Color32(  0,  0,  0, 200);
+    static readonly Color32 C_CARD     = new Color32( 30,  8, 14, 255);
+    static readonly Color32 C_TITLEBAR = new Color32(110, 16, 26, 255);
+    static readonly Color32 C_CLOSE    = new Color32(155, 28, 38, 255);
+    static readonly Color32 C_SECTION  = new Color32( 50, 12, 20, 255);
+    static readonly Color32 C_INPUT    = new Color32( 20,  4,  8, 255);
+    static readonly Color32 C_SUBMIT   = new Color32(180, 38, 48, 255);
+    static readonly Color32 C_COPY     = new Color32(140, 30, 42, 255);
+    static readonly Color32 C_DIVIDER  = new Color32(255, 186, 92, 80);
+    static readonly Color32 C_WHITE    = new Color32(255, 255, 255, 255);
+    static readonly Color32 C_GOLD     = new Color32(255, 210, 100, 255);
+    static readonly Color32 C_GREY     = new Color32(170, 140, 148, 255);
+    static readonly Color32 C_QRBG     = new Color32(255, 255, 255, 255);
+    static readonly Color32 C_TRANS    = new Color32(  0,  0,  0,   0);
+
+    // Cumulative Y offset tracker
+    static float _y;
 
     [MenuItem("Tools/Create Manual Payment Panel")]
     public static void CreatePanel()
     {
         Canvas canvas = Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
-        if (canvas == null)
-        {
-            EditorUtility.DisplayDialog("Error", "No Canvas found. Open HomePage scene first.", "OK");
-            return;
-        }
+        if (canvas == null) { Debug.LogError("[CreateManualPayment] No Canvas found."); return; }
 
-        // Remove old panel
         var old = FindDeep(canvas.transform, "ManualPaymentPanel");
-        if (old != null) { Object.DestroyImmediate(old.gameObject); }
+        if (old != null) Object.DestroyImmediate(old.gameObject);
 
-        // ── Root — full screen overlay ─────────────────────────────────────
-        var root = NewGO("ManualPaymentPanel", canvas.transform);
+        // ── Root dark overlay ──────────────────────────────────────────────
+        var root = MakeGO("ManualPaymentPanel", canvas.transform);
         Stretch(root); AddImg(root, C_OVERLAY);
-        // Block raycasts so background not clickable
-        root.AddComponent<GraphicRaycaster>();
 
-        // ── Card — 92% width, tall ─────────────────────────────────────────
-        var card = NewGO("Card", root.transform);
+        // ── Card: same as existing Manual panel — full width - 50px, tall ─
+        var card = MakeGO("Card", root.transform);
         var cardRT = RT(card);
-        cardRT.anchorMin = new Vector2(0.04f, 0.04f);
-        cardRT.anchorMax = new Vector2(0.96f, 0.96f);
-        cardRT.offsetMin = cardRT.offsetMax = Vector2.zero;
+        // Centred vertically, full width -50px (matches existing Manual panel pattern)
+        cardRT.anchorMin = new Vector2(0, 0.5f);
+        cardRT.anchorMax = new Vector2(1, 0.5f);
+        cardRT.pivot = new Vector2(0.5f, 0.5f);
+        cardRT.sizeDelta = new Vector2(-50, 1700);
+        cardRT.anchoredPosition = Vector2.zero;
         AddImg(card, C_CARD);
-        Outline(card, C_OUTLINE, 2f);
 
-        // ── Title Bar ──────────────────────────────────────────────────────
-        var titleBar = NewGO("TitleBar", card.transform);
-        var tbRT = RT(titleBar);
-        tbRT.anchorMin = new Vector2(0,1); tbRT.anchorMax = new Vector2(1,1);
-        tbRT.pivot     = new Vector2(0.5f,1);
-        tbRT.sizeDelta = new Vector2(0, 80);
+        // ── Title Bar — top of card, 100px tall ───────────────────────────
+        var tb = MakeGO("TitleBar", card.transform);
+        var tbRT = RT(tb);
+        tbRT.anchorMin = new Vector2(0, 1); tbRT.anchorMax = new Vector2(1, 1);
+        tbRT.pivot = new Vector2(0.5f, 1);
+        tbRT.sizeDelta = new Vector2(0, 100);
         tbRT.anchoredPosition = Vector2.zero;
-        AddImg(titleBar, C_TITLEBAR);
+        AddImg(tb, C_TITLEBAR);
 
-        var titleTMP = TMP("TitleText", titleBar.transform,
-            "UPI / Bank Transfer", 26, FontStyles.Bold,
-            TextAlignmentOptions.MidlineLeft, C_WHITE);
-        var tRT = titleTMP.rectTransform;
-        tRT.anchorMin = Vector2.zero; tRT.anchorMax = Vector2.one;
-        tRT.offsetMin = new Vector2(20,0); tRT.offsetMax = new Vector2(-70,0);
+        PlaceText("TitleText", tb.transform, "UPI / Bank Transfer",
+            34, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, C_WHITE,
+            offsetLeft: 24, offsetRight: -100, stretch: true);
 
-        // Close [X]
-        var closeGO = NewGO("CloseButton", titleBar.transform);
+        var closeGO = MakeGO("CloseButton", tb.transform);
         var cRT = RT(closeGO);
-        cRT.anchorMin = cRT.anchorMax = new Vector2(1,0.5f);
-        cRT.pivot = new Vector2(1,0.5f);
-        cRT.sizeDelta = new Vector2(55,55);
-        cRT.anchoredPosition = new Vector2(-12,0);
+        cRT.anchorMin = cRT.anchorMax = new Vector2(1, 0.5f);
+        cRT.pivot = new Vector2(1, 0.5f);
+        cRT.sizeDelta = new Vector2(75, 75);
+        cRT.anchoredPosition = new Vector2(-14, 0);
         AddImg(closeGO, C_CLOSE); closeGO.AddComponent<Button>();
-        TMP("X", closeGO.transform, "✕", 22, FontStyles.Bold,
-            TextAlignmentOptions.Center, C_WHITE, stretch:true);
+        PlaceText("X", closeGO.transform, "✕", 32, FontStyles.Bold,
+            TextAlignmentOptions.Center, C_WHITE, stretch: true);
 
-        // ── Scroll View for body ───────────────────────────────────────────
-        var scrollGO = NewGO("ScrollView", card.transform);
-        var scrollRT = RT(scrollGO);
-        scrollRT.anchorMin = Vector2.zero; scrollRT.anchorMax = Vector2.one;
-        scrollRT.offsetMin = new Vector2(0, 0);
-        scrollRT.offsetMax = new Vector2(0, -80);
-        var scrollRect = scrollGO.AddComponent<ScrollRect>();
-        scrollRect.horizontal = false;
-        scrollRect.scrollSensitivity = 30f;
+        // ── ScrollView — fills card below title bar ────────────────────────
+        var scrollGO = MakeGO("ScrollView", card.transform);
+        var sRT = RT(scrollGO);
+        sRT.anchorMin = Vector2.zero; sRT.anchorMax = Vector2.one;
+        sRT.offsetMin = Vector2.zero; sRT.offsetMax = new Vector2(0, -100);
+        var sr = scrollGO.AddComponent<ScrollRect>();
+        sr.horizontal = false; sr.scrollSensitivity = 40f;
+        sr.movementType = ScrollRect.MovementType.Clamped;
+        sr.inertia = true; sr.decelerationRate = 0.135f;
 
-        // Viewport
-        var viewport = NewGO("Viewport", scrollGO.transform);
-        Stretch(viewport); viewport.AddComponent<RectMask2D>();
-        var viewportImg = viewport.AddComponent<Image>();
-        viewportImg.color = new Color32(0,0,0,0);
-        scrollRect.viewport = RT(viewport);
+        var vp = MakeGO("Viewport", scrollGO.transform);
+        Stretch(vp); vp.AddComponent<RectMask2D>();
+        vp.AddComponent<Image>().color = C_TRANS;
+        sr.viewport = RT(vp);
 
-        // Content
-        var content = NewGO("Content", viewport.transform);
-        var contentRT = RT(content);
-        contentRT.anchorMin = new Vector2(0,1);
-        contentRT.anchorMax = new Vector2(1,1);
-        contentRT.pivot     = new Vector2(0.5f,1);
-        contentRT.anchoredPosition = Vector2.zero;
-        contentRT.sizeDelta = new Vector2(0, 0);
-        var vlg = content.AddComponent<VerticalLayoutGroup>();
-        vlg.padding = new RectOffset(18, 18, 18, 24);
-        vlg.spacing = 14;
-        vlg.childAlignment = TextAnchor.UpperCenter;
-        vlg.childForceExpandWidth  = true;
-        vlg.childForceExpandHeight = false;
-        var csf = content.AddComponent<ContentSizeFitter>();
-        csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-        scrollRect.content = contentRT;
+        // Content: full width, 1700px tall, anchored top-left
+        // ABSOLUTE positioning — NO VerticalLayoutGroup
+        var content = MakeGO("Content", vp.transform);
+        var cntRT = RT(content);
+        cntRT.anchorMin = new Vector2(0, 1);
+        cntRT.anchorMax = new Vector2(1, 1);
+        cntRT.pivot = new Vector2(0.5f, 1);
+        cntRT.anchoredPosition = Vector2.zero;
+        cntRT.sizeDelta = new Vector2(0, 1700);
+        sr.content = cntRT;
 
-        // ════════════ CONTENT ITEMS ════════════
+        // ═══════ ITEMS — absolute Y positions from top ═══════
+        // All items: anchorMin=(0,1), anchorMax=(1,1), pivot=(0.5,1)
+        // anchoredPosition.y = -_y  (negative = below top)
+        _y = 20f;
 
-        // 1. Gateway name
-        var gwName = TMP("GatewayNameText", content.transform,
-            "UPI / Bank Transfer", 22, FontStyles.Bold,
-            TextAlignmentOptions.Center, C_GOLD);
-        LE(gwName.gameObject, 38);
+        // Gateway name
+        Row("GatewayNameText", content.transform, 55, (row) => {
+            FullTMP("GatewayNameText", row.transform,
+                "UPI / Bank Transfer", 36, FontStyles.Bold,
+                TextAlignmentOptions.Center, C_GOLD);
+        });
 
-        Divider(content.transform);
+        HDivider(content.transform);
 
-        // 2. QR section
-        var qrSec = Section("QRSection", content.transform, 280);
-        var qrVLG = qrSec.AddComponent<VerticalLayoutGroup>();
-        qrVLG.padding = new RectOffset(0,0,14,14);
-        qrVLG.spacing = 10;
-        qrVLG.childAlignment     = TextAnchor.UpperCenter;
-        qrVLG.childForceExpandWidth  = false;
-        qrVLG.childForceExpandHeight = false;
-        qrSec.AddComponent<ContentSizeFitter>().verticalFit =
-            ContentSizeFitter.FitMode.PreferredSize;
+        // QR Section background
+        float qrSecY = _y;
+        Row("QRSection", content.transform, 420, (row) => {
+            AddImg(row, C_SECTION);
+            // QR label — absolute inside QR section
+            var lbl = MakeGO("QRLabel", row.transform);
+            var lblRT = RT(lbl);
+            lblRT.anchorMin = new Vector2(0,1); lblRT.anchorMax = new Vector2(1,1);
+            lblRT.pivot = new Vector2(0.5f,1);
+            lblRT.sizeDelta = new Vector2(0, 42);
+            lblRT.anchoredPosition = new Vector2(0, -16);
+            var t = lbl.AddComponent<TextMeshProUGUI>();
+            t.text = "Scan QR Code to Pay"; t.fontSize = 28;
+            t.alignment = TextAlignmentOptions.Center; t.color = C_GREY;
 
-        TMP("QRLabel", qrSec.transform,
-            "Scan QR Code to Pay", 17, FontStyles.Normal,
-            TextAlignmentOptions.Center, C_GREY);
+            // QR image — centred, 310x310
+            var qrGO = MakeGO("QRCodeImage", row.transform);
+            var qrRT = RT(qrGO);
+            qrRT.anchorMin = new Vector2(0.5f,1); qrRT.anchorMax = new Vector2(0.5f,1);
+            qrRT.pivot = new Vector2(0.5f,1);
+            qrRT.sizeDelta = new Vector2(310, 310);
+            qrRT.anchoredPosition = new Vector2(0, -68);
+            var qrImg = qrGO.AddComponent<Image>();
+            qrImg.color = C_QRBG; qrImg.preserveAspect = true;
+        });
 
-        // QR Image — big, white background
-        var qrGO = NewGO("QRCodeImage", qrSec.transform);
-        var qrLE = qrGO.AddComponent<LayoutElement>();
-        qrLE.preferredWidth  = 220; qrLE.preferredHeight = 220;
-        qrLE.minWidth = 220; qrLE.minHeight = 220;
-        var qrImg = qrGO.AddComponent<Image>();
-        qrImg.color = C_QRBG;
-        qrImg.preserveAspect = true;
+        HDivider(content.transform);
 
-        // 3. UPI Section
-        var upiSec = Section("UPISection", content.transform, 0);
-        upiSec.AddComponent<ContentSizeFitter>().verticalFit =
-            ContentSizeFitter.FitMode.PreferredSize;
-        var upiVLG = upiSec.AddComponent<VerticalLayoutGroup>();
-        upiVLG.padding = new RectOffset(16,16,14,14);
-        upiVLG.spacing = 10;
-        upiVLG.childForceExpandWidth  = true;
-        upiVLG.childForceExpandHeight = false;
+        // UPI Section
+        Row("UPISection", content.transform, 175, (row) => {
+            AddImg(row, C_SECTION);
+            // UPI label
+            var lbl = MakeGO("UPILabel", row.transform);
+            TopItem(RT(lbl), 16, 40);
+            var t = lbl.AddComponent<TextMeshProUGUI>();
+            t.text = "UPI ID"; t.fontSize = 28; t.fontStyle = FontStyles.Bold;
+            t.alignment = TextAlignmentOptions.Left; t.color = C_GREY;
+            t.margin = new Vector4(20, 0, 20, 0);
+            // UPI row with copy button
+            HRow("UPIRow", row.transform, 16+40+8, 80, (hr) => {
+                var upiId = MakeGO("UpiIdText", hr.transform);
+                var upiRT = RT(upiId);
+                upiRT.anchorMin = Vector2.zero; upiRT.anchorMax = new Vector2(1,1);
+                upiRT.offsetMin = new Vector2(20, 0); upiRT.offsetMax = new Vector2(-150, 0);
+                var u = upiId.AddComponent<TextMeshProUGUI>();
+                u.text = "—"; u.fontSize = 28; u.fontStyle = FontStyles.Bold;
+                u.alignment = TextAlignmentOptions.MidlineLeft; u.color = C_WHITE;
 
-        TMP("UPILabel", upiSec.transform,
-            "UPI ID", 15, FontStyles.Normal,
-            TextAlignmentOptions.Left, C_GREY);
+                var copyBtn = MakeGO("CopyUPIButton", hr.transform);
+                var copyRT = RT(copyBtn);
+                copyRT.anchorMin = new Vector2(1,0); copyRT.anchorMax = Vector2.one;
+                copyRT.offsetMin = new Vector2(-140, 0); copyRT.offsetMax = Vector2.zero;
+                AddImg(copyBtn, C_COPY); copyBtn.AddComponent<Button>();
+                FullTMP("Label", copyBtn.transform, "Copy", 24, FontStyles.Bold,
+                    TextAlignmentOptions.Center, C_WHITE);
+            });
+        });
 
-        // UPI row: ID + copy
-        var upiRow = Row("UPIRow", upiSec.transform, 50);
-        var upiIdTMP = TMP("UpiIdText", upiRow.transform,
-            "—", 19, FontStyles.Bold, TextAlignmentOptions.MidlineLeft, C_WHITE);
-        upiIdTMP.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
-        CopyBtn("CopyUPIButton", upiRow.transform);
+        HDivider(content.transform);
 
-        // 4. Bank Section
-        var bankSec = Section("BankSection", content.transform, 0);
-        bankSec.AddComponent<ContentSizeFitter>().verticalFit =
-            ContentSizeFitter.FitMode.PreferredSize;
-        var bankVLG = bankSec.AddComponent<VerticalLayoutGroup>();
-        bankVLG.padding = new RectOffset(16,16,14,14);
-        bankVLG.spacing = 10;
-        bankVLG.childForceExpandWidth  = true;
-        bankVLG.childForceExpandHeight = false;
+        // Bank Section
+        Row("BankSection", content.transform, 390, (row) => {
+            AddImg(row, C_SECTION);
+            // Bank label
+            var lbl = MakeGO("BankLabel", row.transform);
+            TopItem(RT(lbl), 14, 46);
+            var t = lbl.AddComponent<TextMeshProUGUI>();
+            t.text = "Bank Transfer Details"; t.fontSize = 28; t.fontStyle = FontStyles.Bold;
+            t.alignment = TextAlignmentOptions.Left; t.color = C_GOLD;
+            t.margin = new Vector4(20, 0, 20, 0);
 
-        TMP("BankLabel", bankSec.transform,
-            "Bank Transfer Details", 16, FontStyles.Bold,
-            TextAlignmentOptions.Left, C_GOLD);
+            // 4 bank detail rows (each 70px, stacked from y=66)
+            BankDetailRow(row.transform, "BankNameText",      "Bank Name",      false, 66);
+            BankDetailRow(row.transform, "AccountHolderText", "Account Holder", false, 142);
+            BankDetailRow(row.transform, "AccountNumberText", "Account No.",    true,  218);
+            BankDetailRow(row.transform, "IfscCodeText",      "IFSC Code",      true,  294);
+        });
 
-        BankRow(bankSec.transform, "BankNameText",       "Bank Name",       false);
-        BankRow(bankSec.transform, "AccountHolderText",  "Account Holder",  false);
-        BankRow(bankSec.transform, "AccountNumberText",  "Account Number",  true);
-        BankRow(bankSec.transform, "IfscCodeText",       "IFSC Code",       true);
+        HDivider(content.transform);
 
-        Divider(content.transform);
+        // Amount row
+        Row("AmountRow", content.transform, 80, (row) => {
+            var amtLbl = MakeGO("AmountLabel", row.transform);
+            var alRT = RT(amtLbl);
+            alRT.anchorMin = Vector2.zero; alRT.anchorMax = Vector2.one;
+            alRT.offsetMin = new Vector2(20, 0); alRT.offsetMax = new Vector2(-300, 0);
+            var alt = amtLbl.AddComponent<TextMeshProUGUI>();
+            alt.text = "Amount:"; alt.fontSize = 30; alt.fontStyle = FontStyles.Bold;
+            alt.alignment = TextAlignmentOptions.MidlineLeft; alt.color = C_GREY;
 
-        // 5. Amount row
-        var amtRow = Row("AmountRow", content.transform, 46);
-        TMP("AmountLabel", amtRow.transform,
-            "Amount:", 19, FontStyles.Normal, TextAlignmentOptions.MidlineLeft, C_GREY);
-        var amtVal = TMP("AmountValue", amtRow.transform,
-            "₹ 0", 22, FontStyles.Bold, TextAlignmentOptions.MidlineRight, C_GOLD);
-        amtVal.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
+            var amtVal = MakeGO("AmountValue", row.transform);
+            var avRT = RT(amtVal);
+            avRT.anchorMin = new Vector2(1,0); avRT.anchorMax = Vector2.one;
+            avRT.offsetMin = new Vector2(-280, 0); avRT.offsetMax = new Vector2(-20, 0);
+            var avt = amtVal.AddComponent<TextMeshProUGUI>();
+            avt.text = "₹ 0"; avt.fontSize = 36; avt.fontStyle = FontStyles.Bold;
+            avt.alignment = TextAlignmentOptions.MidlineRight; avt.color = C_GOLD;
+        });
 
-        // 6. UTR input
-        TMP("UTRLabel", content.transform,
-            "UTR / Transaction ID  *", 15, FontStyles.Normal,
-            TextAlignmentOptions.Left, C_GREY);
+        HDivider(content.transform);
 
-        var utrGO = NewGO("UTRInputField", content.transform);
-        LE(utrGO, 64);
-        AddImg(utrGO, C_INPUT); Outline(utrGO, C_OUTLINE, 1f);
-        var utrIF = utrGO.AddComponent<TMP_InputField>();
+        // UTR label
+        Row("UTRLabel", content.transform, 42, (row) => {
+            FullTMP("UTRLabelText", row.transform, "UTR / Transaction ID  *",
+                26, FontStyles.Normal, TextAlignmentOptions.MidlineLeft, C_GREY,
+                marginLeft: 20);
+        });
 
-        var utrTA = NewGO("Text Area", utrGO.transform);
-        Stretch(utrTA); utrTA.AddComponent<RectMask2D>();
+        // UTR InputField
+        Row("UTRInputField", content.transform, 90, (row) => {
+            AddImg(row, C_INPUT);
+            var utrIF = row.AddComponent<TMP_InputField>();
+            var utrTA = MakeGO("Text Area", row.transform);
+            Stretch(utrTA); utrTA.AddComponent<RectMask2D>();
+            var RT_ta = RT(utrTA);
+            RT_ta.offsetMin = new Vector2(16, 0); RT_ta.offsetMax = new Vector2(-16, 0);
 
-        var utrPH = NewGO("Placeholder", utrTA.transform);
-        Stretch(utrPH);
-        var phTMP = utrPH.AddComponent<TextMeshProUGUI>();
-        phTMP.text = "Paste UTR / Reference number...";
-        phTMP.color = C_GREY; phTMP.fontSize = 17;
-        phTMP.margin = new Vector4(14,0,14,0);
+            var utrPH = MakeGO("Placeholder", utrTA.transform); Stretch(utrPH);
+            var phT = utrPH.AddComponent<TextMeshProUGUI>();
+            phT.text = "Paste UTR / Reference number...";
+            phT.color = C_GREY; phT.fontSize = 26;
+            phT.alignment = TextAlignmentOptions.MidlineLeft;
 
-        var utrTxt = NewGO("Text", utrTA.transform);
-        Stretch(utrTxt);
-        var utrTMP = utrTxt.AddComponent<TextMeshProUGUI>();
-        utrTMP.color = C_WHITE; utrTMP.fontSize = 17;
-        utrTMP.margin = new Vector4(14,0,14,0);
+            var utrTG = MakeGO("Text", utrTA.transform); Stretch(utrTG);
+            var utrT = utrTG.AddComponent<TextMeshProUGUI>();
+            utrT.color = C_WHITE; utrT.fontSize = 26;
+            utrT.alignment = TextAlignmentOptions.MidlineLeft;
 
-        utrIF.textViewport = RT(utrTA);
-        utrIF.textComponent = utrTMP;
-        utrIF.placeholder = phTMP;
+            utrIF.textViewport = RT(utrTA); utrIF.textComponent = utrT;
+            utrIF.placeholder = phT;
+        });
 
-        // 7. Screenshot upload
-        TMP("SSLabel", content.transform,
-            "Payment Screenshot  *", 15, FontStyles.Normal,
-            TextAlignmentOptions.Left, C_GREY);
+        // Screenshot label
+        Row("SSLabel", content.transform, 42, (row) => {
+            FullTMP("SSLabelText", row.transform, "Payment Screenshot  *",
+                26, FontStyles.Normal, TextAlignmentOptions.MidlineLeft, C_GREY,
+                marginLeft: 20);
+        });
 
-        var ssRow = Row("ScreenshotRow", content.transform, 110);
-        var ssHL = ssRow.GetComponent<HorizontalLayoutGroup>();
-        ssHL.spacing = 14;
+        // Screenshot row
+        Row("ScreenshotRow", content.transform, 140, (row) => {
+            var ssPreview = MakeGO("SSPreviewImage", row.transform);
+            var spRT = RT(ssPreview);
+            spRT.anchorMin = new Vector2(0,0); spRT.anchorMax = new Vector2(0,1);
+            spRT.offsetMin = new Vector2(16, 8); spRT.offsetMax = new Vector2(156, -8);
+            AddImg(ssPreview, C_INPUT);
 
-        // Preview box
-        var ssPreview = NewGO("SSPreviewImage", ssRow.transform);
-        var ssLE = ssPreview.AddComponent<LayoutElement>();
-        ssLE.minWidth = 100; ssLE.minHeight = 100;
-        ssLE.preferredWidth = 100; ssLE.preferredHeight = 100;
-        AddImg(ssPreview, C_INPUT); Outline(ssPreview, C_OUTLINE, 1f);
-        TMP("UploadIcon", ssPreview.transform,
-            "📷\nUpload", 15, FontStyles.Normal,
-            TextAlignmentOptions.Center, C_GREY, stretch:true);
+            var uploadIcon = MakeGO("UploadIcon", ssPreview.transform);
+            Stretch(uploadIcon);
+            var uiT = uploadIcon.AddComponent<TextMeshProUGUI>();
+            uiT.text = "📷\nUpload"; uiT.color = C_GREY;
+            uiT.fontSize = 22; uiT.alignment = TextAlignmentOptions.Center;
 
-        // Upload button
-        var upBtn = NewGO("UploadSSButton", ssRow.transform);
-        upBtn.AddComponent<LayoutElement>().flexibleWidth = 1;
-        AddImg(upBtn, C_SECTION); Outline(upBtn, C_OUTLINE, 1f);
-        upBtn.AddComponent<Button>();
-        TMP("UploadBtnText", upBtn.transform,
-            "Choose Screenshot", 17, FontStyles.Bold,
-            TextAlignmentOptions.Center, C_WHITE, stretch:true);
+            var upBtn = MakeGO("UploadSSButton", row.transform);
+            var ubRT = RT(upBtn);
+            ubRT.anchorMin = new Vector2(0,0); ubRT.anchorMax = Vector2.one;
+            ubRT.offsetMin = new Vector2(176, 10); ubRT.offsetMax = new Vector2(-16, -10);
+            AddImg(upBtn, C_SECTION); upBtn.AddComponent<Button>();
+            FullTMP("UploadBtnText", upBtn.transform, "Choose\nScreenshot",
+                28, FontStyles.Bold, TextAlignmentOptions.Center, C_WHITE);
+        });
 
-        Divider(content.transform);
+        HDivider(content.transform);
 
-        // 8. Submit
-        var subBtn = NewGO("SubmitButton", content.transform);
-        LE(subBtn, 70);
-        AddImg(subBtn, C_SUBMIT); Outline(subBtn, C_OUTLINE, 2f);
-        subBtn.AddComponent<Button>();
-        TMP("SubmitText", subBtn.transform,
-            "Submit Payment", 21, FontStyles.Bold,
-            TextAlignmentOptions.Center, C_WHITE, stretch:true);
+        // Submit button
+        Row("SubmitButton", content.transform, 110, (row) => {
+            // Use sizeDelta for horizontal margin — offsetMin/offsetMax would collapse height
+            RT(row).sizeDelta = new Vector2(-48, 110);
+            AddImg(row, C_SUBMIT); row.AddComponent<Button>();
+            FullTMP("SubmitText", row.transform, "Submit Payment",
+                36, FontStyles.Bold, TextAlignmentOptions.Center, C_WHITE);
+        });
 
-        // ── Default off ────────────────────────────────────────────────────
+        // Final content height = _y + 30 padding
+        cntRT.sizeDelta = new Vector2(0, _y + 30);
+
         root.SetActive(false);
 
         UnityEditor.SceneManagement.EditorSceneManager.MarkSceneDirty(
             UnityEditor.SceneManagement.EditorSceneManager.GetActiveScene());
-
         Selection.activeGameObject = root;
-        EditorUtility.DisplayDialog("Done!",
-            "ManualPaymentPanel created!\n\nNow run:\nTools → Assign Manual Payment References\n\nThen Ctrl+S to save scene.", "OK");
+        Debug.Log($"[CreateManualPayment] ✓ Panel created! Content height={_y+30}. Next: Assign References → Ctrl+S");
     }
 
-    // ─── helpers ───────────────────────────────────────────────────────────
+    // ── Layout helpers ─────────────────────────────────────────────────────
 
-    static GameObject NewGO(string name, Transform parent)
+    // Add a full-width row at current _y offset, advance _y
+    static void Row(string name, Transform parent, float height,
+        System.Action<GameObject> build)
+    {
+        var go = MakeGO(name, parent);
+        var rt = RT(go);
+        rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 1);
+        rt.sizeDelta = new Vector2(0, height);
+        rt.anchoredPosition = new Vector2(0, -_y);
+        build(go);
+        _y += height;
+    }
+
+    static void HDivider(Transform parent)
+    {
+        Row("Divider", parent, 3, (go) => AddImg(go, C_DIVIDER));
+        _y += 4; // small gap after divider
+    }
+
+    // Absolute item within a Row at local Y from top
+    static void TopItem(RectTransform rt, float localY, float height)
+    {
+        rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 1);
+        rt.sizeDelta = new Vector2(0, height);
+        rt.anchoredPosition = new Vector2(0, -localY);
+    }
+
+    // HRow: a sub-row inside a section at fixed localY
+    static void HRow(string name, Transform parent, float localY, float height,
+        System.Action<GameObject> build)
+    {
+        var go = MakeGO(name, parent);
+        var rt = RT(go);
+        rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 1);
+        rt.sizeDelta = new Vector2(0, height);
+        rt.anchoredPosition = new Vector2(0, -localY);
+        build(go);
+    }
+
+    // A bank detail row inside BankSection at fixed localY
+    static void BankDetailRow(Transform parent, string valueName,
+        string label, bool withCopy, float localY)
+    {
+        var row = MakeGO(valueName + "TextRow", parent);
+        var rt = RT(row);
+        rt.anchorMin = new Vector2(0, 1); rt.anchorMax = new Vector2(1, 1);
+        rt.pivot = new Vector2(0.5f, 1);
+        rt.sizeDelta = new Vector2(0, 70);
+        rt.anchoredPosition = new Vector2(0, -localY);
+
+        // Label
+        var lbl = MakeGO(valueName + "_Lbl", row.transform);
+        var lblRT = RT(lbl);
+        lblRT.anchorMin = new Vector2(0,0); lblRT.anchorMax = new Vector2(0,1);
+        lblRT.pivot = new Vector2(0,0.5f);
+        lblRT.offsetMin = new Vector2(20, 0); lblRT.offsetMax = new Vector2(240, 0);
+        var lt = lbl.AddComponent<TextMeshProUGUI>();
+        lt.text = label + ":"; lt.fontSize = 24;
+        lt.alignment = TextAlignmentOptions.MidlineLeft; lt.color = C_GREY;
+
+        // Value
+        float copyW = withCopy ? 125f : 0f;
+        var val = MakeGO(valueName, row.transform);
+        var valRT = RT(val);
+        valRT.anchorMin = new Vector2(0,0); valRT.anchorMax = Vector2.one;
+        valRT.offsetMin = new Vector2(244, 0);
+        valRT.offsetMax = new Vector2(-(copyW + (withCopy ? 8 : 16)), 0);
+        var vt = val.AddComponent<TextMeshProUGUI>();
+        vt.text = "—"; vt.fontSize = 26; vt.fontStyle = FontStyles.Bold;
+        vt.alignment = TextAlignmentOptions.MidlineLeft; vt.color = C_WHITE;
+
+        if (withCopy)
+        {
+            var copyBtn = MakeGO("Copy" + valueName + "Btn", row.transform);
+            var cpRT = RT(copyBtn);
+            cpRT.anchorMin = new Vector2(1,0); cpRT.anchorMax = Vector2.one;
+            cpRT.offsetMin = new Vector2(-133, 8); cpRT.offsetMax = new Vector2(-8, -8);
+            AddImg(copyBtn, C_COPY); copyBtn.AddComponent<Button>();
+            FullTMP("Label", copyBtn.transform, "Copy", 22, FontStyles.Bold,
+                TextAlignmentOptions.Center, C_WHITE);
+        }
+    }
+
+    static TextMeshProUGUI FullTMP(string name, Transform parent,
+        string text, float size, FontStyles style,
+        TextAlignmentOptions align, Color32 color,
+        float marginLeft = 0, bool stretch = false)
+    {
+        var go = MakeGO(name, parent);
+        if (stretch || marginLeft == 0) Stretch(go);
+        var t = go.AddComponent<TextMeshProUGUI>();
+        t.text = text; t.fontSize = size; t.fontStyle = style;
+        t.alignment = align; t.color = color;
+        t.enableWordWrapping = true;
+        if (marginLeft > 0) t.margin = new Vector4(marginLeft, 0, 0, 0);
+        return t;
+    }
+
+    static void PlaceText(string name, Transform parent,
+        string text, float size, FontStyles style,
+        TextAlignmentOptions align, Color32 color,
+        float offsetLeft = 0, float offsetRight = 0, bool stretch = false)
+    {
+        var go = MakeGO(name, parent);
+        if (stretch) { Stretch(go); RT(go).offsetMin = new Vector2(offsetLeft, 0); RT(go).offsetMax = new Vector2(offsetRight, 0); }
+        var t = go.AddComponent<TextMeshProUGUI>();
+        t.text = text; t.fontSize = size; t.fontStyle = style;
+        t.alignment = align; t.color = color;
+    }
+
+    static GameObject MakeGO(string name, Transform parent)
     {
         var go = new GameObject(name, typeof(RectTransform));
         go.transform.SetParent(parent, false);
         return go;
     }
 
-    static RectTransform RT(GameObject go) =>
-        go.GetComponent<RectTransform>();
+    static RectTransform RT(GameObject go) => go.GetComponent<RectTransform>();
 
     static void Stretch(GameObject go)
     {
@@ -300,102 +431,12 @@ public static class CreateManualPaymentPanel
     }
 
     static Image AddImg(GameObject go, Color32 c)
-    {
-        var img = go.AddComponent<Image>(); img.color = c; return img;
-    }
-
-    static void Outline(GameObject go, Color32 c, float dist)
-    {
-        var o = go.AddComponent<Outline>();
-        o.effectColor = c;
-        o.effectDistance = new Vector2(dist, -dist);
-    }
-
-    static TextMeshProUGUI TMP(string name, Transform parent,
-        string text, float size, FontStyles style,
-        TextAlignmentOptions align, Color32 color, bool stretch = false)
-    {
-        var go = NewGO(name, parent);
-        if (stretch) Stretch(go);
-        var t = go.AddComponent<TextMeshProUGUI>();
-        t.text = text; t.fontSize = size; t.fontStyle = style;
-        t.alignment = align; t.color = color;
-        t.enableWordWrapping = true;
-        return t;
-    }
-
-    static void LE(GameObject go, float minH = 0, float minW = 0)
-    {
-        var le = go.AddComponent<LayoutElement>();
-        if (minH > 0) le.minHeight = minH;
-        if (minW > 0) le.minWidth = minW;
-    }
-
-    static void Divider(Transform parent)
-    {
-        var d = NewGO("Divider", parent); LE(d, 2); AddImg(d, C_DIVIDER);
-    }
-
-    static GameObject Section(string name, Transform parent, float minH)
-    {
-        var go = NewGO(name, parent);
-        if (minH > 0) LE(go, minH);
-        AddImg(go, C_SECTION);
-        return go;
-    }
-
-    static GameObject Row(string name, Transform parent, float minH)
-    {
-        var go = NewGO(name, parent);
-        LE(go, minH);
-        var hl = go.AddComponent<HorizontalLayoutGroup>();
-        hl.spacing = 10;
-        hl.childAlignment = TextAnchor.MiddleLeft;
-        hl.childForceExpandWidth  = false;
-        hl.childForceExpandHeight = true;
-        return go;
-    }
-
-    static void CopyBtn(string name, Transform parent)
-    {
-        var go = NewGO(name, parent);
-        var le = go.AddComponent<LayoutElement>();
-        le.minWidth = 80; le.preferredWidth = 80;
-        AddImg(go, C_COPY); go.AddComponent<Button>();
-        TMP("Label", go.transform, "Copy", 15, FontStyles.Bold,
-            TextAlignmentOptions.Center, C_WHITE, stretch:true);
-    }
-
-    // Label + value row, optional copy button
-    static void BankRow(Transform parent, string valueName,
-        string label, bool withCopy)
-    {
-        var row = NewGO(valueName + "Row", parent);
-        LE(row, 42);
-        var hl = row.AddComponent<HorizontalLayoutGroup>();
-        hl.spacing = 8;
-        hl.childAlignment = TextAnchor.MiddleLeft;
-        hl.childForceExpandWidth  = false;
-        hl.childForceExpandHeight = true;
-
-        var lbl = TMP(valueName + "_Lbl", row.transform,
-            label + ":", 15, FontStyles.Normal,
-            TextAlignmentOptions.MidlineLeft, C_GREY);
-        lbl.gameObject.AddComponent<LayoutElement>().minWidth = 160;
-
-        var val = TMP(valueName, row.transform,
-            "—", 17, FontStyles.Bold,
-            TextAlignmentOptions.MidlineLeft, C_WHITE);
-        val.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1;
-
-        if (withCopy) CopyBtn("Copy" + valueName + "Btn", row.transform);
-    }
+    { var img = go.AddComponent<Image>(); img.color = c; return img; }
 
     static Transform FindDeep(Transform t, string name)
     {
         if (t.name == name) return t;
-        foreach (Transform c in t)
-        { var f = FindDeep(c, name); if (f != null) return f; }
+        foreach (Transform c in t) { var f = FindDeep(c, name); if (f != null) return f; }
         return null;
     }
 }

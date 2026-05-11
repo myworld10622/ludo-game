@@ -94,6 +94,17 @@ public class RummyKingOrderDetails
 }
 
 [System.Serializable]
+public class PaymentOptionsConfig
+{
+    public int code;
+    public string message;
+    public bool option_1_enabled;   // Manual UPI/Bank
+    public bool option_2_enabled;   // Automatic Gateway
+    public bool option_3_enabled;   // USDT Manual
+    public bool option_4_enabled;   // BEP20 USDT
+}
+
+[System.Serializable]
 public class GetQRApiResponse
 {
     public int code;

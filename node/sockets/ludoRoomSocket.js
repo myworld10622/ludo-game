@@ -596,6 +596,191 @@ module.exports = function (namespace) {
     roomStartRetryTimers.set(room.roomId, timerId);
   }
 
+  // ── Server-driven game engine ─────────────────────────────────────────────
+
+  const ROLL_TIMEOUT_MS  = 17000;
+  const MOVE_TIMEOUT_MS  = 17000;
+  const BOT_ROLL_DELAY   = 1500;
+  const BOT_MOVE_DELAY   = 2000;
+
+  function _allHumanRoom(room) {
+    return (room.seats ?? []).length > 0 &&
+      (room.seats ?? []).every(s => s && s.playerType === 'human');
+  }
+
+  function _gameState(room) {
+    return room._gs ?? null;
+  }
+
+  function _seatForSocket(room, socket, payloadUserId) {
+    const uid = payloadUserId != null
+      ? String(payloadUserId)
+      : (socket.data?.userId != null ? String(socket.data.userId) : null);
+    if (!uid) return null;
+    return (room.seats ?? []).find(s => s && String(s.userId ?? '') === uid) ?? null;
+  }
+
+  function _clearGameTimer(room) {
+    if (room._gsTimer) { clearTimeout(room._gsTimer); room._gsTimer = null; }
+  }
+
+  function _startTurn(room) {
+    const gs = _gameState(room);
+    if (!gs || gs.over) return;
+    _clearGameTimer(room);
+    const seat = room.seats[gs.current];
+    if (!seat) return;
+
+    namespace.to(room.roomId).emit(socketEvents.server.TURN_STARTED, {
+      seat_index: gs.current,
+      is_bot: seat.playerType === 'bot',
+    });
+
+    if (seat.playerType === 'bot') {
+      // Auto-roll for bot after short delay
+      room._gsTimer = setTimeout(() => _botRoll(room), BOT_ROLL_DELAY);
+    } else {
+      // Human turn timeout
+      room._gsTimer = setTimeout(() => _missRoll(room), ROLL_TIMEOUT_MS);
+    }
+  }
+
+  function _missRoll(room) {
+    const gs = _gameState(room);
+    if (!gs || gs.over) return;
+    namespace.to(room.roomId).emit(socketEvents.server.TURN_MISSED, {
+      seat_index: gs.current,
+      reason: 'roll_timeout',
+    });
+    gs.diceValue = null;
+    gs.rolled = false;
+    _advanceTurn(room);
+    _startTurn(room);
+  }
+
+  function _missMove(room) {
+    const gs = _gameState(room);
+    if (!gs || gs.over || gs.diceValue == null) return;
+    namespace.to(room.roomId).emit(socketEvents.server.TURN_MISSED, {
+      seat_index: gs.current,
+      reason: 'move_timeout',
+    });
+    gs.diceValue = null;
+    gs.rolled = false;
+    _advanceTurn(room);
+    _startTurn(room);
+  }
+
+  function _advanceTurn(room) {
+    const gs = _gameState(room);
+    if (!gs) return;
+    const active = gs.active.filter(i => !gs.finished.has(i));
+    if (active.length === 0) { gs.over = true; return; }
+    const pos = active.indexOf(gs.current);
+    gs.current = active[(pos + 1) % active.length];
+    gs.diceValue = null;
+    gs.rolled = false;
+    gs.sixRun = 0;
+  }
+
+  function _rollDiceValue() {
+    const crypto = require('crypto');
+    return (crypto.randomBytes(1)[0] % 6) + 1;
+  }
+
+  function _doRoll(room, seatIndex) {
+    const gs = _gameState(room);
+    if (!gs || gs.over) return;
+    _clearGameTimer(room);
+    const dv = _rollDiceValue();
+    gs.diceValue = dv;
+    gs.rolled = true;
+
+    namespace.to(room.roomId).emit(socketEvents.server.DICE_ROLLED, {
+      seat_index: seatIndex,
+      dice_value: dv,
+    });
+
+    // Start move timer
+    room._gsTimer = setTimeout(() => _missMove(room), MOVE_TIMEOUT_MS);
+  }
+
+  function _botRoll(room) {
+    const gs = _gameState(room);
+    if (!gs || gs.over) return;
+    _doRoll(room, gs.current);
+    // Bot picks a token after delay
+    setTimeout(() => _botMove(room), BOT_MOVE_DELAY);
+  }
+
+  function _botMove(room) {
+    const gs = _gameState(room);
+    if (!gs || gs.over || gs.diceValue == null) return;
+    // Just pick token 0 for simplicity
+    _doMove(room, gs.current, 0, false, false);
+  }
+
+  function _doMove(room, seatIndex, tokenIndex, extraTurn, isWin) {
+    const gs = _gameState(room);
+    if (!gs || gs.over) return;
+    _clearGameTimer(room);
+
+    // Handle extra turn (6 rolled or capture)
+    if (extraTurn) {
+      gs.sixRun = gs.diceValue === 6 ? (gs.sixRun || 0) + 1 : 0;
+      if (gs.sixRun >= 3) {
+        // 3 sixes in a row — forfeit
+        gs.sixRun = 0;
+        extraTurn = false;
+      }
+    }
+
+    namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
+      seat_index: seatIndex,
+      token_index: tokenIndex,
+      dice_value: gs.diceValue,
+      extra_turn: extraTurn,
+      is_win: isWin,
+    });
+
+    if (isWin) {
+      gs.finished.add(seatIndex);
+      if (gs.finished.size >= (room.seats ?? []).length - 1) {
+        gs.over = true;
+        return;
+      }
+    }
+
+    if (!extraTurn) {
+      _advanceTurn(room);
+    } else {
+      gs.diceValue = null;
+      gs.rolled = false;
+    }
+
+    _startTurn(room);
+  }
+
+  function startServerDrivenGame(room) {
+    if (!_allHumanRoom(room)) return;
+    const seats = room.seats ?? [];
+    room._gs = {
+      active:    seats.map((_, i) => i),
+      finished:  new Set(),
+      current:   0,
+      diceValue: null,
+      rolled:    false,
+      sixRun:    0,
+      over:      false,
+    };
+    room._gsTimer = null;
+    // Give clients 5.5s to load the board before first turn fires
+    setTimeout(() => _startTurn(room), 5500);
+    console.log(`[LudoEngine] started server-driven game roomId=${room.roomId} seats=${seats.length}`);
+  }
+
+  // ── End server-driven game engine ──────────────────────────────────────────
+
   async function startRoom(room, startedWithBots) {
     if (!room) {
       return false;
@@ -642,6 +827,7 @@ module.exports = function (namespace) {
         seats: room.seats,
       });
       emitSnapshot(room);
+      startServerDrivenGame(room);
       return true;
     })();
 
@@ -1268,6 +1454,57 @@ module.exports = function (namespace) {
     socket.on(socketEvents.client.CANCEL_MATCH, async (payload = {}) => {
       payload = normalizePayload(payload);
       await completeMatch(socket, payload, true);
+    });
+
+    socket.on(socketEvents.client.ROLL_DICE, (payload = {}) => {
+      payload = normalizePayload(payload);
+      const roomId = payload.room_id ?? payload.roomId ?? socket.data.roomId;
+      const room   = roomId ? rooms.get(roomId) : null;
+      const gs     = room ? _gameState(room) : null;
+      if (!gs || gs.over) return;
+
+      const seat = _seatForSocket(room, socket, payload.user_id ?? payload.userId);
+      if (!seat) {
+        console.warn(`[LudoEngine] ROLL_DICE: unknown seat userId=${socket.data.userId}`);
+        return;
+      }
+      const seatIndex = (seat.seatNo ?? 1) - 1;
+      if (seatIndex !== gs.current) {
+        console.warn(`[LudoEngine] ROLL_DICE: not your turn seat=${seatIndex} current=${gs.current}`);
+        return;
+      }
+      if (gs.rolled) {
+        console.warn(`[LudoEngine] ROLL_DICE: already rolled this turn`);
+        return;
+      }
+      _doRoll(room, seatIndex);
+    });
+
+    socket.on(socketEvents.client.MOVE_TOKEN, (payload = {}) => {
+      payload = normalizePayload(payload);
+      const roomId    = payload.room_id ?? payload.roomId ?? socket.data.roomId;
+      const room      = roomId ? rooms.get(roomId) : null;
+      const gs        = room ? _gameState(room) : null;
+      if (!gs || gs.over) return;
+
+      const seat = _seatForSocket(room, socket, payload.user_id ?? payload.userId);
+      if (!seat) {
+        console.warn(`[LudoEngine] MOVE_TOKEN: unknown seat userId=${socket.data.userId}`);
+        return;
+      }
+      const seatIndex = (seat.seatNo ?? 1) - 1;
+      if (seatIndex !== gs.current) {
+        console.warn(`[LudoEngine] MOVE_TOKEN: not your turn seat=${seatIndex} current=${gs.current}`);
+        return;
+      }
+      if (!gs.rolled || gs.diceValue == null) {
+        console.warn(`[LudoEngine] MOVE_TOKEN: dice not rolled yet`);
+        return;
+      }
+      const tokenIndex = payload.token_index ?? payload.tokenIndex ?? 0;
+      const extraTurn  = !!(payload.extra_turn ?? payload.extraTurn ?? false);
+      const isWin      = !!(payload.is_win ?? payload.isWin ?? false);
+      _doMove(room, seatIndex, tokenIndex, extraTurn, isWin);
     });
 
     socket.on("disconnect", () => {
