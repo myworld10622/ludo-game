@@ -897,9 +897,28 @@ namespace LudoClassicOffline
         {
             isJoining = !renewOnly;
             UpdateStatus(renewOnly ? "Refreshing voice token..." : "Connecting voice...");
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            {
+                Permission.RequestUserPermission(Permission.Microphone);
+                float waited = 0f;
+                while (!Permission.HasUserAuthorizedPermission(Permission.Microphone) && waited < 8f)
+                {
+                    yield return null;
+                    waited += Time.unscaledDeltaTime;
+                }
+            }
+            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            {
+                isJoining = false;
+                UpdateStatus("Mic permission denied");
+                yield break;
+            }
+#else
             RequestMicrophonePermissionIfNeeded();
+#endif
 
-            if (!TryGetLocalUid(out uint localUid))
+            if (!TryGetLocalUid(out uint _))
             {
                 isJoining = false;
                 UpdateStatus("Voice UID invalid");
@@ -908,13 +927,12 @@ namespace LudoClassicOffline
 
             string url = Configuration.AgoraTokenUrl
                 + "?channel="
-                + UnityWebRequest.EscapeURL(channelName)
-                + "&uid="
-                + localUid;
+                + UnityWebRequest.EscapeURL(channelName);
 
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
                 request.SetRequestHeader("Authorization", "Bearer " + Configuration.GetToken());
+                request.SetRequestHeader("Accept", "application/json");
                 yield return request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success)

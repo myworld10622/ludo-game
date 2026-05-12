@@ -2354,6 +2354,7 @@ namespace LudoClassicOffline
                         }
                         else
                         {
+                            if (socketNumberEventReceiver.isServerDrivenGameMode) return;
                             if (!DashBoardManagerOffline.instance.IsPassAndPlay)
                                 BotMoveToken();
                             else
@@ -2514,6 +2515,7 @@ namespace LudoClassicOffline
                     }
                     else
                     {
+                        if (socketNumberEventReceiver.isServerDrivenGameMode) return;
                         if (!DashBoardManagerOffline.instance.IsPassAndPlay)
                             BotMoveToken();
                         else
@@ -2798,6 +2800,7 @@ namespace LudoClassicOffline
 
         public void ChangeTurnSeatIndex()
         {
+            if (socketNumberEventReceiver.isServerDrivenGameMode) return;
             socketNumberEventReceiver.sixCount = 0;
             socketNumberEventReceiver.sixValueCount = 0;
             Debug.Log("ChangeTurnSeatIndex || sixCount => " + socketNumberEventReceiver.sixCount);
