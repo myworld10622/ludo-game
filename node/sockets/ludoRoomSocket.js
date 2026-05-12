@@ -802,6 +802,7 @@ module.exports = function (namespace) {
       emitSnapshot(room);
 
       if (laravelSync.isEnabled()) {
+        const isPractice = room.playMode === 'practice' || room.entryFee === 0;
         try {
           const match = await runStartSync(() => laravelSync.notifyMatchStarted(room));
           if (match?.match_uuid) {
@@ -809,11 +810,16 @@ module.exports = function (namespace) {
           }
         } catch (error) {
           console.error(error.message);
-          scheduleStartRetry(room, startedWithBots);
-          namespace.to(room.roomId).emit(socketEvents.server.ERROR, {
-            message: "Unable to persist Ludo match start.",
-          });
-          return false;
+          if (!isPractice) {
+            // Cash games: block on Laravel failure (wallet settlement needs it)
+            scheduleStartRetry(room, startedWithBots);
+            namespace.to(room.roomId).emit(socketEvents.server.ERROR, {
+              message: "Unable to persist Ludo match start.",
+            });
+            return false;
+          }
+          // Practice / private / free games: log warning but continue anyway
+          console.warn('[startRoom] Laravel sync failed for practice room — continuing without match_uuid');
         }
       }
 

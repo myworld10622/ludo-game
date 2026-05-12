@@ -111,6 +111,9 @@ public class DashBoardManagerOffline : MonoBehaviour
 
         [Header("Other")]
         public int buttonClickCount = 0;
+        public GameObject matchmakingLoaderPanel;
+        private bool _showMatchmakingLoader = false;
+        private Texture2D _loaderBgTex;
 
         [Header("Script Object")]
         public LudoNumberUiManagerOffline ludoNumberUiManager;
@@ -1806,6 +1809,30 @@ public class DashBoardManagerOffline : MonoBehaviour
             }
         }
 
+        public void ShowMatchmakingLoader(bool show)
+        {
+            _showMatchmakingLoader = show;
+        }
+
+        private void OnGUI()
+        {
+            if (!_showMatchmakingLoader) return;
+            if (_loaderBgTex == null)
+            {
+                _loaderBgTex = new Texture2D(1, 1);
+                _loaderBgTex.SetPixel(0, 0, new Color(0f, 0f, 0f, 0.75f));
+                _loaderBgTex.Apply();
+            }
+            GUI.depth = -9999;
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), _loaderBgTex);
+            var style = new GUIStyle(GUI.skin.label);
+            style.fontSize = Mathf.RoundToInt(Screen.height * 0.06f);
+            style.fontStyle = FontStyle.Bold;
+            style.alignment = TextAnchor.MiddleCenter;
+            style.normal.textColor = Color.white;
+            GUI.Label(new Rect(0, 0, Screen.width, Screen.height), "Finding match...", style);
+        }
+
         private void BindOrCreateTournamentClassicTab()
         {
             Transform parent = player4 != null ? player4.parent : null;
@@ -2133,6 +2160,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                 return;
             }
             HidePassNPlayPlayerCountPopup();
+            ShowMatchmakingLoader(true);
             StartCoroutine(JoinPrivateTableRequest(code));
         }
 
@@ -2221,6 +2249,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(responseText ?? "{}");
             if (resp == null || !resp.success)
             {
+                ShowMatchmakingLoader(false);
                 string msg = resp?.message ?? "Failed to join table. Please try again.";
                 if (msg.ToLower().Contains("already joined"))
                 {
@@ -2326,6 +2355,9 @@ public class DashBoardManagerOffline : MonoBehaviour
         private int _privateTableEntryFee = 0;
         private int _privateTableId = 0;
 
+        private static string BuildPrivateTableShareMessage(string code)
+            => $"Please join my private Ludo table!\nUse code: {code}\nPlay at roxludo.com";
+
         // Step 1 — Table just created: show code popup so user can copy & share.
         // No game board yet. User joins later using the code (even the creator).
         private void ShowPrivateTableCreatedPopup(string code, int maxPlayers, int fee)
@@ -2337,7 +2369,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             PassNPlayPopup.WaitingCurrentPlayers = 1;
             PassNPlayPopup.WaitingIsCreator = true;
             PassNPlayPopup.Index = 2;
-            GUIUtility.systemCopyBuffer = code;
+            GUIUtility.systemCopyBuffer = BuildPrivateTableShareMessage(code);
             ShowPassNPlayPlayerCountPopup();
         }
 
@@ -2859,7 +2891,7 @@ public class DashBoardManagerOffline : MonoBehaviour
                     bool isCreator = PassNPlayPopup.WaitingIsCreator;
                     cancelButton.onClick.AddListener(() =>
                     {
-                        if (isCreator) GUIUtility.systemCopyBuffer = code;
+                        if (isCreator) GUIUtility.systemCopyBuffer = BuildPrivateTableShareMessage(code);
                         PrivateTableSocketHandler.Disconnect();
                         HidePassNPlayPlayerCountPopup();
                     });

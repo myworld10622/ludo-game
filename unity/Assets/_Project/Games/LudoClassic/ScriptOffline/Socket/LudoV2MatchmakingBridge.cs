@@ -168,7 +168,7 @@ namespace LudoClassicOffline
             }
 #endif
 
-            CommonUtil.ShowToast("Connecting to server...");
+            dashBoardManager.ShowMatchmakingLoader(true);
             QueueAndConnectAsync(entryFee, maxPlayers);
             return true;
         }
@@ -495,6 +495,7 @@ namespace LudoClassicOffline
             }
 
             hasEnteredWaitingBoard = true;
+            dashBoardManager.ShowMatchmakingLoader(false);
             // Allow both landscape orientations; board is landscape-only but let the
             // device auto-rotate between left and right so the user can hold naturally.
             Screen.autorotateToPortrait = false;
@@ -1144,6 +1145,7 @@ namespace LudoClassicOffline
         private void FailMatchmaking(string message)
         {
             Debug.LogWarning("Ludo v2 matchmaking failed: " + message);
+            dashBoardManager.ShowMatchmakingLoader(false);
             isQueueing = false;
             hasStartedMatch = false;
             isClaimingNextTournamentRound = false;

@@ -37,6 +37,9 @@ namespace LudoClassicOffline
         public Button confirmJoinButton;
         public Button cancelJoinButton;
 
+        [Header("Loading")]
+        public GameObject joinLoadingOverlay;   // assign a full-screen loading panel in Inspector
+
         private SocketManager socketManager;
         private Socket socket;
 
@@ -93,7 +96,7 @@ namespace LudoClassicOffline
             }
 
             SetButtonsInteractable(false);
-            CommonUtil.ShowToast("Joining table...");
+            ShowJoinLoader(true);
 
             ConnectAndEmit(() =>
             {
@@ -136,14 +139,23 @@ namespace LudoClassicOffline
             }
         }
 
-        // ── Copy code button ──
+        // ── Copy code button — copies a full shareable message ──
         public void CopyCodeToClipboard()
         {
             if (!string.IsNullOrEmpty(currentTableCode))
             {
-                GUIUtility.systemCopyBuffer = currentTableCode;
-                CommonUtil.ShowToast("Code copied to clipboard!");
+                GUIUtility.systemCopyBuffer = BuildShareMessage(currentTableCode);
+                CommonUtil.ShowToast("Share message copied!");
             }
+        }
+
+        private static string BuildShareMessage(string code)
+            => $"Please join my private Ludo table!\nUse code: {code}\nPlay at roxludo.com";
+
+        private void ShowJoinLoader(bool show)
+        {
+            if (joinLoadingOverlay != null)
+                joinLoadingOverlay.SetActive(show);
         }
 
         private void ConnectAndEmit(Action onConnected)
@@ -172,6 +184,7 @@ namespace LudoClassicOffline
             socket.On(SocketIOEventTypes.Error, (string err) =>
             {
                 isConnecting = false;
+                ShowJoinLoader(false);
                 Debug.LogError("[PrivateTable] Socket error: " + err);
                 CommonUtil.ShowStyledMessage("Connection failed. Please check your internet and try again.", "Connection Error", true);
                 SetButtonsInteractable(true);
@@ -204,8 +217,8 @@ namespace LudoClassicOffline
             currentTableCode = resp.code;
             currentTableId = resp.table_id;
 
-            GUIUtility.systemCopyBuffer = resp.code;
-            CommonUtil.ShowToast($"Table created! Code {resp.code} copied. Share with friends.");
+            GUIUtility.systemCopyBuffer = BuildShareMessage(resp.code);
+            CommonUtil.ShowToast($"Table created! Share message copied (Code: {resp.code})");
 
             // Go directly to the game board — player waits there for others to join
             if (DashBoardManagerOffline.Instance != null)
@@ -216,6 +229,7 @@ namespace LudoClassicOffline
 
         private void OnTableJoined(string jsonStr)
         {
+            ShowJoinLoader(false);
             SetButtonsInteractable(true);
             var resp = JsonConvert.DeserializeObject<PrivateTableJoinResponse>(jsonStr);
             if (!resp.success)
@@ -304,7 +318,7 @@ namespace LudoClassicOffline
             if (cancelWaitingButton != null)
                 cancelWaitingButton.interactable = true;
 
-            GUIUtility.systemCopyBuffer = code;
+            GUIUtility.systemCopyBuffer = BuildShareMessage(code);
         }
 
         private void HideWaitingPanel()
