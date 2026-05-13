@@ -3,6 +3,23 @@ require("dotenv").config();
 const app = express();
 const server = require("http").Server(app);
 const io = require("socket.io")(server, { cors: { origin: "*" } });
+
+// ── Socket.IO Redis adapter (multi-node pub/sub broadcast) ────────────────────
+// When LUDO_CLUSTER_ENABLED=true, all socket.io namespaces share a Redis
+// pub/sub channel so that io.to(room).emit() works across processes.
+if (process.env.LUDO_CLUSTER_ENABLED === 'true') {
+  try {
+    const { createAdapter } = require('@socket.io/redis-adapter');
+    const cluster = require('./services/ludoClusterService');
+    const { pubClient, subClient } = cluster.makeAdapterClients();
+    pubClient.on('connect', () => console.log('[LudoCluster] adapter pubClient connected'));
+    subClient.on('connect', () => console.log('[LudoCluster] adapter subClient connected'));
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('[LudoCluster] Socket.IO Redis adapter attached');
+  } catch (err) {
+    console.error('[LudoCluster] Failed to attach Redis adapter — running single-node:', err.message);
+  }
+}
 // const bodyParser = require('body-parser')
 var dateTime = require("node-datetime");
 var request = require("request");

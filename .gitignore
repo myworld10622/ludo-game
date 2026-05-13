@@ -28,6 +28,14 @@ unity/*.unitypackage
 # Node
 node/node_modules/
 node/.env
+node/test-results/
+
+# Tests
+tests/node_modules/
+tests/reports/
+tests/test-results/
+tests/playwright-report/
+test-results/
 
 # Backend
 backend/.env

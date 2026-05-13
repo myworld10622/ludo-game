@@ -1,0 +1,47 @@
+{
+  "name": "ludo-v2-tests",
+  "version": "1.0.0",
+  "description": "Automated multiplayer gameplay tests for Ludo V2 server",
+  "scripts": {
+    "test": "playwright test",
+    "test:2p": "playwright test playwright/specs/01_2player_game.spec.js",
+    "test:4p": "playwright test playwright/specs/02_4player_game.spec.js",
+    "test:turns": "playwright test playwright/specs/03_turn_order.spec.js",
+    "test:kills": "playwright test playwright/specs/04_kills_safezones.spec.js",
+    "test:threesixes": "playwright test playwright/specs/05_three_sixes.spec.js",
+    "test:extraturn": "playwright test playwright/specs/06_extra_turn.spec.js",
+    "test:reconnect": "playwright test playwright/specs/07_reconnect.spec.js",
+    "test:network": "playwright test playwright/specs/08_network_conditions.spec.js",
+    "test:settlement": "playwright test playwright/specs/09_settlement.spec.js",
+    "test:all": "playwright test --reporter=html",
+    "test:ci": "playwright test --reporter=junit,html",
+    "appium:test": "wdio appium/appium.config.js",
+    "locust:run": "locust -f locust/locustfile.py --headless -u 20 -r 2 --run-time 60s",
+    "locust:ui": "locust -f locust/locustfile.py",
+    "bot:run": "node bots/BotOrchestrator.js",
+    "proxy:start": "node utils/networkProxy.js",
+    "report": "playwright show-report",
+    "setup": "node scripts/setup.js"
+  },
+  "dependencies": {
+    "ioredis": "^5.10.1",
+    "socket.io-client": "^4.7.5",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.45.0",
+    "@wdio/cli": "^9.0.0",
+    "@wdio/local-runner": "^9.0.0",
+    "@wdio/mocha-framework": "^9.0.0",
+    "@wdio/spec-reporter": "^9.0.0",
+    "appium": "^2.5.1",
+    "appium-uiautomator2-driver": "^3.3.0",
+    "chai": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "http-proxy": "^1.18.1",
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

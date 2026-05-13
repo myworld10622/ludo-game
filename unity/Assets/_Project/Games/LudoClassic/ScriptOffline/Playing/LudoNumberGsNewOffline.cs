@@ -475,15 +475,12 @@ namespace LudoClassicOffline
                     return;
                 }
 
-                // Local player's own move — report to server.
-                bool extraTurn = socketNumberEventReceiver.diceValue == 6
-                    || socketNumberEventReceiver.moveToken.data.isCapturedToken
-                    || isTokenReachHome;
-                bool isWin = CheckLocalWin(socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex);
+                // Local player's own move — report token index to server.
+                // Server computes extra_turn, is_win, kills authoritatively.
                 LudoV2MatchmakingBridge.Instance?.TryMoveToken(
                     socketNumberEventReceiver.moveToken.data.tokenMove,
-                    extraTurn,
-                    isWin
+                    false,
+                    false
                 );
                 return;
             }
@@ -1350,6 +1347,39 @@ namespace LudoClassicOffline
             //{
             //    youLose.SetActive(true);
             //}
+        }
+
+        // Called by LudoV2MatchmakingBridge when server emits the final result.
+        public void BattleFinishFromServer(bool localPlayerWon)
+        {
+            StartCoroutine(BattleFinishFromServerCoroutine(localPlayerWon));
+        }
+
+        private IEnumerator BattleFinishFromServerCoroutine(bool localPlayerWon)
+        {
+            yield return new WaitForSeconds(1f);
+
+            SoundManagerOffline.instance.musicAudioSource.Stop();
+            SoundManagerOffline.instance.soundAudioSource.Stop();
+            SoundManagerOffline.instance.timeAudioSource.Stop();
+
+            winPanel.SetActive(true);
+            waitPanel.SetActive(false);
+            board.SetActive(false);
+            winningPartical.gameObject.SetActive(false);
+
+            if (localPlayerWon)
+            {
+                winningPartical.gameObject.SetActive(true);
+                winningPartical.Play();
+                youWin.SetActive(true);
+                SoundManagerOffline.instance.SoundPlay(SoundManagerOffline.instance.winAudio);
+            }
+            else
+            {
+                youLose.SetActive(true);
+                SoundManagerOffline.instance.SoundPlay(SoundManagerOffline.instance.loseAudio);
+            }
         }
 
         #endregion
@@ -2800,7 +2830,13 @@ namespace LudoClassicOffline
 
         public void ChangeTurnSeatIndex()
         {
-            if (socketNumberEventReceiver.isServerDrivenGameMode) return;
+            if (socketNumberEventReceiver.isServerDrivenGameMode)
+            {
+                // Local player (visual seat 0) has no valid move — tell server to advance turn
+                if (socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == 0)
+                    LudoV2MatchmakingBridge.Instance?.TryMoveToken(0, false, false);
+                return;
+            }
             socketNumberEventReceiver.sixCount = 0;
             socketNumberEventReceiver.sixValueCount = 0;
             Debug.Log("ChangeTurnSeatIndex || sixCount => " + socketNumberEventReceiver.sixCount);
@@ -3598,7 +3634,7 @@ namespace LudoClassicOffline
                     )
                 )
                 {
-                    if (!DashBoardManagerOffline.instance.IsPassAndPlay)
+                    if (!DashBoardManagerOffline.instance.IsPassAndPlay && !socketNumberEventReceiver.isServerDrivenGameMode)
                         BotTurnDiceAnimation();
                 }
                 else

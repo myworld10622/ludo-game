@@ -50,6 +50,7 @@ module.exports = {
       TOKEN_MOVED: "ludo.game.token_moved",
       TURN_MISSED: "ludo.game.turn_missed",
       PLAYER_FINISHED: "ludo.game.player_finished",
+      GAME_STATE: "ludo.game.state",
       RESULT: "ludo.game.result",
       ERROR: "ludo.error",
     },

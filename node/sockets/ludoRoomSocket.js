@@ -6,6 +6,8 @@ const tournamentLudoLaravelSyncService = require("../services/tournamentLudoLara
 const tournamentLudoRoomService = require("../services/tournamentLudoRoomService");
 const tournamentMatchResultService = require("../services/tournamentMatchResultService");
 const { roomStates, playerTypes, socketEvents } = require("../constants/ludoRoom");
+const persistence = require("../services/ludoRoomPersistenceService");
+const cluster     = require("../services/ludoClusterService");
 
 module.exports = function (namespace) {
   const engine = new LudoRoomEngineService();
@@ -14,6 +16,15 @@ module.exports = function (namespace) {
   const rooms = new Map();
   const roomTimers = new Map();
   const roomStartRetryTimers = new Map();
+
+  // ── Redis persistence + cluster sync helper ──────────────────────────────
+  // Fire-and-forget: never await inside hot synchronous paths.
+  function _persist(room) {
+    if (!room) return;
+    persistence.saveRoom(room).catch(() => {});
+    // Notify peer nodes that state changed so they can reload for reconnect serving
+    cluster.publishStateUpdate(room.roomId).catch(() => {});
+  }
   const CHAT_MESSAGE_COOLDOWN_MS = Math.max(300, Number(process.env.LUDO_CHAT_MESSAGE_COOLDOWN_MS || "800"));
   const CHAT_MESSAGE_MAX_LENGTH = Math.max(20, Number(process.env.LUDO_CHAT_MESSAGE_MAX_LENGTH || "200"));
   const EMOJI_COOLDOWN_MS = Math.max(500, Number(process.env.LUDO_EMOJI_COOLDOWN_MS || "2000"));
@@ -597,11 +608,241 @@ module.exports = function (namespace) {
   }
 
   // ── Server-driven game engine ─────────────────────────────────────────────
+  //
+  // The server is the sole authority over:
+  //   • token positions          • legal move validation
+  //   • kill (capture) detection • extra-turn computation
+  //   • win detection            • automatic settlement
+  //
+  // Board model — player-relative position per token:
+  //   -1        in home yard (not yet in play)
+  //    0        on player's entry square (shared ring)
+  //    1–50     on shared ring
+  //   51–56     in player's safe home column (cannot be killed)
+  //   57        token has reached home (this token is DONE)
+  //
+  // A player wins when all TOKENS_PER_PLAYER tokens reach 57.
+  //
+  // Absolute ring position (kill detection):
+  //   abs = (PLAYER_STARTS[seat] + relPos) % BOARD_RING_SIZE   (relPos 0–50 only)
+  //
+  // Safe squares (absolute): 0 8 13 21 26 34 39 47
+  // Tokens on safe squares cannot be killed.
 
-  const ROLL_TIMEOUT_MS  = 17000;
-  const MOVE_TIMEOUT_MS  = 17000;
-  const BOT_ROLL_DELAY   = 1500;
-  const BOT_MOVE_DELAY   = 2000;
+  const ROLL_TIMEOUT_MS         = parseInt(process.env.ROLL_TIMEOUT_MS    || '17000', 10);
+  const MOVE_TIMEOUT_MS         = parseInt(process.env.MOVE_TIMEOUT_MS    || '17000', 10);
+  const BOT_ROLL_DELAY          = parseInt(process.env.BOT_ROLL_DELAY     || '1500',  10);
+  const BOT_MOVE_DELAY          = parseInt(process.env.BOT_MOVE_DELAY     || '2000',  10);
+  const NO_MOVES_AUTO_PASS_MS   = parseInt(process.env.NO_MOVES_AUTO_PASS_MS || '1500', 10);
+  const BOARD_RING_SIZE         = 52;
+  const TOKENS_PER_PLAYER       = 4;
+  const TOKEN_HOME_POS          = 56;   // inclusive: token at 56 = home (matches Unity way_point[56])
+  const HOME_COL_START          = 51;   // first safe home-column position (relative)
+
+  // ── Anti-cheat constants ──────────────────────────────────────────────────
+  const AC_RATE_LIMIT_MS       = parseInt(process.env.AC_RATE_LIMIT_MS || '250', 10);   // minimum ms between same-event emits per socket
+  const AC_MAX_VIOLATIONS      = 8;     // cumulative violations before socket is kicked
+  const AC_VIOLATION_DECAY_MS  = 60_000; // violations older than this are not counted
+
+  // ── Anti-cheat helpers ────────────────────────────────────────────────────
+
+  /** Cryptographically random 16-byte hex token used for nonce chains. */
+  function _acNonce() {
+    return require('crypto').randomBytes(16).toString('hex');
+  }
+
+  /**
+   * Structured audit log for all anti-cheat events.
+   * level: 'warn' | 'block' | 'kick'
+   */
+  function _acLog(level, socket, reason, extra = {}) {
+    const uid  = socket.data?.userId  ?? '?';
+    const room = socket.data?.roomId  ?? '?';
+    const addr = socket.handshake?.address ?? '?';
+    console[level === 'kick' ? 'error' : 'warn'](
+      `[AntiCheat][${level.toUpperCase()}] uid=${uid} room=${room} addr=${addr} reason="${reason}"`,
+      Object.keys(extra).length ? extra : ''
+    );
+  }
+
+  /**
+   * Record a violation against a socket.
+   * Returns true if the socket should be kicked (threshold reached).
+   */
+  function _acViolation(socket, reason, extra = {}) {
+    _acLog('block', socket, reason, extra);
+    if (!socket.data._acViolations) socket.data._acViolations = [];
+    const now = Date.now();
+    // Prune old violations outside the decay window
+    socket.data._acViolations = socket.data._acViolations.filter(
+      t => now - t < AC_VIOLATION_DECAY_MS
+    );
+    socket.data._acViolations.push(now);
+    if (socket.data._acViolations.length >= AC_MAX_VIOLATIONS) {
+      _acLog('kick', socket, `${AC_MAX_VIOLATIONS} violations in ${AC_VIOLATION_DECAY_MS / 1000}s`);
+      socket.emit(socketEvents.server.ERROR, { message: 'Suspicious activity detected.' });
+      socket.disconnect(true);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Per-socket per-event rate limiter.
+   * Returns true (allowed) or false (too fast — violation recorded).
+   */
+  function _acCheckRate(socket, eventName) {
+    if (!socket.data._acLastEvent) socket.data._acLastEvent = {};
+    const now  = Date.now();
+    const last = socket.data._acLastEvent[eventName] ?? 0;
+    if (now - last < AC_RATE_LIMIT_MS) {
+      _acViolation(socket, `rate_limit:${eventName}`, { gapMs: now - last });
+      return false;
+    }
+    socket.data._acLastEvent[eventName] = now;
+    return true;
+  }
+
+  /**
+   * Verify that the userId in a payload matches the socket's bound identity.
+   * Returns true if valid, false (+ violation) if spoofed.
+   */
+  function _acValidateIdentity(socket, payloadUserId) {
+    const bound   = socket.data?.userId != null ? String(socket.data.userId) : null;
+    const claimed = payloadUserId      != null ? String(payloadUserId)      : null;
+    if (!bound || !claimed) return true; // no identity bound yet — permit (join flow)
+    if (bound !== claimed) {
+      _acViolation(socket, 'identity_spoof', { bound, claimed });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Verify that the room_id in a payload matches the socket's joined room.
+   * Returns true if valid.
+   */
+  function _acValidateRoom(socket, payloadRoomId) {
+    const bound   = socket.data?.roomId;
+    if (!bound || !payloadRoomId) return true;  // no room bound yet
+    if (String(payloadRoomId) !== String(bound)) {
+      _acViolation(socket, 'room_spoof', { bound, claimed: payloadRoomId });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Validate the turn nonce in a ROLL_DICE payload.
+   * Prevents replay of roll events from previous turns.
+   */
+  function _acValidateTurnNonce(socket, gs, payloadNonce) {
+    if (!gs.turnNonce) return true;  // nonce not yet required (upgrade path)
+    if (!payloadNonce || payloadNonce !== gs.turnNonce) {
+      _acViolation(socket, 'bad_turn_nonce', {
+        expected: gs.turnNonce, received: payloadNonce ?? '(none)',
+      });
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Validate the roll nonce in a MOVE_TOKEN payload.
+   * Prevents replay of move events from previous dice rolls.
+   */
+  function _acValidateRollNonce(socket, gs, payloadNonce) {
+    if (!gs.rollNonce) return true;
+    if (!payloadNonce || payloadNonce !== gs.rollNonce) {
+      _acViolation(socket, 'bad_roll_nonce', {
+        expected: gs.rollNonce, received: payloadNonce ?? '(none)',
+      });
+      return false;
+    }
+    return true;
+  }
+
+  const SAFE_SQUARES_ABS = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
+
+  // Player entry points on the shared ring for each seat index (0-based)
+  function _getPlayerStarts(maxPlayers) {
+    if (maxPlayers <= 2) return [0, 26];          // diagonal opponents
+    if (maxPlayers === 3) return [0, 13, 26];
+    return [0, 13, 26, 39];
+  }
+
+  // Convert player-relative position to absolute ring square (valid for relPos 0–50)
+  function _absPos(relPos, seatIndex, playerStarts) {
+    if (relPos < 0 || relPos > 50) return -1;
+    return (playerStarts[seatIndex] + relPos) % BOARD_RING_SIZE;
+  }
+
+  // Can this token move with this dice value?
+  function _canMoveToken(pos, diceValue) {
+    if (pos >= TOKEN_HOME_POS)  return false;          // already home
+    if (pos === -1)             return diceValue === 6; // need 6 to enter
+    return pos + diceValue <= TOKEN_HOME_POS;           // cannot overshoot
+  }
+
+  // Return indices of tokens that can legally move
+  function _legalMoves(gs, seatIndex, diceValue) {
+    return gs.tokens[seatIndex].reduce((acc, pos, ti) => {
+      if (_canMoveToken(pos, diceValue)) acc.push(ti);
+      return acc;
+    }, []);
+  }
+
+  // Apply a token move; returns { killed[], extraTurn, isWin }
+  // Mutates gs.tokens in place.
+  function _applyTokenMove(gs, seatIndex, tokenIndex, diceValue, playerStarts) {
+    const tokens = gs.tokens[seatIndex];
+    const oldPos = tokens[tokenIndex];
+
+    // Compute new position.  -1 (yard) treated as -1 so entry = -1 + 6 = 5
+    // which matches Unity's way_point[5] after 6 movement steps from yard.
+    const newPos = Math.min(oldPos + diceValue, TOKEN_HOME_POS);
+    tokens[tokenIndex] = newPos;
+
+    // Kill detection — only on shared ring, non-safe squares
+    const killed = [];
+    if (newPos >= 0 && newPos <= 50) {
+      const myAbs = _absPos(newPos, seatIndex, playerStarts);
+      if (myAbs >= 0 && !SAFE_SQUARES_ABS.has(myAbs)) {
+        for (let si = 0; si < gs.tokens.length; si++) {
+          if (si === seatIndex) continue;
+          for (let ti = 0; ti < TOKENS_PER_PLAYER; ti++) {
+            const op = gs.tokens[si][ti];
+            if (op < 0 || op > 50) continue;           // not on shared ring
+            if (_absPos(op, si, playerStarts) === myAbs) {
+              gs.tokens[si][ti] = -1;                   // send to home yard
+              killed.push({ seat_index: si, token_index: ti });
+            }
+          }
+        }
+      }
+    }
+
+    // Extra-turn: rolling 6 or killing at least one opponent token
+    const rolledSix  = diceValue === 6;
+    let   extraTurn  = rolledSix || killed.length > 0;
+
+    if (rolledSix) {
+      gs.sixRun = (gs.sixRun || 0) + 1;
+      if (gs.sixRun >= 3) {
+        // Three consecutive sixes: forfeit — token that just moved goes back
+        gs.tokens[seatIndex][tokenIndex] = -1;
+        gs.sixRun   = 0;
+        extraTurn   = false;
+      }
+    } else {
+      gs.sixRun = 0;
+    }
+
+    // Win: all four tokens home
+    const isWin = gs.tokens[seatIndex].every(p => p >= TOKEN_HOME_POS);
+
+    return { killed, extraTurn, isWin };
+  }
 
   function _allHumanRoom(room) {
     return (room.seats ?? []).length > 0 &&
@@ -622,6 +863,41 @@ module.exports = function (namespace) {
 
   function _clearGameTimer(room) {
     if (room._gsTimer) { clearTimeout(room._gsTimer); room._gsTimer = null; }
+    room._gsTimerExpiresAt = null;
+  }
+
+  function _setGameTimer(room, fn, delayMs) {
+    _clearGameTimer(room);
+    room._gsTimerExpiresAt = Date.now() + delayMs;
+    // Only the owner node arms real timers; non-owners track the expiry for
+    // reconnect snapshots but do not fire callbacks.
+    if (!cluster.isOwner(room.roomId)) return;
+    // Embed fencing epoch: if ownership changes between arming and firing
+    // (e.g. GC pause, Redis blip) the stale callback is silently dropped.
+    const epoch = cluster.getOwnerEpoch(room.roomId);
+    room._gsTimer = setTimeout(() => {
+      if (cluster.getOwnerEpoch(room.roomId) !== epoch) {
+        console.warn(`[LudoCluster] stale timer dropped (epoch mismatch) roomId=${room.roomId}`);
+        return;
+      }
+      if (!cluster.isOwner(room.roomId)) {
+        console.warn(`[LudoCluster] stale timer dropped (not owner) roomId=${room.roomId}`);
+        return;
+      }
+      fn();
+    }, delayMs);
+  }
+
+  function _advanceTurn(room) {
+    const gs = _gameState(room);
+    if (!gs) return;
+    const active = gs.active.filter(i => !gs.finished.has(i));
+    if (active.length === 0) { gs.over = true; return; }
+    const pos   = active.indexOf(gs.current);
+    gs.current  = active[(pos + 1) % active.length];
+    gs.diceValue = null;
+    gs.rolled    = false;
+    gs.sixRun    = 0;
   }
 
   function _startTurn(room) {
@@ -631,18 +907,22 @@ module.exports = function (namespace) {
     const seat = room.seats[gs.current];
     if (!seat) return;
 
+    // Rotate nonces: old roll nonce expires, fresh turn nonce issued
+    gs.turnNonce = _acNonce();
+    gs.rollNonce = null;
+
     namespace.to(room.roomId).emit(socketEvents.server.TURN_STARTED, {
       seat_index: gs.current,
-      is_bot: seat.playerType === 'bot',
+      is_bot:     seat.playerType === 'bot',
+      turn_nonce: gs.turnNonce,    // client must echo this in ROLL_DICE
     });
 
     if (seat.playerType === 'bot') {
-      // Auto-roll for bot after short delay
-      room._gsTimer = setTimeout(() => _botRoll(room), BOT_ROLL_DELAY);
+      _setGameTimer(room, () => _botRoll(room, gs.current), BOT_ROLL_DELAY);
     } else {
-      // Human turn timeout
-      room._gsTimer = setTimeout(() => _missRoll(room), ROLL_TIMEOUT_MS);
+      _setGameTimer(room, () => _missRoll(room), ROLL_TIMEOUT_MS);
     }
+    _persist(room);
   }
 
   function _missRoll(room) {
@@ -650,10 +930,10 @@ module.exports = function (namespace) {
     if (!gs || gs.over) return;
     namespace.to(room.roomId).emit(socketEvents.server.TURN_MISSED, {
       seat_index: gs.current,
-      reason: 'roll_timeout',
+      reason:     'roll_timeout',
     });
     gs.diceValue = null;
-    gs.rolled = false;
+    gs.rolled    = false;
     _advanceTurn(room);
     _startTurn(room);
   }
@@ -663,24 +943,12 @@ module.exports = function (namespace) {
     if (!gs || gs.over || gs.diceValue == null) return;
     namespace.to(room.roomId).emit(socketEvents.server.TURN_MISSED, {
       seat_index: gs.current,
-      reason: 'move_timeout',
+      reason:     'move_timeout',
     });
     gs.diceValue = null;
-    gs.rolled = false;
+    gs.rolled    = false;
     _advanceTurn(room);
     _startTurn(room);
-  }
-
-  function _advanceTurn(room) {
-    const gs = _gameState(room);
-    if (!gs) return;
-    const active = gs.active.filter(i => !gs.finished.has(i));
-    if (active.length === 0) { gs.over = true; return; }
-    const pos = active.indexOf(gs.current);
-    gs.current = active[(pos + 1) % active.length];
-    gs.diceValue = null;
-    gs.rolled = false;
-    gs.sixRun = 0;
   }
 
   function _rollDiceValue() {
@@ -692,61 +960,132 @@ module.exports = function (namespace) {
     const gs = _gameState(room);
     if (!gs || gs.over) return;
     _clearGameTimer(room);
-    const dv = _rollDiceValue();
-    gs.diceValue = dv;
-    gs.rolled = true;
+
+    const dv           = _rollDiceValue();
+    gs.diceValue       = dv;
+    gs.rolled          = true;
+
+    // Issue a fresh roll nonce; client must echo it in MOVE_TOKEN
+    gs.rollNonce  = _acNonce();
+    gs.turnNonce  = null;   // turn nonce consumed — cannot roll twice
+
+    const maxPlayers   = (room.seats ?? []).length;
+    const playerStarts = _getPlayerStarts(maxPlayers);
+    const legalTokens  = _legalMoves(gs, seatIndex, dv);
+    const hasMoves     = legalTokens.length > 0;
 
     namespace.to(room.roomId).emit(socketEvents.server.DICE_ROLLED, {
-      seat_index: seatIndex,
-      dice_value: dv,
+      seat_index:   seatIndex,
+      dice_value:   dv,
+      legal_tokens: legalTokens,
+      has_moves:    hasMoves,
+      roll_nonce:   gs.rollNonce,   // client must echo this in MOVE_TOKEN
     });
+    _persist(room);
 
-    // Start move timer
-    room._gsTimer = setTimeout(() => _missMove(room), MOVE_TIMEOUT_MS);
+    if (!hasMoves) {
+      // No tokens can move — server auto-passes after short delay so clients
+      // can animate the dice before the turn advances.
+      _setGameTimer(room, () => {
+        const gs2 = _gameState(room);
+        if (!gs2 || gs2.over || !gs2.rolled || gs2.current !== seatIndex) return;
+        namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
+          seat_index:    seatIndex,
+          token_index:   -1,        // sentinel: no token moved (forced pass)
+          dice_value:    dv,
+          extra_turn:    false,
+          is_win:        false,
+          killed_tokens: [],
+          tokens:        gs2.tokens,
+        });
+        gs2.diceValue = null;
+        gs2.rolled    = false;
+        _advanceTurn(room);
+        _startTurn(room);
+      }, NO_MOVES_AUTO_PASS_MS);
+      return;
+    }
+
+    _setGameTimer(room, () => _missMove(room), MOVE_TIMEOUT_MS);
   }
 
-  function _botRoll(room) {
+  function _botRoll(room, capturedSeat) {
     const gs = _gameState(room);
-    if (!gs || gs.over) return;
-    _doRoll(room, gs.current);
-    // Bot picks a token after delay
-    setTimeout(() => _botMove(room), BOT_MOVE_DELAY);
+    if (!gs || gs.over || gs.current !== capturedSeat) return;
+    _doRoll(room, capturedSeat);
+    // Bot moves after its dice animation window; guard against stale turns
+    setTimeout(() => _botMove(room, capturedSeat), BOT_MOVE_DELAY);
   }
 
-  function _botMove(room) {
+  function _botMove(room, capturedSeat) {
     const gs = _gameState(room);
-    if (!gs || gs.over || gs.diceValue == null) return;
-    // Just pick token 0 for simplicity
-    _doMove(room, gs.current, 0, false, false);
+    if (!gs || gs.over || !gs.rolled || gs.diceValue == null) return;
+    if (gs.current !== capturedSeat) return;   // turn advanced already
+
+    const maxPlayers   = (room.seats ?? []).length;
+    const playerStarts = _getPlayerStarts(maxPlayers);
+    const legal        = _legalMoves(gs, capturedSeat, gs.diceValue);
+    if (legal.length === 0) return;            // auto-pass timer handles it
+
+    // Strategy: prefer tokens already on the board; otherwise take any legal token
+    const onBoard = legal.filter(ti => gs.tokens[capturedSeat][ti] >= 0);
+    const chosen  = onBoard.length > 0 ? onBoard[0] : legal[0];
+    _doMove(room, capturedSeat, chosen);
   }
 
-  function _doMove(room, seatIndex, tokenIndex, extraTurn, isWin) {
+  // Core move processor — all game-outcome computation is done here.
+  // Client-supplied extra_turn and is_win are intentionally ignored.
+  function _doMove(room, seatIndex, tokenIndex) {
     const gs = _gameState(room);
     if (!gs || gs.over) return;
     _clearGameTimer(room);
 
-    // Handle extra turn (6 rolled or capture)
-    if (extraTurn) {
-      gs.sixRun = gs.diceValue === 6 ? (gs.sixRun || 0) + 1 : 0;
-      if (gs.sixRun >= 3) {
-        // 3 sixes in a row — forfeit
-        gs.sixRun = 0;
-        extraTurn = false;
-      }
+    const dv           = gs.diceValue;
+    const maxPlayers   = (room.seats ?? []).length;
+    const playerStarts = _getPlayerStarts(maxPlayers);
+
+    // Validate: if the chosen token is illegal, restart the move timer and let
+    // the player try again (or timeout and lose the turn).
+    if (tokenIndex >= 0 && !_canMoveToken(gs.tokens[seatIndex][tokenIndex], dv)) {
+      console.warn(
+        `[LudoEngine] _doMove: illegal tokenIndex=${tokenIndex} pos=${gs.tokens[seatIndex][tokenIndex]} dv=${dv}`
+      );
+      _setGameTimer(room, () => _missMove(room), MOVE_TIMEOUT_MS);
+      return;
+    }
+
+    let extraTurn = false;
+    let isWin     = false;
+    let killed    = [];
+
+    if (tokenIndex >= 0) {
+      const result = _applyTokenMove(gs, seatIndex, tokenIndex, dv, playerStarts);
+      extraTurn = result.extraTurn;
+      isWin     = result.isWin;
+      killed    = result.killed;
     }
 
     namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
-      seat_index: seatIndex,
-      token_index: tokenIndex,
-      dice_value: gs.diceValue,
-      extra_turn: extraTurn,
-      is_win: isWin,
+      seat_index:    seatIndex,
+      token_index:   tokenIndex,    // -1 = pass (caller-supplied for no-move path)
+      dice_value:    dv,
+      extra_turn:    extraTurn,     // server-computed, not client-supplied
+      is_win:        isWin,         // server-computed, not client-supplied
+      killed_tokens: killed,        // [{seat_index, token_index}] — opponents sent home
+      tokens:        gs.tokens,     // full authoritative snapshot for client reconciliation
     });
 
     if (isWin) {
       gs.finished.add(seatIndex);
-      if (gs.finished.size >= (room.seats ?? []).length - 1) {
+      const remaining = gs.active.filter(i => !gs.finished.has(i));
+      // Game ends when only one (or zero) active players remain unfinished
+      if (remaining.length <= 1) {
+        remaining.forEach(i => gs.finished.add(i));
         gs.over = true;
+        _persist(room);
+        _autoSettle(room).catch(err =>
+          console.error('[LudoEngine] _autoSettle error:', err.message)
+        );
         return;
       }
     }
@@ -755,28 +1094,211 @@ module.exports = function (namespace) {
       _advanceTurn(room);
     } else {
       gs.diceValue = null;
-      gs.rolled = false;
+      gs.rolled    = false;
     }
 
     _startTurn(room);
   }
 
-  function startServerDrivenGame(room) {
-    if (!_allHumanRoom(room)) return;
+  // Build finish-order placements and run settlement without a client socket.
+  async function _autoSettle(room) {
+    const gs    = _gameState(room);
     const seats = room.seats ?? [];
+    if (!gs) return;
+
+    const finishedArr = [...gs.finished];               // ordered by insertion
+    const allSeats    = seats.map((_, i) => i);
+    const notFinished = allSeats.filter(i => !gs.finished.has(i));
+    const ranked      = [...finishedArr, ...notFinished];
+
+    const placements = ranked.map((si, rank) => ({
+      seat_no:         seats[si]?.seatNo   ?? si + 1,
+      user_id:         seats[si]?.userId   ?? null,
+      finish_position: rank + 1,
+      score:           rank === 0 ? 100 : 0,
+      is_winner:       rank === 0,
+      result:          rank === 0 ? 'win' : 'loss',
+    }));
+
+    const winnerSeat = seats[finishedArr[0]];
+    const winner     = winnerSeat
+      ? { seat_no: winnerSeat.seatNo, user_id: winnerSeat.userId ?? null }
+      : null;
+
+    await _serverCompleteMatch(room, winner, placements);
+  }
+
+  // Server-initiated settlement (no originating socket).
+  async function _serverCompleteMatch(room, winner, placements) {
+    if (!room) return;
+    clearRoomTimer(room.roomId);
+    clearRoomStartRetryTimer(room.roomId);
+
+    if (room.settlementPromise) {
+      await room.settlementPromise;
+      return;
+    }
+
+    // Distributed settlement lock — only one node runs settlement per room.
+    // 'won'    → proceed.  'locked' → another node is settling, skip silently.
+    // 'error'  → Redis unavailable; retry up to 3 times before aborting.
+    let lockResult = await cluster.acquireSettleLock(room.roomId);
+    if (lockResult === 'error') {
+      for (let attempt = 1; attempt <= 3 && lockResult === 'error'; attempt++) {
+        await new Promise(r => setTimeout(r, 500 * attempt));
+        lockResult = await cluster.acquireSettleLock(room.roomId);
+      }
+    }
+    if (lockResult !== 'won') {
+      if (lockResult === 'locked') {
+        console.log(`[LudoCluster] settlement lock held by another node for room ${room.roomId} — skipping`);
+      } else {
+        console.error(`[LudoCluster] could not acquire settlement lock for room ${room.roomId} after retries — settlement aborted`);
+      }
+      return;
+    }
+
+    room.settlementPromise = (async () => {
+      room.state = roomStates.SETTLEMENT_PENDING;
+      emitSnapshot(room);
+
+      const resultPayload = {
+        cancelled: false,
+        winner,
+        placements,
+        result_payload: {
+          room_id:      room.roomId,
+          node_room_id: room.roomId,
+          seats:        toSeatPayload(room),
+          winner,
+          placements,
+          cancelled:    false,
+        },
+      };
+
+      let settledMatch = null;
+
+      if (room.mode === 'tournament' || room.playMode === 'tournament') {
+        try {
+          const seatResults = placements.map(p => ({
+            seat_no:    p.seat_no,
+            final_rank: p.finish_position,
+            score:      p.score ?? 0,
+          }));
+          const rankings = tournamentLudoRoomService.buildRankingsFromSeatResults(
+            serializeRoom(room), seatResults
+          );
+          settledMatch = await runSettlementSync(() =>
+            tournamentLudoLaravelSyncService.completeTournamentRoom(room.roomId, rankings)
+          );
+
+          if (room.tournamentMatchId) {
+            const resultsList = tournamentMatchResultService.buildResultsFromSeatState(
+              serializeRoom(room),
+              placements.map(p => ({
+                seatNo:         p.seat_no,
+                userId:         p.user_id ?? null,
+                score:          p.score   ?? 0,
+                finishPosition: p.finish_position,
+                result:         p.result ?? (p.finish_position === 1 ? 'win' : 'loss'),
+              }))
+            );
+            await runSettlementSync(() =>
+              tournamentMatchResultService.postResult({
+                matchId:   room.tournamentMatchId,
+                roomId:    room.roomId,
+                startedAt: room.startedAt ?? new Date(),
+                endedAt:   new Date(),
+                results:   resultsList,
+                gameLog:   null,
+              })
+            ).catch(err => {
+              console.error(
+                `[TournamentMatchResult] Failed to post result for match ${room.tournamentMatchId}:`,
+                err.message
+              );
+            });
+          }
+        } catch (err) {
+          console.error('[_serverCompleteMatch] Tournament settlement error:', err.message);
+        }
+      } else if (laravelSync.isEnabled() && room.matchUuid) {
+        try {
+          settledMatch = await runSettlementSync(() =>
+            laravelSync.notifyMatchCompleted(room.matchUuid, resultPayload)
+          );
+        } catch (err) {
+          console.error('[_serverCompleteMatch] Cash game settlement error:', err.message);
+        }
+      }
+
+      room.state       = roomStates.COMPLETED;
+      room.completedAt = new Date().toISOString();
+
+      namespace.to(room.roomId).emit(socketEvents.server.RESULT, {
+        room_id:    room.roomId,
+        match_uuid: room.matchUuid ?? settledMatch?.match_uuid ?? null,
+        cancelled:  false,
+        winner,
+        placements,
+        settlement: settledMatch ?? null,
+      });
+
+      emitSnapshot(room);
+      // Room is fully settled — release cluster resources and purge from Redis
+      cluster.releaseOwnership(room.roomId).catch(() => {});
+      cluster.releaseSettleLock(room.roomId).catch(() => {});
+      persistence.deleteRoom(room.roomId).catch(() => {});
+    })();
+
+    try {
+      await room.settlementPromise;
+    } finally {
+      room.settlementPromise = null;
+    }
+  }
+
+  async function startServerDrivenGame(room) {
+    if (!_allHumanRoom(room)) return;
+
+    // Ownership MUST be confirmed before initialising any state or arming timers.
+    // If two nodes both receive the last-player-join event, only the winner of
+    // the atomic SET NX proceeds; the loser returns here without touching _gs.
+    const owned = await cluster.claimOwnership(room.roomId).catch(() => false);
+    if (!owned) {
+      console.log(`[LudoCluster] another node owns room ${room.roomId} — skipping game start`);
+      return;
+    }
+
+    const seats      = room.seats ?? [];
+    const maxPlayers = seats.length;
+
     room._gs = {
-      active:    seats.map((_, i) => i),
-      finished:  new Set(),
-      current:   0,
-      diceValue: null,
-      rolled:    false,
-      sixRun:    0,
-      over:      false,
+      active:       seats.map((_, i) => i),
+      finished:     new Set(),
+      current:      0,
+      diceValue:    null,
+      rolled:       false,
+      sixRun:       0,
+      over:         false,
+      tokens:       Array.from({ length: seats.length }, () =>
+                      Array(TOKENS_PER_PLAYER).fill(-1)),
+      playerStarts: _getPlayerStarts(maxPlayers),
+      // Anti-cheat nonce chain: turn → roll → move
+      // Each step issues a new nonce; the next step must echo it.
+      turnNonce:    null,   // set in _startTurn; client must include in ROLL_DICE
+      rollNonce:    null,   // set in _doRoll;   client must include in MOVE_TOKEN
     };
     room._gsTimer = null;
-    // Give clients 5.5s to load the board before first turn fires
+
+    // Persist initial game state before first turn fires
+    _persist(room);
+
+    // Give clients 5.5 s to load the board before the first turn fires
     setTimeout(() => _startTurn(room), 5500);
-    console.log(`[LudoEngine] started server-driven game roomId=${room.roomId} seats=${seats.length}`);
+    console.log(
+      `[LudoEngine] started server-driven game roomId=${room.roomId} seats=${maxPlayers}`
+    );
   }
 
   // ── End server-driven game engine ──────────────────────────────────────────
@@ -790,7 +1312,7 @@ module.exports = function (namespace) {
       return room.startPromise;
     }
 
-    if (room.state === roomStates.STARTING || room.state === roomStates.PLAYING || room.state === roomStates.COMPLETED) {
+    if (room.state === roomStates.STARTING || room.state === roomStates.IN_PROGRESS || room.state === roomStates.COMPLETED) {
       return true;
     }
 
@@ -824,7 +1346,7 @@ module.exports = function (namespace) {
       }
 
       room.startRetryCount = 0;
-      room.state = roomStates.PLAYING;
+      room.state = roomStates.IN_PROGRESS;
       room.startedAt = new Date();
       namespace.to(room.roomId).emit(socketEvents.server.STARTING, {
         room_id: room.roomId,
@@ -1141,6 +1663,7 @@ module.exports = function (namespace) {
     socket.data.seatNo = seat.seatNo;
     socket.data.playerType = seat.playerType;
     socket.data.displayName = seat.displayName;
+    _persist(room);
 
     namespace.to(room.roomId).emit(socketEvents.server.PLAYER_JOINED, {
       room_id: room.roomId,
@@ -1210,22 +1733,33 @@ module.exports = function (namespace) {
       return;
     }
 
-    room.seats = room.seats.filter((seat) => {
-      if (socketTournamentEntryUuid) {
-        const seatTournamentEntryUuid =
-          seat?.tournamentEntryUuid ??
-          seat?.meta?.tournament_entry_uuid ??
-          seat?.meta?.tournamentEntryUuid ??
-          null;
+    // If a game is in progress, keep the seat but mark it disconnected so the
+    // player can reconnect.  Only remove the seat if no game has started yet.
+    const gameInProgress = !!_gameState(room);
+    let removed = 0;
 
-        return String(seatTournamentEntryUuid ?? "") !== String(socketTournamentEntryUuid);
-      }
+    if (gameInProgress) {
+      room.seats = room.seats.map((seat) => {
+        if (String(seat.userId ?? '') !== String(socket.data.userId ?? '')) return seat;
+        removed++;
+        return { ...seat, isConnected: false };
+      });
+    } else {
+      room.seats = room.seats.filter((seat) => {
+        if (socketTournamentEntryUuid) {
+          const seatTournamentEntryUuid =
+            seat?.tournamentEntryUuid ??
+            seat?.meta?.tournament_entry_uuid ??
+            seat?.meta?.tournamentEntryUuid ??
+            null;
+          return String(seatTournamentEntryUuid ?? "") !== String(socketTournamentEntryUuid);
+        }
+        return String(seat.userId ?? "") !== String(socket.data.userId ?? "");
+      });
+      removed = before - room.seats.length;
+    }
 
-      return String(seat.userId ?? "") !== String(socket.data.userId ?? "");
-    });
-    const removed = before - room.seats.length;
-
-    if (removed > 0) {
+    if (removed > 0 && !gameInProgress) {
       room.realPlayers = Math.max(0, room.realPlayers - removed);
       room.currentPlayers = Math.max(0, room.currentPlayers - removed);
     }
@@ -1234,12 +1768,15 @@ module.exports = function (namespace) {
     socket.data.roomId = null;
     socket.data.tournamentEntryUuid = null;
 
-    if (room.currentPlayers === 0) {
+    if (room.currentPlayers === 0 && !gameInProgress) {
       clearRoomTimer(roomId);
       rooms.delete(roomId);
+      persistence.deleteRoom(roomId).catch(() => {});
+      cluster.releaseOwnership(roomId).catch(() => {});
       return;
     }
 
+    _persist(room);
     emitSnapshot(room);
   }
 
@@ -1253,6 +1790,15 @@ module.exports = function (namespace) {
     }
 
     const room = rooms.get(roomId);
+
+    // Verify socket is a participant in this room before touching settlement
+    const settlingSeat = _seatForSocket(room, socket, socket.data?.userId);
+    if (!settlingSeat) {
+      _acViolation(socket, 'complete_match:not_in_room', { roomId });
+      socket.emit(socketEvents.server.ERROR, { message: 'Not a participant in this room.' });
+      return;
+    }
+
     clearRoomTimer(room.roomId);
     clearRoomStartRetryTimer(room.roomId);
 
@@ -1261,11 +1807,27 @@ module.exports = function (namespace) {
       return;
     }
 
+    // Block ALL client-initiated settlement when a server-driven engine exists.
+    // This closes the race window between gs.over=true and settlementPromise being set —
+    // a malicious client cannot race in with forged placements in that tick.
+    if (room._gs) {
+      socket.emit(socketEvents.server.ERROR, { message: 'Settlement is handled automatically by the server.' });
+      return;
+    }
+
     room.settlementPromise = (async () => {
       room.state = cancelled ? roomStates.CANCELLED : roomStates.SETTLEMENT_PENDING;
       emitSnapshot(room);
 
-      const placements = Array.isArray(payload.placements) ? payload.placements : [];
+      // Validate that every placement references a real seat in this room
+      const rawPlacements = Array.isArray(payload.placements) ? payload.placements : [];
+      const validSeatNos  = new Set((room.seats ?? []).map(s => Number(s.seatNo)));
+      const invalidSeats  = rawPlacements.filter(p => p && !validSeatNos.has(Number(p.seat_no)));
+      if (invalidSeats.length > 0) {
+        _acViolation(socket, 'complete_match:invalid_placements', { invalidSeats });
+        return;  // exits the async IIFE; settlementPromise stays set but resolves without action
+      }
+      const placements = rawPlacements;
       const resultPayload = {
         cancelled,
         winner: payload.winner ?? null,
@@ -1428,59 +1990,147 @@ module.exports = function (namespace) {
       handleChatEmoji(socket, payload);
     });
 
-    socket.on(socketEvents.client.RECONNECT, (payload = {}) => {
+    socket.on(socketEvents.client.RECONNECT, async (payload = {}) => {
       payload = normalizePayload(payload);
       const roomId = payload.roomId ?? payload.room_id;
-      const room = roomId ? rooms.get(roomId) : null;
+      let room = roomId ? rooms.get(roomId) : null;
+
+      // ── Crash-recovery path ──────────────────────────────────────────────
+      // If the room is not in memory (server restarted), try to restore it
+      // from Redis so the player can resume the game.
+      if (!room && roomId) {
+        const saved = await persistence.loadRoom(roomId).catch(() => null);
+        if (saved) {
+          room = Object.assign({}, saved.meta);
+          room._gs      = saved.gs ?? null;
+          room._gsTimer = null;
+          room._gsTimerExpiresAt = null;
+          rooms.set(room.roomId, room);
+          // Re-arm the game timer using the persisted remaining time
+          if (room._gs && !room._gs.over && saved.timerRemainingMs !== null) {
+            const remainMs = Math.max(200, saved.timerRemainingMs);
+            const gs = room._gs;
+            if (gs.rolled && gs.diceValue != null) {
+              // Was mid-move: re-arm miss-move timer
+              _setGameTimer(room, () => _missMove(room), remainMs);
+            } else {
+              // Was waiting for roll: re-arm miss-roll timer
+              _setGameTimer(room, () => _missRoll(room), remainMs);
+            }
+          }
+          console.log(`[LudoRedis] recovered room ${roomId} from Redis after restart`);
+        }
+      }
 
       if (!room) {
-        socket.emit(socketEvents.server.ERROR, {
-          message: "Room not found.",
-        });
+        socket.emit(socketEvents.server.ERROR, { message: "Room not found." });
         return;
       }
 
+      // Verify the reconnecting user actually belongs to a seat in this room
+      const claimedUid = payload.user_id ?? payload.userId ?? socket.data.userId;
+      const seat = claimedUid
+        ? (room.seats ?? []).find(s => s && String(s.userId ?? s.user_id ?? '') === String(claimedUid))
+        : null;
+      if (!seat) {
+        _acViolation(socket, 'reconnect:not_in_room', { roomId, claimedUid });
+        socket.emit(socketEvents.server.ERROR, { message: "Not a participant in this room." });
+        return;
+      }
+
+      // Mark seat as reconnected
+      seat.isConnected = true;
+      _persist(room);
+
+      // Bind identity so subsequent event handlers can verify it
+      socket.data.userId = String(claimedUid);
       socket.join(room.roomId);
       socket.data.roomId = room.roomId;
       syncSocketSeatContext(socket, room);
       loadRoomChatHistory(socket, room).catch(() => {});
       emitSnapshot(room);
+
+      // If a server-driven game is in progress, send full board state for reconciliation
+      const gs = _gameState(room);
+      if (gs && !gs.over) {
+        const timerRemainingMs = room._gsTimerExpiresAt
+          ? Math.max(0, room._gsTimerExpiresAt - Date.now())
+          : null;
+        socket.emit(socketEvents.server.GAME_STATE, {
+          room_id:            room.roomId,
+          tokens:             gs.tokens,
+          current_seat:       gs.current,
+          dice_value:         gs.diceValue ?? null,
+          rolled:             gs.rolled ?? false,
+          finished_seats:     [...gs.finished],
+          timer_remaining_ms: timerRemainingMs,
+          // Nonce chain restored so the reconnected player can act immediately
+          turn_nonce: !gs.rolled ? gs.turnNonce : null,
+          roll_nonce: gs.rolled  ? gs.rollNonce : null,
+        });
+      }
     });
 
     socket.on(socketEvents.client.COMPLETE_MATCH, async (payload = {}) => {
       payload = normalizePayload(payload);
+      if (!_acCheckRate(socket, 'complete_match')) return;
+      if (!_acValidateIdentity(socket, payload.user_id ?? payload.userId)) return;
       await completeMatch(socket, payload, false);
     });
 
     socket.on("ludo.tournament.match_complete", async (payload = {}) => {
       payload = normalizePayload(payload);
+      if (!_acCheckRate(socket, 'complete_match')) return;
+      if (!_acValidateIdentity(socket, payload.user_id ?? payload.userId)) return;
       await completeMatch(socket, payload, false);
     });
 
     socket.on(socketEvents.client.CANCEL_MATCH, async (payload = {}) => {
       payload = normalizePayload(payload);
+      if (!_acCheckRate(socket, 'cancel_match')) return;
+      if (!_acValidateIdentity(socket, payload.user_id ?? payload.userId)) return;
       await completeMatch(socket, payload, true);
     });
 
     socket.on(socketEvents.client.ROLL_DICE, (payload = {}) => {
       payload = normalizePayload(payload);
+
+      // ── Anti-cheat gate ──────────────────────────────────────────────────
+      if (!_acCheckRate(socket, 'roll_dice')) return;
+      const claimedUserId = payload.user_id ?? payload.userId;
+      if (!_acValidateIdentity(socket, claimedUserId)) return;
+
       const roomId = payload.room_id ?? payload.roomId ?? socket.data.roomId;
+      if (!_acValidateRoom(socket, roomId)) return;
+
       const room   = roomId ? rooms.get(roomId) : null;
       const gs     = room ? _gameState(room) : null;
       if (!gs || gs.over) return;
 
-      const seat = _seatForSocket(room, socket, payload.user_id ?? payload.userId);
+      const seat = _seatForSocket(room, socket, claimedUserId);
       if (!seat) {
-        console.warn(`[LudoEngine] ROLL_DICE: unknown seat userId=${socket.data.userId}`);
+        _acViolation(socket, 'roll_dice:unknown_seat', { claimedUserId });
         return;
       }
       const seatIndex = (seat.seatNo ?? 1) - 1;
       if (seatIndex !== gs.current) {
-        console.warn(`[LudoEngine] ROLL_DICE: not your turn seat=${seatIndex} current=${gs.current}`);
+        _acViolation(socket, 'roll_dice:wrong_turn', { seat: seatIndex, current: gs.current });
         return;
       }
       if (gs.rolled) {
-        console.warn(`[LudoEngine] ROLL_DICE: already rolled this turn`);
+        _acViolation(socket, 'roll_dice:duplicate', { seatIndex });
+        return;
+      }
+      if (!_acValidateTurnNonce(socket, gs, payload.turn_nonce ?? payload.turnNonce)) return;
+      // ── End anti-cheat gate ───────────────────────────────────────────────
+
+      if (!cluster.isOwner(roomId)) {
+        // Forward to the owner node via pub/sub; owner re-validates and executes
+        cluster.publishCommand(roomId, 'roll_dice', {
+          userId:     String(claimedUserId),
+          seatIndex,
+          turnNonce:  payload.turn_nonce ?? payload.turnNonce,
+        }).catch(() => {});
         return;
       }
       _doRoll(room, seatIndex);
@@ -1488,33 +2138,128 @@ module.exports = function (namespace) {
 
     socket.on(socketEvents.client.MOVE_TOKEN, (payload = {}) => {
       payload = normalizePayload(payload);
-      const roomId    = payload.room_id ?? payload.roomId ?? socket.data.roomId;
-      const room      = roomId ? rooms.get(roomId) : null;
-      const gs        = room ? _gameState(room) : null;
+
+      // ── Anti-cheat gate ──────────────────────────────────────────────────
+      if (!_acCheckRate(socket, 'move_token')) return;
+      const claimedUserId = payload.user_id ?? payload.userId;
+      if (!_acValidateIdentity(socket, claimedUserId)) return;
+
+      const roomId = payload.room_id ?? payload.roomId ?? socket.data.roomId;
+      if (!_acValidateRoom(socket, roomId)) return;
+
+      const room   = roomId ? rooms.get(roomId) : null;
+      const gs     = room ? _gameState(room) : null;
       if (!gs || gs.over) return;
 
-      const seat = _seatForSocket(room, socket, payload.user_id ?? payload.userId);
+      const seat = _seatForSocket(room, socket, claimedUserId);
       if (!seat) {
-        console.warn(`[LudoEngine] MOVE_TOKEN: unknown seat userId=${socket.data.userId}`);
+        _acViolation(socket, 'move_token:unknown_seat', { claimedUserId });
         return;
       }
       const seatIndex = (seat.seatNo ?? 1) - 1;
       if (seatIndex !== gs.current) {
-        console.warn(`[LudoEngine] MOVE_TOKEN: not your turn seat=${seatIndex} current=${gs.current}`);
+        _acViolation(socket, 'move_token:wrong_turn', { seat: seatIndex, current: gs.current });
         return;
       }
       if (!gs.rolled || gs.diceValue == null) {
-        console.warn(`[LudoEngine] MOVE_TOKEN: dice not rolled yet`);
+        _acViolation(socket, 'move_token:no_roll', { seatIndex });
         return;
       }
+      if (!_acValidateRollNonce(socket, gs, payload.roll_nonce ?? payload.rollNonce)) return;
+
       const tokenIndex = payload.token_index ?? payload.tokenIndex ?? 0;
-      const extraTurn  = !!(payload.extra_turn ?? payload.extraTurn ?? false);
-      const isWin      = !!(payload.is_win ?? payload.isWin ?? false);
-      _doMove(room, seatIndex, tokenIndex, extraTurn, isWin);
+      if (typeof tokenIndex !== 'number' || tokenIndex < 0 || tokenIndex >= TOKENS_PER_PLAYER) {
+        _acViolation(socket, 'move_token:bad_token_index', { tokenIndex });
+        return;
+      }
+      // extra_turn and is_win from client are intentionally ignored — server computes them
+      // ── End anti-cheat gate ───────────────────────────────────────────────
+
+      if (!cluster.isOwner(roomId)) {
+        cluster.publishCommand(roomId, 'move_token', {
+          userId:     String(claimedUserId),
+          seatIndex,
+          tokenIndex,
+          rollNonce:  payload.roll_nonce ?? payload.rollNonce,
+        }).catch(() => {});
+        return;
+      }
+      _doMove(room, seatIndex, tokenIndex);
     });
 
     socket.on("disconnect", () => {
       leaveRoom(socket);
     });
+  });
+
+  // ── Startup recovery ──────────────────────────────────────────────────────
+  // Restore all active rooms from Redis after a server restart.
+  // Timers are re-armed with the remaining time that was persisted.
+  // Sockets are not yet connected so we cannot re-join rooms here — that
+  // happens on the first reconnect from each player (handled above).
+  persistence.loadAllRooms().then(async saved => {
+    if (!saved.length) return;
+    let recovered = 0;
+    for (const { meta, gs, timerRemainingMs } of saved) {
+      if (rooms.has(meta.roomId)) continue;   // already in memory
+      const room = Object.assign({}, meta);
+      room._gs      = gs ?? null;
+      room._gsTimer = null;
+      room._gsTimerExpiresAt = null;
+      rooms.set(room.roomId, room);
+
+      // Attempt atomic ownership claim (SET NX EX).
+      // If another live node already owns this room do NOT steal it — restore
+      // the room into memory for reconnect serving but skip timer arming.
+      const owned = await cluster.claimOwnership(room.roomId).catch(() => false);
+
+      // Re-arm game timer only when we won ownership
+      if (owned && room._gs && !room._gs.over && timerRemainingMs !== null) {
+        const remainMs = Math.max(200, timerRemainingMs);
+        if (gs.rolled && gs.diceValue != null) {
+          _setGameTimer(room, () => _missMove(room), remainMs);
+        } else {
+          _setGameTimer(room, () => _missRoll(room), remainMs);
+        }
+      }
+      recovered++;
+    }
+    if (recovered > 0) {
+      console.log(`[LudoRedis] recovered ${recovered} room(s) from Redis on startup`);
+    }
+  }).catch(err => {
+    console.error('[LudoRedis] startup recovery error:', err.message);
+  });
+
+  // ── Cluster command receiver (owner node processes forwarded actions) ─────
+  // Non-owner nodes publish roll_dice / move_token commands; this node
+  // executes them if it is the owner for that room.
+  cluster.onCommand(({ roomId, cmd, payload }) => {
+    if (!cluster.isOwner(roomId)) return;
+    const room = rooms.get(roomId);
+    if (!room) return;
+    const { seatIndex } = payload;
+    if (cmd === 'roll_dice') {
+      _doRoll(room, seatIndex);
+    } else if (cmd === 'move_token') {
+      _doMove(room, seatIndex, payload.tokenIndex);
+    }
+  });
+
+  // ── Cluster state-update receiver (non-owner nodes refresh from Redis) ───
+  // When the owner persists a state change it publishes a sync notification.
+  // Non-owner nodes update their in-memory copy so reconnecting players on
+  // those nodes get a fresh snapshot.
+  cluster.onStateUpdate(async ({ roomId }) => {
+    if (cluster.isOwner(roomId)) return;   // owner already has latest state
+    const saved = await persistence.loadRoom(roomId).catch(() => null);
+    if (!saved) return;
+    const existing = rooms.get(roomId);
+    if (!existing) return;   // room not in this node's memory — nothing to refresh
+    Object.assign(existing, saved.meta);
+    if (saved.gs) {
+      existing._gs = saved.gs;
+      existing._gsTimerExpiresAt = saved.gs.timerExpiresAt ?? null;
+    }
   });
 };

@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using Best.HTTP;
@@ -35,6 +36,13 @@ namespace LudoClassicOffline
         private string privateTableCode;
         private bool isClaimingNextTournamentRound;
         private bool isServerDrivenGameMode;
+        private bool isReconnecting;
+        private const float ReconnectRetryDelay = 2f;
+        private const int   MaxReconnectAttempts = 5;
+        private int         reconnectAttempts;
+        // Anti-cheat nonce chain — echoed back to server to prevent replay attacks
+        private string currentTurnNonce;
+        private string currentRollNonce;
         public bool IsServerDrivenGameMode => isServerDrivenGameMode;
         // Server seat index of the local player (0-based). Used for ego-view remapping.
         private int localSeatOffset;
@@ -340,6 +348,7 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2DiceRolled>("ludo.game.dice_rolled", OnDiceRolled);
             namespaceSocket.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
             namespaceSocket.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
+            namespaceSocket.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
         }
 
         private void ConnectTournamentSocket()
@@ -361,6 +370,11 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2MatchResult>("ludo.game.result", OnMatchResult);
             namespaceSocket.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
             namespaceSocket.On<LudoV2ErrorPayload>("ludo.tournament.room_claim_failed", OnSocketPayloadError);
+            namespaceSocket.On<LudoV2TurnStarted>("ludo.game.turn_started", OnTurnStarted);
+            namespaceSocket.On<LudoV2DiceRolled>("ludo.game.dice_rolled", OnDiceRolled);
+            namespaceSocket.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
+            namespaceSocket.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
+            namespaceSocket.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
         }
 
         private SocketOptions BuildSocketOptions()
@@ -453,7 +467,7 @@ namespace LudoClassicOffline
 
         private void BootstrapExistingOfflineFlow(LudoV2RoomStarting payload)
         {
-            int maxPlayers = payload.seats != null && payload.seats.Count >= 4 ? 4 : 2;
+            int maxPlayers = payload.seats != null ? Mathf.Clamp(payload.seats.Count, 2, 4) : 2;
             string roomId = string.IsNullOrWhiteSpace(payload.room_id) ? queuedRoom?.data?.room_uuid : payload.room_id;
 
             latestSnapshot = new LudoV2RoomSnapshot
@@ -859,6 +873,12 @@ namespace LudoClassicOffline
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             Debug.Log($"[LudoV2] turn_started serverSeat={payload.seat_index} visualSeat={visualSeat} localOffset={localSeatOffset}");
+            // Capture nonce only for local player's turn (no nonce needed for opponent turns)
+            if (payload.seat_index == localSeatOffset)
+            {
+                currentTurnNonce = payload.turn_nonce;
+                currentRollNonce = null;
+            }
             RunOnMainThread(() =>
             {
                 socketNumberEventReceiver?.OnServerTurnStarted(visualSeat);
@@ -871,6 +891,12 @@ namespace LudoClassicOffline
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             Debug.Log($"[LudoV2] dice_rolled serverSeat={payload.seat_index} visualSeat={visualSeat} dice={payload.dice_value}");
+            // Capture roll nonce for the local player's move
+            if (payload.seat_index == localSeatOffset)
+            {
+                currentRollNonce = payload.roll_nonce;
+                currentTurnNonce = null;  // turn nonce consumed after dice rolled
+            }
             RunOnMainThread(() =>
             {
                 socketNumberEventReceiver?.OnServerDiceRolled(visualSeat, payload.dice_value);
@@ -880,15 +906,67 @@ namespace LudoClassicOffline
         private void OnTokenMoved(LudoV2TokenMoved payload)
         {
             if (!isServerDrivenGameMode || payload == null) return;
-            // Skip our own move — server seat matches local offset
-            if (payload.seat_index == localSeatOffset) return;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
-            Debug.Log($"[LudoV2] token_moved serverSeat={payload.seat_index} visualSeat={visualSeat} token={payload.token_index}");
-            RunOnMainThread(() =>
+            bool isLocalPlayer = payload.seat_index == localSeatOffset;
+            Debug.Log($"[LudoV2] token_moved serverSeat={payload.seat_index} visualSeat={visualSeat} token={payload.token_index} isWin={payload.is_win} isLocal={isLocalPlayer}");
+
+            // Drive the mover's animation for both local and opponent tokens.
+            // The local player's token also needs to animate — the server confirms the move
+            // but doesn't skip the visual. Skipping caused permanent visual desync (E-9).
+            if (payload.token_index >= 0)
             {
-                socketNumberEventReceiver?.OnServerTokenMoved(visualSeat, payload.token_index, payload.dice_value, payload.extra_turn);
-            });
+                RunOnMainThread(() =>
+                    socketNumberEventReceiver?.OnServerTokenMoved(
+                        visualSeat, payload.token_index, payload.dice_value, payload.extra_turn)
+                );
+            }
+
+            // Teleport any killed tokens back to yard using the authoritative position snapshot.
+            // Using dice_value=0 was wrong (E-10) — it leaves the token on the board visually.
+            // Instead, use payload.tokens which already has the killed token at position -1.
+            if (payload.killed_tokens != null && payload.tokens != null)
+            {
+                foreach (var kt in payload.killed_tokens)
+                {
+                    if (kt == null) continue;
+                    int killedServerSeat  = kt.seat_index;
+                    int killedVisualSeat  = ToVisualSeat(killedServerSeat, maxP);
+                    int killedTokenIdx    = kt.token_index;
+                    // Authoritative position is -1 (yard); teleport directly via board sync helper
+                    RunOnMainThread(() =>
+                        TeleportTokenToPosition(killedVisualSeat, killedTokenIdx, -1)
+                    );
+                }
+            }
+
+            // Handle server-confirmed win for any player
+            if (payload.is_win)
+            {
+                bool localWon = isLocalPlayer;
+                RunOnMainThread(() => HandleServerBattleFinish(localWon));
+            }
+        }
+
+        private void HandleServerBattleFinish(bool localPlayerWon)
+        {
+            if (socketNumberEventReceiver?.ludoNumberGsNew == null) return;
+            socketNumberEventReceiver.ludoNumberGsNew.BattleFinishFromServer(localPlayerWon);
+        }
+
+        // Teleports a single token to an authoritative board position without animation.
+        // position == -1 returns the token to the yard (killed or reset).
+        private void TeleportTokenToPosition(int visualSeat, int tokenIndex, int position)
+        {
+            var gsNew = socketNumberEventReceiver?.ludoNumberGsNew;
+            if (gsNew == null) return;
+            if (visualSeat < 0 || visualSeat >= gsNew.ludoNumberPlayerControl.Length) return;
+            var cmList = gsNew.ludoNumberPlayerControl[visualSeat]?.coockieMovementList;
+            if (cmList == null || tokenIndex < 0 || tokenIndex >= cmList.Count) return;
+            var cm = cmList[tokenIndex];
+            if (cm == null) return;
+            cm.myLastBoxIndex = position;
+            cm.TokenMoveOnRejoin();
         }
 
         private void OnTurnMissed(LudoV2TurnMissed payload)
@@ -906,33 +984,30 @@ namespace LudoClassicOffline
         {
             if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
             string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
-            Debug.Log($"[LudoV2] TryRollDice roomId={roomId} localUserId={Configuration.GetId()} localSeatOffset={localSeatOffset}");
-            namespaceSocket.Emit(
-                "ludo.game.roll_dice",
-                JsonConvert.SerializeObject(new Dictionary<string, object>
-                {
-                    { "room_id", roomId },
-                    { "user_id", int.Parse(Configuration.GetId()) },
-                })
-            );
+            Debug.Log($"[LudoV2] TryRollDice roomId={roomId} nonce={currentTurnNonce}");
+            var payload = new Dictionary<string, object>
+            {
+                { "room_id",    roomId },
+                { "user_id",    int.Parse(Configuration.GetId()) },
+                { "turn_nonce", currentTurnNonce ?? string.Empty },
+            };
+            namespaceSocket.Emit("ludo.game.roll_dice", JsonConvert.SerializeObject(payload));
         }
 
         public void TryMoveToken(int tokenIndex, bool extraTurn, bool isWin)
         {
             if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
             string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
-            Debug.Log($"[LudoV2] TryMoveToken tokenIndex={tokenIndex} extraTurn={extraTurn} isWin={isWin} roomId={roomId}");
-            namespaceSocket.Emit(
-                "ludo.game.move_token",
-                JsonConvert.SerializeObject(new Dictionary<string, object>
-                {
-                    { "room_id",     roomId },
-                    { "token_index", tokenIndex },
-                    { "extra_turn",  extraTurn },
-                    { "is_win",      isWin },
-                    { "user_id",     int.Parse(Configuration.GetId()) },
-                })
-            );
+            Debug.Log($"[LudoV2] TryMoveToken tokenIndex={tokenIndex} nonce={currentRollNonce}");
+            var payload = new Dictionary<string, object>
+            {
+                { "room_id",     roomId },
+                { "token_index", tokenIndex },
+                { "user_id",     int.Parse(Configuration.GetId()) },
+                { "roll_nonce",  currentRollNonce ?? string.Empty },
+                // extra_turn and is_win intentionally omitted — server computes them
+            };
+            namespaceSocket.Emit("ludo.game.move_token", JsonConvert.SerializeObject(payload));
         }
 
         private void OnSocketPayloadError(LudoV2ErrorPayload payload)
@@ -951,10 +1026,17 @@ namespace LudoClassicOffline
 
         private void OnMatchResult(LudoV2MatchResult payload)
         {
-            if (!isTournamentMode || payload == null)
+            if (payload == null) return;
+
+            // For server-driven mode: show win/lose panel from server result
+            if (isServerDrivenGameMode && !isTournamentMode)
             {
+                bool localWon = IsLocalWinner(payload);
+                RunOnMainThread(() => HandleServerBattleFinish(localWon));
                 return;
             }
+
+            if (!isTournamentMode) return;
 
             bool tournamentStillRunning = string.Equals(
                 payload.settlement?.data?.status,
@@ -962,15 +1044,8 @@ namespace LudoClassicOffline
                 StringComparison.OrdinalIgnoreCase
             );
 
-            if (!tournamentStillRunning)
-            {
-                return;
-            }
-
-            if (!IsLocalWinner(payload) || isClaimingNextTournamentRound)
-            {
-                return;
-            }
+            if (!tournamentStillRunning) return;
+            if (!IsLocalWinner(payload) || isClaimingNextTournamentRound) return;
 
             isClaimingNextTournamentRound = true;
             hasStartedMatch = false;
@@ -1006,8 +1081,13 @@ namespace LudoClassicOffline
 
         private void OnSocketDisconnected()
         {
-            if (isIntentionalDisconnect)
+            if (isIntentionalDisconnect) return;
+
+            if (hasStartedMatch && isServerDrivenGameMode && !isReconnecting)
             {
+                reconnectAttempts = 0;
+                isReconnecting = true;
+                StartCoroutine(ReconnectCoroutine());
                 return;
             }
 
@@ -1015,6 +1095,132 @@ namespace LudoClassicOffline
             {
                 FailMatchmaking("Ludo room disconnected");
             }
+        }
+
+        private IEnumerator ReconnectCoroutine()
+        {
+            string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
+            string socketUrl = Configuration.BaseSocketUrl.TrimEnd('/') + "/socket.io/";
+
+            while (isReconnecting && reconnectAttempts < MaxReconnectAttempts)
+            {
+                reconnectAttempts++;
+                Debug.Log($"[LudoV2] Reconnect attempt {reconnectAttempts}/{MaxReconnectAttempts} roomId={roomId}");
+                yield return new WaitForSeconds(ReconnectRetryDelay);
+
+                // Build a fresh socket that, on connect, emits session.reconnect instead of joining a queue
+                isIntentionalDisconnect = false;
+                var mgr = new SocketManager(new Uri(socketUrl), BuildSocketOptions());
+                var sock = mgr.GetSocket(Configuration.LudoV2SocketNamespace);
+
+                bool connected = false;
+                sock.On(SocketIOEventTypes.Connect, () =>
+                {
+                    connected = true;
+                    sock.Emit(
+                        "ludo.session.reconnect",
+                        JsonConvert.SerializeObject(new Dictionary<string, object>
+                        {
+                            { "room_id", roomId },
+                            { "user_id", int.Parse(Configuration.GetId()) },
+                        })
+                    );
+                });
+                sock.On(SocketIOEventTypes.Disconnect, OnSocketDisconnected);
+                sock.On<Error>(SocketIOEventTypes.Error, OnSocketError);
+                // Re-register all game event handlers on the new socket
+                sock.On<LudoV2RoomSnapshot>("ludo.game.snapshot", OnRoomSnapshot);
+                sock.On<LudoV2MatchResult>("ludo.game.result", OnMatchResult);
+                sock.On<LudoV2TurnStarted>("ludo.game.turn_started", OnTurnStarted);
+                sock.On<LudoV2DiceRolled>("ludo.game.dice_rolled", OnDiceRolled);
+                sock.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
+                sock.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
+                sock.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
+                sock.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
+
+                // Wait for connection (up to 4s)
+                float waited = 0f;
+                while (!connected && waited < 4f)
+                {
+                    yield return null;
+                    waited += Time.unscaledDeltaTime;
+                }
+
+                if (connected)
+                {
+                    socketManager = mgr;
+                    namespaceSocket = sock;
+                    isReconnecting = false;
+                    reconnectAttempts = 0;
+                    Debug.Log("[LudoV2] Reconnect successful.");
+                    yield break;
+                }
+
+                // Failed this attempt — clean up before retrying
+                try { sock.Disconnect(); } catch { }
+            }
+
+            if (isReconnecting)
+            {
+                isReconnecting = false;
+                Debug.LogWarning("[LudoV2] Reconnect failed after max attempts.");
+                CommonUtil.ShowToast("Connection lost. Returning to lobby.");
+                FailMatchmaking("Connection lost");
+            }
+        }
+
+        private void OnGameStateSync(LudoV2GameState payload)
+        {
+            if (!isServerDrivenGameMode || payload == null) return;
+            Debug.Log($"[LudoV2] game.state received — current_seat={payload.current_seat} rolled={payload.rolled} dice={payload.dice_value}");
+            RunOnMainThread(() => ApplyBoardSync(payload));
+        }
+
+        private void ApplyBoardSync(LudoV2GameState payload)
+        {
+            if (payload?.tokens == null) return;
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+            var gsNew = socketNumberEventReceiver?.ludoNumberGsNew;
+            if (gsNew == null) return;
+
+            // Restore nonces from server snapshot so the reconnected player can act immediately.
+            // Server sends turn_nonce when rolled=false, roll_nonce when rolled=true.
+            currentTurnNonce = !string.IsNullOrEmpty(payload.turn_nonce) ? payload.turn_nonce : null;
+            currentRollNonce = !string.IsNullOrEmpty(payload.roll_nonce) ? payload.roll_nonce : null;
+
+            // Stop any running coroutines (pending animations, timers) before overwriting state
+            gsNew.StopAllCoroutines();
+
+            // Teleport each token to its authoritative position (no animation)
+            for (int serverSeat = 0; serverSeat < payload.tokens.Length && serverSeat < maxP; serverSeat++)
+            {
+                int visualSeat = ToVisualSeat(serverSeat, maxP);
+                if (visualSeat < 0 || visualSeat >= gsNew.ludoNumberPlayerControl.Length) continue;
+                var playerControl = gsNew.ludoNumberPlayerControl[visualSeat];
+                var cmList = playerControl?.coockieMovementList;
+                if (cmList == null) continue;
+
+                int[] seatTokens = payload.tokens[serverSeat];
+                for (int ti = 0; ti < cmList.Count && ti < seatTokens.Length; ti++)
+                {
+                    var cm = cmList[ti];
+                    if (cm == null) continue;
+                    cm.myLastBoxIndex = seatTokens[ti];
+                    cm.TokenMoveOnRejoin();
+                }
+            }
+
+            // Restore current turn
+            int currentVisual = ToVisualSeat(payload.current_seat, maxP);
+            socketNumberEventReceiver.OnServerTurnStarted(currentVisual);
+
+            // If dice was already rolled this turn, restore dice UI without retriggering full dice animation
+            if (payload.rolled && payload.dice_value.HasValue)
+            {
+                socketNumberEventReceiver.OnServerDiceRolled(currentVisual, payload.dice_value.Value);
+            }
+
+            Debug.Log($"[LudoV2] Board sync complete. currentVisual={currentVisual} rolled={payload.rolled} dice={payload.dice_value}");
         }
 
         private void OnSocketError(Error error)
@@ -1201,6 +1407,10 @@ namespace LudoClassicOffline
             hasEnteredWaitingBoard = false;
             hasReportedMatchCompletion = false;
             isClaimingNextTournamentRound = false;
+            isReconnecting = false;
+            reconnectAttempts = 0;
+            currentTurnNonce = null;
+            currentRollNonce = null;
             latestSnapshot = null;
             lastAnnouncedSeatCount = 0;
             CancelInvoke(nameof(ClaimNextTournamentRound));
@@ -1259,6 +1469,13 @@ namespace LudoClassicOffline
         {
             if (!Configuration.IsLudoV2Enabled() || !hasStartedMatch || hasReportedMatchCompletion)
             {
+                return;
+            }
+
+            // In server-driven mode the server handles settlement via _autoSettle
+            if (isServerDrivenGameMode)
+            {
+                Debug.Log("[LudoV2] ReportMatchCompleted skipped — server handles settlement in server-driven mode.");
                 return;
             }
 
@@ -1489,9 +1706,11 @@ namespace LudoClassicOffline
     [Serializable]
     public class LudoV2MatchResult
     {
-        public string room_id;
-        public LudoV2WinnerPayload winner;
+        public string                  room_id;
+        public LudoV2WinnerPayload     winner;
         public LudoV2SettlementPayload settlement;
+        public bool                    cancelled;
+        public List<LudoV2Placement>   placements;
     }
 
     [Serializable]
@@ -1522,25 +1741,38 @@ namespace LudoClassicOffline
     [Serializable]
     public class LudoV2TurnStarted
     {
-        public int  seat_index;
-        public bool is_bot;
+        public int    seat_index;
+        public bool   is_bot;
+        public string turn_nonce;   // must be echoed in roll_dice
     }
 
     [Serializable]
     public class LudoV2DiceRolled
     {
+        public int        seat_index;
+        public int        dice_value;
+        public List<int>  legal_tokens;
+        public bool       has_moves;
+        public string     roll_nonce;   // must be echoed in move_token
+    }
+
+    [Serializable]
+    public class LudoV2KilledToken
+    {
         public int seat_index;
-        public int dice_value;
+        public int token_index;
     }
 
     [Serializable]
     public class LudoV2TokenMoved
     {
-        public int  seat_index;
-        public int  token_index;
-        public int  dice_value;
-        public bool extra_turn;
-        public bool is_win;
+        public int                    seat_index;
+        public int                    token_index;
+        public int                    dice_value;
+        public bool                   extra_turn;
+        public bool                   is_win;
+        public List<LudoV2KilledToken> killed_tokens;
+        public int[][]                tokens;         // full authoritative board snapshot
     }
 
     [Serializable]
@@ -1548,5 +1780,30 @@ namespace LudoClassicOffline
     {
         public int    seat_index;
         public string reason;
+    }
+
+    [Serializable]
+    public class LudoV2GameState
+    {
+        public string   room_id;
+        public int[][]  tokens;             // tokens[serverSeat][tokenIdx] = position (-1..56)
+        public int      current_seat;       // server seat index whose turn it is
+        public int?     dice_value;         // null if dice not yet rolled this turn
+        public bool     rolled;             // whether dice was rolled this turn
+        public int[]    finished_seats;     // server seat indices that have finished
+        public int?     timer_remaining_ms; // ms left on current turn timer (null = unknown)
+        public string   turn_nonce;         // valid when rolled=false (awaiting roll_dice)
+        public string   roll_nonce;         // valid when rolled=true  (awaiting move_token)
+    }
+
+    [Serializable]
+    public class LudoV2Placement
+    {
+        public int    seat_no;
+        public int?   user_id;
+        public int    finish_position;
+        public int    score;
+        public bool   is_winner;
+        public string result;
     }
 }
