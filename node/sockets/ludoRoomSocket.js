@@ -1671,6 +1671,7 @@ module.exports = function (namespace) {
     room.currentPlayers += 1;
     socket.join(room.roomId);
     socket.data.roomId = room.roomId;
+    socket.data.userId = seat.userId;
     socket.data.seatNo = seat.seatNo;
     socket.data.playerType = seat.playerType;
     socket.data.displayName = seat.displayName;
