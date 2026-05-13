@@ -48,9 +48,9 @@ namespace LudoClassicOffline
         private int localSeatOffset;
         // Set to true once the server sends ludo.game.my_seat — prevents snapshot renders from overriding the authoritative offset.
         private bool hasMySeatFromServer;
-        // Translate a server seat index to a visual seat index (local player = 0).
+        // No ego-view rotation — server seat = visual seat (same board for all players)
         private int ToVisualSeat(int serverSeat, int maxPlayers)
-            => (serverSeat - localSeatOffset + maxPlayers) % maxPlayers;
+            => serverSeat;
         private const float NextTournamentClaimDelaySeconds = 0.5f;
         private string activeTournamentUuid;
         private string activeTournamentEntryUuid;
@@ -699,7 +699,7 @@ namespace LudoClassicOffline
                     queueKey = snapshot.room_id,
                     playerInfo = playerInfo,
                     playerMoves = new List<int>(),
-                    thisPlayerSeatIndex = 0, // local player is always visual seat 0
+                    thisPlayerSeatIndex = localSeatOffset, // local player's actual server seat index
                     turnTimer = 15,
                     extraTimer = 5,
                 },
@@ -751,7 +751,7 @@ namespace LudoClassicOffline
                     leftPlayerInfo = new List<object>(),
                     playerInfo = players,
                     movesLeft = 24,
-                    thisPlayerSeatIndex = 0, // local player is always visual seat 0
+                    thisPlayerSeatIndex = localSeatOffset, // local player's actual server seat index
                     playerMoves = new List<int>(),
                     userTurnDetails = new SignUpResponceClass.UserTurnDetails
                     {
@@ -805,6 +805,8 @@ namespace LudoClassicOffline
                 playerControl.gameObject.SetActive(false);
                 playerControl.ludoNumbersUserData.leaveTableImage.SetActive(true);
                 playerControl.ludoNumbersUserData.userNameText.text = string.Empty;
+                // Reset seat index so stale data in inactive slots can't match any turn seat
+                playerControl.playerInfoData.playerSeatIndex = -1;
             }
         }
 
@@ -970,7 +972,8 @@ namespace LudoClassicOffline
             if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
-            Debug.Log($"[LudoV2] turn_started serverSeat={payload.seat_index} visualSeat={visualSeat} localOffset={localSeatOffset}");
+            bool isMyTurn = payload.seat_index == localSeatOffset;
+            Debug.Log($"[DBG][turn_started] serverSeat={payload.seat_index} visualSeat={visualSeat} | localSeatOffset={localSeatOffset} hasMySeat={hasMySeatFromServer} | isMyTurn={isMyTurn} nonce={payload.turn_nonce}");
             // Capture nonce only for local player's turn (no nonce needed for opponent turns)
             if (payload.seat_index == localSeatOffset)
             {
@@ -1002,7 +1005,8 @@ namespace LudoClassicOffline
             if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
-            Debug.Log($"[LudoV2] dice_rolled serverSeat={payload.seat_index} visualSeat={visualSeat} dice={payload.dice_value}");
+            bool isMyRoll = payload.seat_index == localSeatOffset;
+            Debug.Log($"[DBG][dice_rolled] serverSeat={payload.seat_index} visualSeat={visualSeat} dice={payload.dice_value} | localSeatOffset={localSeatOffset} hasMySeat={hasMySeatFromServer} | isMyRoll={isMyRoll} nonce={payload.roll_nonce}");
             // Capture roll nonce for the local player's move
             if (payload.seat_index == localSeatOffset)
             {
@@ -1022,12 +1026,12 @@ namespace LudoClassicOffline
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             bool isLocalPlayer = payload.seat_index == localSeatOffset;
-            Debug.Log($"[LudoV2] token_moved serverSeat={payload.seat_index} visualSeat={visualSeat} token={payload.token_index} isWin={payload.is_win} isLocal={isLocalPlayer}");
+            int killedCount = payload.killed_tokens?.Count ?? 0;
+            Debug.Log($"[LudoV2] token_moved serverSeat={payload.seat_index} visualSeat={visualSeat} token={payload.token_index} isWin={payload.is_win} isLocal={isLocalPlayer} killed={killedCount}");
 
-            // Drive the mover's animation for both local and opponent tokens.
-            // The local player's token also needs to animate — the server confirms the move
-            // but doesn't skip the visual. Skipping caused permanent visual desync (E-9).
-            if (payload.token_index >= 0)
+            // For opponent tokens: drive animation via OnServerTokenMoved.
+            // For local player: local animation already ran when token was tapped — skip to avoid double-move bug.
+            if (payload.token_index >= 0 && !isLocalPlayer)
             {
                 RunOnMainThread(() =>
                     socketNumberEventReceiver?.OnServerTokenMoved(
@@ -1127,6 +1131,12 @@ namespace LudoClassicOffline
         public void TryMoveToken(int tokenIndex, bool extraTurn, bool isWin)
         {
             if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
+            // Block move if we have no valid roll nonce — means it's not our turn or we haven't rolled yet
+            if (string.IsNullOrEmpty(currentRollNonce))
+            {
+                Debug.LogWarning($"[LudoV2] TryMoveToken BLOCKED — no roll nonce (not our turn or nonce missing)");
+                return;
+            }
             string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
             Debug.Log($"[LudoV2] TryMoveToken tokenIndex={tokenIndex} nonce={currentRollNonce}");
             var payload = new Dictionary<string, object>

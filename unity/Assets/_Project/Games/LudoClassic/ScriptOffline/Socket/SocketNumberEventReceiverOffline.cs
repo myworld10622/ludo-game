@@ -511,6 +511,7 @@ namespace LudoClassicOffline
 
         public void OnServerTurnStarted(int seatIndex)
         {
+            Debug.Log($"[DBG][OnServerTurnStarted] visualSeat={seatIndex} → UserTurnStart");
             userTurnStart.data.startTurnSeatIndex = seatIndex;
             userStartIndex = seatIndex;
             userTurnStart.data.diceValue = 1;
@@ -519,6 +520,7 @@ namespace LudoClassicOffline
 
         public void OnServerDiceRolled(int seatIndex, int serverDiceValue)
         {
+            Debug.Log($"[DBG][OnServerDiceRolled] visualSeat={seatIndex} dice={serverDiceValue}");
             diceValue = serverDiceValue;
             userTurnStart.data.diceValue = serverDiceValue;
             userTurnStart.data.startTurnSeatIndex = seatIndex;
@@ -561,7 +563,10 @@ namespace LudoClassicOffline
                         .ForEach((coockie) => coockie.transform.GetComponent<Image>().raycastTarget = false);
                 }
 
-                if (userTurnStart.data.startTurnSeatIndex == ludoNumberGsNew.ludoNumberPlayerControl[i].playerInfoData.playerSeatIndex)
+                bool slotActive = ludoNumberGsNew.ludoNumberPlayerControl[i].gameObject.activeSelf;
+                bool diceOwner = slotActive && userTurnStart.data.startTurnSeatIndex == ludoNumberGsNew.ludoNumberPlayerControl[i].playerInfoData.playerSeatIndex;
+                Debug.Log($"[DBG][DiceAnimationStart] slot={i} playerSeatIdx={ludoNumberGsNew.ludoNumberPlayerControl[i].playerInfoData.playerSeatIndex} turnSeat={userTurnStart.data.startTurnSeatIndex} active={slotActive} activeDice={diceOwner}");
+                if (diceOwner)
                     ludoNumberGsNew.ludoNumberPlayerControl[i].ludoNumbersUserData.diceAnimation
                         .DiceAnimationStart(diceValue, userTurnStart.data.startTurnSeatIndex);
             }

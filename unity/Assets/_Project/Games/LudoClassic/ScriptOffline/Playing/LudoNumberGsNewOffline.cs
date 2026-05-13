@@ -2354,6 +2354,12 @@ namespace LudoClassicOffline
 
         public void TurnChange()
         {
+            // In server-driven mode the server owns turn progression — never run local turn change logic
+            if (socketNumberEventReceiver.isServerDrivenGameMode)
+            {
+                Debug.Log("[DBG][TurnChange] SKIPPED — server-driven mode");
+                return;
+            }
             Debug.Log(
                 "TurnChange startTurnSeatIndex => "
                     + socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex
@@ -2832,9 +2838,8 @@ namespace LudoClassicOffline
         {
             if (socketNumberEventReceiver.isServerDrivenGameMode)
             {
-                // Local player (visual seat 0) has no valid move — tell server to advance turn
-                if (socketNumberEventReceiver.userTurnStart.data.startTurnSeatIndex == 0)
-                    LudoV2MatchmakingBridge.Instance?.TryMoveToken(0, false, false);
+                // Server owns turn advancement — never trigger local turn change or auto-move
+                Debug.Log("[DBG][ChangeTurnSeatIndex] SKIPPED — server-driven mode");
                 return;
             }
             socketNumberEventReceiver.sixCount = 0;

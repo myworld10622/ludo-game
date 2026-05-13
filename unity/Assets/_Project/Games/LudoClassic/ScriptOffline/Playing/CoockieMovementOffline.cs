@@ -496,6 +496,9 @@ namespace LudoClassicOffline
 
         void CheckTokenKill()
         {
+            // In server-driven mode the server owns all kill logic via killed_tokens payload.
+            if (socketNumberEventReceiver.isServerDrivenGameMode) return;
+
             List<CoockieMovementOffline> playerTokenInBox = new List<CoockieMovementOffline>();
             for (
                 int i = 0;

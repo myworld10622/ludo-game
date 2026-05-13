@@ -764,17 +764,22 @@ module.exports = function (namespace) {
 
   const SAFE_SQUARES_ABS = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
 
-  // Player entry points on the shared ring for each seat index (0-based)
+  // Player entry points (0-indexed absolute ring square of each player's starting square).
+  // Unity tokens exit the yard via a 5-step colored path, landing on way_point[5] = starting square.
+  // Standard board: GREEN=0, RED/YELLOW=13, BLUE=26, YELLOW=39 (0-indexed).
+  // 2-player uses GREEN(0) + YELLOW(39), not GREEN+BLUE.
   function _getPlayerStarts(maxPlayers) {
-    if (maxPlayers <= 2) return [0, 26];          // diagonal opponents
-    if (maxPlayers === 3) return [0, 13, 26];
+    if (maxPlayers <= 2) return [0, 39];   // GREEN bottom + YELLOW top
+    if (maxPlayers === 3) return [0, 13, 39];
     return [0, 13, 26, 39];
   }
 
-  // Convert player-relative position to absolute ring square (valid for relPos 0–50)
+  // Convert player-relative position to absolute ring square.
+  // Unity's way_point[5] = starting square (relPos 5), so subtract 5 to align with playerStarts.
+  // Valid only for relPos 5–50 (shared ring). relPos 0–4 = colored exit path (no kills).
   function _absPos(relPos, seatIndex, playerStarts) {
-    if (relPos < 0 || relPos > 50) return -1;
-    return (playerStarts[seatIndex] + relPos) % BOARD_RING_SIZE;
+    if (relPos < 5 || relPos > 50) return -1;
+    return (playerStarts[seatIndex] + relPos - 5) % BOARD_RING_SIZE;
   }
 
   // Can this token move with this dice value?
@@ -805,7 +810,7 @@ module.exports = function (namespace) {
 
     // Kill detection — only on shared ring, non-safe squares
     const killed = [];
-    if (newPos >= 0 && newPos <= 50) {
+    if (newPos >= 5 && newPos <= 50) {
       const myAbs = _absPos(newPos, seatIndex, playerStarts);
       if (myAbs >= 0 && !SAFE_SQUARES_ABS.has(myAbs)) {
         for (let si = 0; si < gs.tokens.length; si++) {
@@ -1364,7 +1369,7 @@ module.exports = function (namespace) {
           const seat = (room.seats ?? []).find(s => String(s.userId ?? '') === String(uid));
           if (!seat) { console.log(`[my_seat] skip uid=${uid} — no matching seat`); continue; }
           console.log(`[my_seat] emit uid=${uid} seat_no=${seat.seatNo}`);
-          sock.emit('ludo.game.my_seat', { seat_no: seat.seatNo, room_id: room.roomId });
+          sock.emit('ludo.game.my_seat', { seat_no: seat.seatNo, room_id: String(room.roomId) });
         }
       }).catch(err => { console.error('[my_seat] fetchSockets error:', err); });
       emitSnapshot(room);
