@@ -1,0 +1,59 @@
+appId: com.roxludo.roxludo
+name: "Screen Rotation Validation"
+tags:
+  - rotation
+  - ui
+
+---
+# Unity renders via OpenGL — no accessibility tree.
+# Uses coordinate taps + screenshots for visual validation.
+# Dashboard layout (portrait 1080x2400):
+#   "LUDO ONLINE" button: center ~540, 880
+#   Private Table button: ~540, 1050 (after entering game mode)
+
+- launchApp:
+    clearState: false
+    stopApp: true
+
+# Wait for dashboard to load
+- waitForAnimationToEnd:
+    timeout: 40000
+
+- takeScreenshot: "screenshots/10_dashboard"
+
+# Tap LUDO ONLINE
+- tapOn:
+    point: "50%,37%"
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/10_game_mode_selected"
+
+# Tap Private Table option
+- tapOn:
+    point: "50%,55%"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- takeScreenshot: "screenshots/10_private_options"
+
+# Tap Create Table
+- tapOn:
+    point: "50%,65%"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: "screenshots/10_waiting_room"
+
+# === KEY TEST: Screen must be in LANDSCAPE now ===
+# Player A alone in waiting room — landscape should auto-trigger
+# Screenshot aspect ratio will confirm: wider than tall = landscape
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/10_landscape_check"

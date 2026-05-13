@@ -1,0 +1,56 @@
+appId: com.roxludo.roxludo
+name: "Setup — Dismiss System Dialogs & Wait for Unity Load"
+tags:
+  - setup
+  - smoke
+
+---
+- launchApp:
+    clearState: false
+
+- takeScreenshot: "screenshots/setup_00_launch"
+
+# "Viewing full screen" dialog — tap Got it but stay in app
+# Use stopApp:false so we don't kill the Unity process
+- tapOn:
+    text: "Got it"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+# Re-launch in case "Got it" sent us to home screen
+- launchApp:
+    clearState: false
+    stopApp: false
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/setup_01_back_in_app"
+
+# Dismiss any Android permission dialogs
+- tapOn:
+    text: "Allow"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+- tapOn:
+    text: "Allow"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+# Wait for Unity IL2CPP to fully load
+- waitForAnimationToEnd:
+    timeout: 45000
+
+- takeScreenshot: "screenshots/setup_02_unity_loaded"
+
+- waitForAnimationToEnd:
+    timeout: 10000
+
+- takeScreenshot: "screenshots/setup_03_ready"

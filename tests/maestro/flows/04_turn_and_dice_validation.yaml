@@ -1,0 +1,52 @@
+appId: com.roxludo.roxludo
+name: "Turn and Dice Validation"
+tags:
+  - multiplayer
+  - gameplay
+  - dice
+
+---
+- waitForAnimationToEnd:
+    timeout: 3000
+
+# Wait for local player's turn — dice button must appear
+- extendedWaitUntil:
+    visible:
+      id: "btn_roll_dice"
+    timeout: 15000
+
+- takeScreenshot: "screenshots/04_dice_enabled"
+
+# Roll dice
+- tapOn:
+    id: "btn_roll_dice"
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/04_dice_result"
+
+# Move or pass
+- tapOn:
+    id: "btn_move_token_0"
+    optional: true
+
+- tapOn:
+    id: "btn_move_token_1"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/04_opponent_turn_no_dice"
+
+# Wait for opponent's full turn, then our turn again
+- waitForAnimationToEnd:
+    timeout: 25000
+
+- extendedWaitUntil:
+    visible:
+      id: "btn_roll_dice"
+    timeout: 20000
+
+- takeScreenshot: "screenshots/04_local_turn_again"

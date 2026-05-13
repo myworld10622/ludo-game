@@ -1,0 +1,52 @@
+appId: com.roxludo.roxludo
+name: "Voice Chat Join Test"
+tags:
+  - voice
+  - agora
+
+---
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- extendedWaitUntil:
+    visible:
+      id: "panel_game_board"
+    timeout: 10000
+
+- assertVisible:
+    id: "btn_mic"
+
+- takeScreenshot: "screenshots/09_mic_button_visible"
+
+- tapOn:
+    id: "btn_mic"
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/09_after_mic_tap"
+
+# Wait up to 12s for voice to connect (not stuck on "Connecting voice...")
+- extendedWaitUntil:
+    notVisible:
+      text: "Connecting voice..."
+    timeout: 12000
+
+- takeScreenshot: "screenshots/09_voice_connected"
+
+# Mute/unmute cycle
+- tapOn:
+    id: "btn_mic_mute"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+- tapOn:
+    id: "btn_mic_mute"
+    optional: true
+
+- waitForAnimationToEnd:
+    timeout: 1000
+
+- takeScreenshot: "screenshots/09_mute_unmute_cycle"

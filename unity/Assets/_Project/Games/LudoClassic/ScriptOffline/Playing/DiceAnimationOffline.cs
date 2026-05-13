@@ -39,8 +39,10 @@ namespace LudoClassicOffline
         {
             Debug.Log("Dice Animation || OnPointer Click || Click On dice");
             dice.transform.GetComponent<Image>().raycastTarget = false;
-            if (socketNumberEventReceiver.isServerDrivenGameMode
-                && LudoV2MatchmakingBridge.Instance != null)
+            bool useServer = LudoV2MatchmakingBridge.Instance != null
+                && (socketNumberEventReceiver.isServerDrivenGameMode
+                    || LudoV2MatchmakingBridge.Instance.IsServerDrivenGameMode);
+            if (useServer)
             {
                 // Tell server to roll; animation fires when server replies with dice_rolled.
                 LudoV2MatchmakingBridge.Instance.TryRollDice();

@@ -1,0 +1,14 @@
+appId: com.roxludo.roxludo
+name: "Smoke Test — Tables Screen Verify"
+tags:
+  - smoke
+
+---
+# App already running. NO launchApp (Unity takes 2+ min via instrumentation).
+# Assumes: app open on Tables screen (Ludo Classic → 2 Player)
+# Screen: 1080x2400
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- takeScreenshot: "screenshots/smoke_01_tables"

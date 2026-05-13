@@ -46,6 +46,8 @@ namespace LudoClassicOffline
         public bool IsServerDrivenGameMode => isServerDrivenGameMode;
         // Server seat index of the local player (0-based). Used for ego-view remapping.
         private int localSeatOffset;
+        // Set to true once the server sends ludo.game.my_seat — prevents snapshot renders from overriding the authoritative offset.
+        private bool hasMySeatFromServer;
         // Translate a server seat index to a visual seat index (local player = 0).
         private int ToVisualSeat(int serverSeat, int maxPlayers)
             => (serverSeat - localSeatOffset + maxPlayers) % maxPlayers;
@@ -188,9 +190,23 @@ namespace LudoClassicOffline
                 return false;
             }
 
+            // If already queueing/started for the SAME private table code, skip reconnect.
+            // Otherwise (different code or re-enter), disconnect old socket and restart fresh.
+            string incomingCode = code ?? tableId.ToString();
             if (isQueueing || hasStartedMatch)
             {
-                return true;
+                if (string.Equals(privateTableCode, incomingCode, StringComparison.OrdinalIgnoreCase) && !hasStartedMatch)
+                {
+                    Debug.Log($"[LudoV2] Already queueing for {incomingCode} — skipping reconnect");
+                    return true;
+                }
+                Debug.Log($"[LudoV2] New private table join ({incomingCode}), resetting from previous state");
+                DisconnectSocket();
+                hasStartedMatch = false;
+                hasEnteredWaitingBoard = false;
+                isQueueing = false;
+                hasMySeatFromServer = false;
+                localSeatOffset = 0;
             }
 
             if (string.IsNullOrWhiteSpace(Configuration.GetId()) || string.IsNullOrWhiteSpace(Configuration.GetToken()))
@@ -390,6 +406,7 @@ namespace LudoClassicOffline
 
         private void OnSocketConnected(int maxPlayers, int entryFee, string gameMode)
         {
+            Debug.Log($"[LudoV2] Socket connected — roomUuid={queuedRoom?.data?.room_uuid} private={isPrivateTableMode}");
             namespaceSocket.Emit(
                 "ludo.queue.join",
                 JsonConvert.SerializeObject(new Dictionary<string, object>
@@ -449,6 +466,28 @@ namespace LudoClassicOffline
         private void OnRoomSnapshot(LudoV2RoomSnapshot snapshot)
         {
             latestSnapshot = snapshot;
+            // If server says game is already in progress and we haven't bootstrapped yet,
+            // treat this snapshot as a late-join start (ludo.room.starting was missed).
+            bool isInProgress = string.Equals(snapshot.state, "in_progress", StringComparison.OrdinalIgnoreCase)
+                             || string.Equals(snapshot.state, "starting", StringComparison.OrdinalIgnoreCase);
+            if (isInProgress && !hasStartedMatch && snapshot.seats != null && snapshot.seats.Count > 0)
+            {
+                Debug.Log("[LudoV2] Snapshot late-join bootstrap — state=" + snapshot.state);
+                isServerDrivenGameMode = snapshot.seats.TrueForAll(
+                    s => string.Equals(s.playerType, "human", StringComparison.OrdinalIgnoreCase));
+                // Always use server-driven for 2 real humans
+                if (snapshot.real_players >= 2) isServerDrivenGameMode = true;
+                var syntheticStart = new LudoV2RoomStarting
+                {
+                    room_id = snapshot.room_id,
+                    started_with_bots = snapshot.bot_players > 0,
+                    seats = snapshot.seats,
+                };
+                // Use BootstrapLateJoin for both states — sets hasStartedMatch=true immediately,
+                // preventing double-bootstrap if ludo.room.starting event also arrives.
+                RunOnMainThread(() => BootstrapLateJoin(syntheticStart));
+                return;
+            }
             RunOnMainThread(() =>
             {
                 EnsureWaitingBoardVisible(snapshot);
@@ -510,6 +549,41 @@ namespace LudoClassicOffline
             // In server-driven mode the 5-s countdown UI still shows; StartUserTurn()
             // is suppressed in LudoNumberUiManagerOffline and instead server sends
             // ludo.game.turn_started after ~5.5 s.
+        }
+
+        // Like BootstrapExistingOfflineFlow but skips the 5-s countdown — used when
+        // we join a game that already started (ludo.room.starting was missed).
+        private void BootstrapLateJoin(LudoV2RoomStarting payload)
+        {
+            int maxPlayers = payload.seats != null ? Mathf.Clamp(payload.seats.Count, 2, 4) : 2;
+            string roomId = string.IsNullOrWhiteSpace(payload.room_id) ? queuedRoom?.data?.room_uuid : payload.room_id;
+
+            latestSnapshot = new LudoV2RoomSnapshot
+            {
+                room_id = roomId,
+                state = "in_progress",
+                max_players = maxPlayers,
+                current_players = payload.seats?.Count ?? maxPlayers,
+                real_players = payload.seats?.FindAll(seat => seat.playerType == "human").Count ?? 1,
+                bot_players = payload.seats?.FindAll(seat => seat.playerType == "bot").Count ?? 0,
+                seats = payload.seats ?? new List<LudoV2SeatData>(),
+            };
+
+            isServerDrivenGameMode = true;
+            hasStartedMatch = true;
+            hasReportedMatchCompletion = false;
+            isQueueing = false;
+
+            localSeatOffset = GetLocalSeatIndex(latestSnapshot);
+            Debug.Log($"[LudoV2] LateJoin LocalSeatOffset={localSeatOffset}");
+
+            EnsureWaitingBoardVisible(latestSnapshot);
+            RenderSeatsFromSnapshot(latestSnapshot);
+            socketNumberEventReceiver.maxPlayer = maxPlayers;
+            socketNumberEventReceiver.ChangeCukiSeatIndex();
+            socketNumberEventReceiver.isServerDrivenGameMode = true;
+            // Use 1-second countdown so Time() coroutine fires and shows the game board.
+            socketNumberEventReceiver.ludoNumberGsNew.GameTimerStart(1);
         }
 
         private void EnsureWaitingBoardVisible(LudoV2RoomSnapshot snapshot)
@@ -584,8 +658,11 @@ namespace LudoClassicOffline
                 return;
             }
 
-            // Always keep localSeatOffset current with the latest snapshot
-            localSeatOffset = GetLocalSeatIndex(snapshot);
+            // Only recalculate from snapshot when the server hasn't authoritatively told us our seat.
+            // Once my_seat arrives, hasMySeatFromServer=true and we never overwrite localSeatOffset here.
+            if (!hasMySeatFromServer)
+                localSeatOffset = GetLocalSeatIndex(snapshot);
+            Debug.Log($"[LudoV2] RenderSeats localSeatOffset={localSeatOffset} hasMySeat={hasMySeatFromServer}");
 
             socketNumberEventReceiver.joinTableResponse = BuildJoinTableResponse(snapshot);
             socketNumberEventReceiver.signUpResponce = BuildSignUpResponse(snapshot);
@@ -856,7 +933,15 @@ namespace LudoClassicOffline
 
         private void RunOnMainThread(Action action)
         {
-            UnityMainThreadDispatcher.Instance?.Enqueue(action);
+            var dispatcher = UnityMainThreadDispatcher.Instance;
+            if (dispatcher == null)
+            {
+                // Auto-create dispatcher if not present in scene — required for socket callbacks
+                var go = new GameObject("UnityMainThreadDispatcher");
+                dispatcher = go.AddComponent<UnityMainThreadDispatcher>();
+                Debug.LogWarning("[LudoV2] UnityMainThreadDispatcher was missing — created automatically");
+            }
+            dispatcher.Enqueue(action);
         }
 
         private void OnEmojiReceived(LudoV2EmojiPayload payload)
@@ -880,7 +965,9 @@ namespace LudoClassicOffline
 
         private void OnTurnStarted(LudoV2TurnStarted payload)
         {
-            if (!isServerDrivenGameMode || payload == null) return;
+            if (payload == null) return;
+            // Auto-enable server-driven mode when server sends turn events (handles allHumans parse failure)
+            if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             Debug.Log($"[LudoV2] turn_started serverSeat={payload.seat_index} visualSeat={visualSeat} localOffset={localSeatOffset}");
@@ -892,13 +979,27 @@ namespace LudoClassicOffline
             }
             RunOnMainThread(() =>
             {
+                // Late-join: if game started on server before this client received room.starting,
+                // bootstrap from the latest snapshot now so the board becomes visible.
+                if (!hasStartedMatch && latestSnapshot != null)
+                {
+                    Debug.Log("[LudoV2] Late-join via turn_started — bootstrapping");
+                    var syntheticStart = new LudoV2RoomStarting
+                    {
+                        room_id = latestSnapshot.room_id,
+                        started_with_bots = latestSnapshot.bot_players > 0,
+                        seats = latestSnapshot.seats,
+                    };
+                    BootstrapLateJoin(syntheticStart);
+                }
                 socketNumberEventReceiver?.OnServerTurnStarted(visualSeat);
             });
         }
 
         private void OnDiceRolled(LudoV2DiceRolled payload)
         {
-            if (!isServerDrivenGameMode || payload == null) return;
+            if (payload == null) return;
+            if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             Debug.Log($"[LudoV2] dice_rolled serverSeat={payload.seat_index} visualSeat={visualSeat} dice={payload.dice_value}");
@@ -916,7 +1017,8 @@ namespace LudoClassicOffline
 
         private void OnTokenMoved(LudoV2TokenMoved payload)
         {
-            if (!isServerDrivenGameMode || payload == null) return;
+            if (payload == null) return;
+            if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             bool isLocalPlayer = payload.seat_index == localSeatOffset;
@@ -998,6 +1100,7 @@ namespace LudoClassicOffline
             int newOffset = payload.seat_no - 1;
             Debug.Log($"[LudoV2] my_seat assigned seat_no={payload.seat_no} → localSeatOffset={newOffset} (was {localSeatOffset})");
             localSeatOffset = newOffset;
+            hasMySeatFromServer = true;
             // Re-render seats with the corrected offset so colors/positions are right.
             if (latestSnapshot != null)
             {
@@ -1009,9 +1112,9 @@ namespace LudoClassicOffline
 
         public void TryRollDice()
         {
-            if (!isServerDrivenGameMode || namespaceSocket == null || !namespaceSocket.IsOpen) return;
+            if (namespaceSocket == null || !namespaceSocket.IsOpen) return;
             string roomId = latestSnapshot?.room_id ?? queuedRoom?.data?.room_uuid;
-            Debug.Log($"[LudoV2] TryRollDice roomId={roomId} nonce={currentTurnNonce}");
+            Debug.Log($"[LudoV2] TryRollDice roomId={roomId} nonce={currentTurnNonce} serverMode={isServerDrivenGameMode}");
             var payload = new Dictionary<string, object>
             {
                 { "room_id",    roomId },
@@ -1108,6 +1211,7 @@ namespace LudoClassicOffline
 
         private void OnSocketDisconnected()
         {
+            Debug.Log($"[LudoV2] Socket disconnected — intentional={isIntentionalDisconnect} hasStarted={hasStartedMatch}");
             if (isIntentionalDisconnect) return;
 
             if (hasStartedMatch && isServerDrivenGameMode && !isReconnecting)
@@ -1253,6 +1357,7 @@ namespace LudoClassicOffline
 
         private void OnSocketError(Error error)
         {
+            Debug.LogWarning($"[LudoV2] Socket error: {error?.message}");
             if (!hasStartedMatch)
             {
                 FailMatchmaking(error?.message ?? "Ludo socket error");
@@ -1441,6 +1546,8 @@ namespace LudoClassicOffline
             currentRollNonce = null;
             latestSnapshot = null;
             lastAnnouncedSeatCount = 0;
+            hasMySeatFromServer = false;
+            localSeatOffset = 0;
             CancelInvoke(nameof(ClaimNextTournamentRound));
             DisconnectSocket();
         }
@@ -1654,6 +1761,7 @@ namespace LudoClassicOffline
     {
         public string room_id;
         public bool started_with_bots;
+        public string match_uuid;
         public List<LudoV2SeatData> seats;
     }
 

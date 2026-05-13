@@ -1,0 +1,49 @@
+appId: com.roxludo.roxludo
+name: "Private Room — Join (Player B)"
+tags:
+  - multiplayer
+  - private-room
+
+---
+- launchApp:
+    clearState: false
+
+- waitForAnimationToEnd:
+    timeout: 8000
+
+- tapOn:
+    id: "btn_ludo_classic"
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- tapOn:
+    id: "btn_join_private_table"
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- tapOn:
+    id: "input_room_code"
+
+- inputText: "${PRIVATE_ROOM_CODE}"
+
+- tapOn:
+    id: "btn_join_table"
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- extendedWaitUntil:
+    visible:
+      id: "panel_waiting_board"
+    timeout: 8000
+
+- takeScreenshot: "screenshots/03_player_b_joined"
+
+- extendedWaitUntil:
+    visible:
+      id: "panel_game_board"
+    timeout: 15000
+
+- takeScreenshot: "screenshots/03_game_started_player_b"

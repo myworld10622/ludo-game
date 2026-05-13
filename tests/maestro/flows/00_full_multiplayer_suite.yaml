@@ -1,0 +1,29 @@
+appId: com.roxludo.roxludo
+name: "Full Multiplayer Suite — Device A (Host)"
+tags:
+  - suite
+  - multiplayer
+
+---
+# Master flow for Device A (Player A / host).
+# Run this on Device A simultaneously with 00_full_multiplayer_suite_b.yaml on Device B.
+
+- runFlow: flows/01_login.yaml
+  env:
+    PLAYER_MOBILE: "${PLAYER_A_MOBILE}"
+
+- runFlow: flows/02_private_room_host.yaml
+
+- runFlow: flows/10_screen_rotation_test.yaml
+
+- runFlow: flows/04_turn_and_dice_validation.yaml
+
+- runFlow: flows/05_move_validation.yaml
+
+- runFlow: flows/09_voice_chat_test.yaml
+
+- runFlow: flows/11_stuck_turn_detection.yaml
+
+- runFlow: flows/08_minimize_restore_test.yaml
+
+- runFlow: flows/06_reconnect_test.yaml

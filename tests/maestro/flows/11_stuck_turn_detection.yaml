@@ -1,0 +1,28 @@
+appId: com.roxludo.roxludo
+name: "Stuck Turn Detection"
+tags:
+  - gameplay
+  - stuck-turn
+  - reliability
+
+---
+# Requires: active game already running on device.
+# Does NOT roll dice — waits 22s for server to auto-advance turn (turn_missed).
+# Screenshots before/after confirm turn moved on.
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/11_our_turn_started"
+
+# Do NOT roll dice — server should fire turn_missed after ~15s
+- waitForAnimationToEnd:
+    timeout: 22000
+
+- takeScreenshot: "screenshots/11_after_timeout"
+
+# Wait for opponent turn + our turn again
+- waitForAnimationToEnd:
+    timeout: 30000
+
+- takeScreenshot: "screenshots/11_turn_cycled"

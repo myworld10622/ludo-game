@@ -1,0 +1,43 @@
+appId: com.roxludo.roxludo
+name: "Minimize and Restore During Game"
+tags:
+  - resilience
+  - lifecycle
+  - background
+
+---
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/08_before_minimize"
+
+# Press home
+- pressKey: Home
+
+- waitForAnimationToEnd:
+    timeout: 8000
+
+# Restore
+- launchApp:
+    clearState: false
+    stopApp: false
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: "screenshots/08_after_restore_short"
+
+# Press home again, longer background
+- pressKey: Home
+
+- waitForAnimationToEnd:
+    timeout: 20000
+
+- launchApp:
+    clearState: false
+    stopApp: false
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: "screenshots/08_after_restore_long"

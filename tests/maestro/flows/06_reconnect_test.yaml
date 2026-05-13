@@ -1,0 +1,43 @@
+appId: com.roxludo.roxludo
+name: "Reconnect After Network Drop"
+tags:
+  - multiplayer
+  - resilience
+  - reconnect
+
+---
+# Requires: active game running on device.
+# Tests: airplane mode drop → restore → game state recovered.
+
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/06_before_disconnect"
+
+# Drop network
+- setAirplaneMode: true
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- takeScreenshot: "screenshots/06_network_dropped"
+
+# Stay disconnected 6s
+- waitForAnimationToEnd:
+    timeout: 6000
+
+- takeScreenshot: "screenshots/06_during_disconnect"
+
+# Restore network
+- setAirplaneMode: false
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: "screenshots/06_network_restored"
+
+# Wait for reconnect (socket reconnects within 10s)
+- waitForAnimationToEnd:
+    timeout: 12000
+
+- takeScreenshot: "screenshots/06_reconnected_state"

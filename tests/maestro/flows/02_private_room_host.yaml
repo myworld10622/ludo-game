@@ -1,0 +1,46 @@
+appId: com.roxludo.roxludo
+name: "Private Room — Host (Player A)"
+tags:
+  - multiplayer
+  - private-room
+
+---
+# Assumes: app is on Tables screen (Ludo Classic → 2 Player)
+# Screen 1080x2400:
+#   PRIVATE TABLE PLAY button: x=810, y=620
+
+- waitForAnimationToEnd:
+    timeout: 2000
+
+- takeScreenshot: "screenshots/02_tables_screen"
+
+# Tap PRIVATE TABLE → PLAY button
+- tapOn:
+    point: "75%,26%"
+
+- waitForAnimationToEnd:
+    timeout: 4000
+
+- takeScreenshot: "screenshots/02_private_room_created"
+
+# Waiting room — take screenshot showing room code
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- takeScreenshot: "screenshots/02_waiting_room"
+
+# === KEY TEST: Screen must rotate to LANDSCAPE here ===
+# Player A alone in room — landscape should auto-trigger
+- takeScreenshot: "screenshots/02_landscape_check"
+
+# Wait for Player B to join (up to 90s)
+- waitForAnimationToEnd:
+    timeout: 90000
+
+- takeScreenshot: "screenshots/02_player_b_joined"
+
+# Game starts — both see correct seats
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- takeScreenshot: "screenshots/02_game_started"

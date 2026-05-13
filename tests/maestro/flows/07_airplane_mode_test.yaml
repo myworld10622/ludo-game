@@ -1,0 +1,36 @@
+appId: com.roxludo.roxludo
+name: "Airplane Mode — Full Cycle"
+tags:
+  - resilience
+  - network
+  - airplane
+
+---
+- waitForAnimationToEnd:
+    timeout: 3000
+
+- extendedWaitUntil:
+    visible:
+      id: "panel_game_board"
+    timeout: 10000
+
+- takeScreenshot: "screenshots/07_game_active"
+
+- setAirplaneMode: true
+
+- waitForAnimationToEnd:
+    timeout: 30000
+
+- takeScreenshot: "screenshots/07_offline_30s"
+
+- setAirplaneMode: false
+
+- waitForAnimationToEnd:
+    timeout: 5000
+
+- extendedWaitUntil:
+    visible:
+      id: "panel_game_board"
+    timeout: 25000
+
+- takeScreenshot: "screenshots/07_after_airplane_restore"

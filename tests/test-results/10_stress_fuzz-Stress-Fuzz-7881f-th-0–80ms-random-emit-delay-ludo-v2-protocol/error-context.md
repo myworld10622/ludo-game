@@ -12,5 +12,5 @@
 # Error details
 
 ```
-Test timeout of 180000ms exceeded.
+Test timeout of 600000ms exceeded.
 ```

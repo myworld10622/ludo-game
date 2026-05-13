@@ -1,0 +1,45 @@
+appId: com.roxludo.roxludo
+name: "Login Flow"
+tags:
+  - auth
+  - smoke
+
+---
+- launchApp:
+    clearState: false
+
+# Dismiss Android fullscreen hint if present
+- tapOn:
+    text: "Got it"
+    optional: true
+
+# Wait for splash/loading
+- extendedWaitUntil:
+    visible:
+      text: "LOADING..."
+    timeout: 30000
+
+- takeScreenshot: "screenshots/01_loading"
+
+# Wait for dashboard to fully load
+- extendedWaitUntil:
+    visible:
+      text: "LUDO ONLINE"
+    timeout: 45000
+
+- takeScreenshot: "screenshots/01_dashboard_loaded"
+
+# Verify key dashboard elements
+- assertVisible:
+    text: "LUDO ONLINE"
+
+- assertVisible:
+    text: "ADD CASH"
+
+- assertVisible:
+    text: "HISTORY"
+
+- assertVisible:
+    text: "FRIENDS"
+
+- takeScreenshot: "screenshots/01_login_complete"
