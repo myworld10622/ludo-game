@@ -1357,14 +1357,16 @@ module.exports = function (namespace) {
       // Tell each connected player their own seat number individually so Unity
       // can set localSeatOffset without relying on userId matching in deserialized JSON.
       namespace.in(room.roomId).fetchSockets().then(sockets => {
+        console.log(`[my_seat] room=${room.roomId} found ${sockets.length} sockets`);
         for (const sock of sockets) {
           const uid = sock.data?.userId;
-          if (!uid) continue;
+          if (!uid) { console.log(`[my_seat] skip socket — no userId`); continue; }
           const seat = (room.seats ?? []).find(s => String(s.userId ?? '') === String(uid));
-          if (!seat) continue;
+          if (!seat) { console.log(`[my_seat] skip uid=${uid} — no matching seat`); continue; }
+          console.log(`[my_seat] emit uid=${uid} seat_no=${seat.seatNo}`);
           sock.emit('ludo.game.my_seat', { seat_no: seat.seatNo, room_id: room.roomId });
         }
-      }).catch(() => {});
+      }).catch(err => { console.error('[my_seat] fetchSockets error:', err); });
       emitSnapshot(room);
       startServerDrivenGame(room);
       return true;
