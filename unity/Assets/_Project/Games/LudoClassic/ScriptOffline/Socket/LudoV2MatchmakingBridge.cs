@@ -349,6 +349,7 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
             namespaceSocket.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
             namespaceSocket.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
+            namespaceSocket.On<LudoV2MySeat>("ludo.game.my_seat", OnMySeatAssigned);
         }
 
         private void ConnectTournamentSocket()
@@ -375,6 +376,7 @@ namespace LudoClassicOffline
             namespaceSocket.On<LudoV2TokenMoved>("ludo.game.token_moved", OnTokenMoved);
             namespaceSocket.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
             namespaceSocket.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
+            namespaceSocket.On<LudoV2MySeat>("ludo.game.my_seat", OnMySeatAssigned);
         }
 
         private SocketOptions BuildSocketOptions()
@@ -423,9 +425,12 @@ namespace LudoClassicOffline
         {
             latestSnapshot = snapshot;
             isClaimingNextTournamentRound = false;
-            EnsureWaitingBoardVisible(snapshot);
-            RenderSeatsFromSnapshot(snapshot);
-            UpdateWaitingBoardMessage(snapshot);
+            RunOnMainThread(() =>
+            {
+                EnsureWaitingBoardVisible(snapshot);
+                RenderSeatsFromSnapshot(snapshot);
+                UpdateWaitingBoardMessage(snapshot);
+            });
             Debug.Log("Ludo v2 waiting room: " + JsonConvert.SerializeObject(snapshot));
         }
 
@@ -444,9 +449,12 @@ namespace LudoClassicOffline
         private void OnRoomSnapshot(LudoV2RoomSnapshot snapshot)
         {
             latestSnapshot = snapshot;
-            EnsureWaitingBoardVisible(snapshot);
-            RenderSeatsFromSnapshot(snapshot);
-            UpdateWaitingBoardMessage(snapshot);
+            RunOnMainThread(() =>
+            {
+                EnsureWaitingBoardVisible(snapshot);
+                RenderSeatsFromSnapshot(snapshot);
+                UpdateWaitingBoardMessage(snapshot);
+            });
             Debug.Log("Ludo v2 snapshot: " + JsonConvert.SerializeObject(snapshot));
         }
 
@@ -461,8 +469,11 @@ namespace LudoClassicOffline
             hasStartedMatch = true;
             isQueueing = false;
             hasReportedMatchCompletion = false;
-            HideWaitingBoardMessage();
-            BootstrapExistingOfflineFlow(payload);
+            RunOnMainThread(() =>
+            {
+                HideWaitingBoardMessage();
+                BootstrapExistingOfflineFlow(payload);
+            });
         }
 
         private void BootstrapExistingOfflineFlow(LudoV2RoomStarting payload)
@@ -978,6 +989,22 @@ namespace LudoClassicOffline
             RunOnMainThread(() => CommonUtil.ShowToast("Turn missed"));
         }
 
+        // Server confirms which seat belongs to this client — authoritative offset source.
+        // Overrides the userId-based heuristic in GetLocalSeatIndex which can fail when
+        // the client stores user_code in PlayerPrefs["id"] instead of the database id.
+        private void OnMySeatAssigned(LudoV2MySeat payload)
+        {
+            if (payload == null || payload.seat_no <= 0) return;
+            int newOffset = payload.seat_no - 1;
+            Debug.Log($"[LudoV2] my_seat assigned seat_no={payload.seat_no} → localSeatOffset={newOffset} (was {localSeatOffset})");
+            localSeatOffset = newOffset;
+            // Re-render seats with the corrected offset so colors/positions are right.
+            if (latestSnapshot != null)
+            {
+                RunOnMainThread(() => RenderSeatsFromSnapshot(latestSnapshot));
+            }
+        }
+
         // ── Public API for dice & move ─────────────────────────────────────────
 
         public void TryRollDice()
@@ -1137,6 +1164,7 @@ namespace LudoClassicOffline
                 sock.On<LudoV2TurnMissed>("ludo.game.turn_missed", OnTurnMissed);
                 sock.On<LudoV2GameState>("ludo.game.state", OnGameStateSync);
                 sock.On<LudoV2ErrorPayload>("ludo.error", OnSocketPayloadError);
+                sock.On<LudoV2MySeat>("ludo.game.my_seat", OnMySeatAssigned);
 
                 // Wait for connection (up to 4s)
                 float waited = 0f;
@@ -1634,6 +1662,13 @@ namespace LudoClassicOffline
     {
         public string room_id;
         public LudoV2SeatData seat;
+    }
+
+    [Serializable]
+    public class LudoV2MySeat
+    {
+        public int seat_no;
+        public string room_id;
     }
 
     [Serializable]
