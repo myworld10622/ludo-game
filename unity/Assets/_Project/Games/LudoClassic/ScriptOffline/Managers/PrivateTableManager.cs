@@ -6,6 +6,7 @@ using Best.SocketIO;
 using Best.SocketIO.Events;
 using Newtonsoft.Json;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace LudoClassicOffline
@@ -149,8 +150,30 @@ namespace LudoClassicOffline
             }
         }
 
+        // ── Tap the code label itself → copy only the code ──
+        public void CopyOnlyCode()
+        {
+            if (!string.IsNullOrEmpty(currentTableCode))
+            {
+                GUIUtility.systemCopyBuffer = currentTableCode;
+                CommonUtil.ShowToast("Room code copied: " + currentTableCode);
+            }
+        }
+
         private static string BuildShareMessage(string code)
-            => $"Please join my private Ludo table!\nUse code: {code}\nPlay at roxludo.com";
+            => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
+
+        // ── Attach a one-time click listener to the code Text so tapping it copies the code ──
+        private void MakeCodeLabelClickable(Text codeText)
+        {
+            if (codeText == null) return;
+            var trigger = codeText.GetComponent<EventTrigger>()
+                          ?? codeText.gameObject.AddComponent<EventTrigger>();
+            trigger.triggers.Clear();
+            var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
+            entry.callback.AddListener(_ => CopyOnlyCode());
+            trigger.triggers.Add(entry);
+        }
 
         private void ShowJoinLoader(bool show)
         {
@@ -307,7 +330,11 @@ namespace LudoClassicOffline
             if (joinPanel != null) joinPanel.SetActive(false);
             if (waitingPanel != null) waitingPanel.SetActive(true);
 
-            if (waitingCodeText != null)    waitingCodeText.text = code;
+            if (waitingCodeText != null)
+            {
+                waitingCodeText.text = code + "  📋";  // visual hint it's tappable
+                MakeCodeLabelClickable(waitingCodeText);
+            }
             if (waitingPlayersText != null) waitingPlayersText.text = $"{current}/{max} Players";
 
             int prizePool = fee * max;
