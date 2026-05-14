@@ -762,24 +762,32 @@ module.exports = function (namespace) {
     return true;
   }
 
+  // Unity marks all 8 star squares as safe, including the 4 starting stars.
+  // Keep the authoritative server contract aligned with the board scene.
   const SAFE_SQUARES_ABS = new Set([0, 8, 13, 21, 26, 34, 39, 47]);
 
   // Player entry points (0-indexed absolute ring square of each player's starting square).
-  // Unity tokens exit the yard via a 5-step colored path, landing on way_point[5] = starting square.
-  // Standard board: GREEN=0, RED/YELLOW=13, BLUE=26, YELLOW=39 (0-indexed).
-  // 2-player uses GREEN(0) + YELLOW(39), not GREEN+BLUE.
+  // Shared runtime contract uses relPos 0 as the first live board square after leaving the yard.
+  // 2-player seat mapping follows the Unity board slots [0,2], so starts [0,26].
   function _getPlayerStarts(maxPlayers) {
-    if (maxPlayers <= 2) return [0, 39];   // GREEN bottom + YELLOW top
-    if (maxPlayers === 3) return [0, 13, 39];
+    // N-play uses visual slots 0, 1, 2, 3 in order.
+    // Slot 0=yellow(abs 0), slot 1=blue(abs 13), slot 2=red(abs 26), slot 3=green(abs 39).
+    // 2-player uses slots 0+2 → starts [0, 26]. (NOT 39 — slot 2 is red/abs 26, not green/abs 39)
+    // 3-player uses slots 0+1+2 → starts [0, 13, 26].
+    // 4-player uses all slots → starts [0, 13, 26, 39].
+    if (maxPlayers <= 2) return [0, 26];
+    if (maxPlayers === 3) return [0, 13, 26];
     return [0, 13, 26, 39];
   }
 
   // Convert player-relative position to absolute ring square.
-  // Unity's way_point[5] = starting square (relPos 5), so subtract 5 to align with playerStarts.
-  // Valid only for relPos 5–50 (shared ring). relPos 0–4 = colored exit path (no kills).
+  // Shared contract:
+  //   -1       in yard
+  //    0–50    on shared ring
+  //   51–56    in home column
   function _absPos(relPos, seatIndex, playerStarts) {
-    if (relPos < 5 || relPos > 50) return -1;
-    return (playerStarts[seatIndex] + relPos - 5) % BOARD_RING_SIZE;
+    if (relPos < 0 || relPos > 50) return -1;
+    return (playerStarts[seatIndex] + relPos) % BOARD_RING_SIZE;
   }
 
   // Can this token move with this dice value?
@@ -798,28 +806,42 @@ module.exports = function (namespace) {
   }
 
   // Apply a token move; returns { killed[], extraTurn, isWin }
-  // Mutates gs.tokens in place.
-  function _applyTokenMove(gs, seatIndex, tokenIndex, diceValue, playerStarts) {
+  // Mutates gs.tokens and gs.tokenAbsPos in place.
+  // boardAbsIndex: absolute ring position (0-51) supplied by Unity from LudoNumbersBoxPropertyOffline.index.
+  //   When >= 0, used directly for collision detection instead of the offset formula.
+  //   When < 0, falls back to _absPos (e.g. bot moves, cluster relay without the field).
+  function _applyTokenMove(gs, seatIndex, tokenIndex, diceValue, playerStarts, boardAbsIndex) {
     const tokens = gs.tokens[seatIndex];
     const oldPos = tokens[tokenIndex];
 
-    // Compute new position.  -1 (yard) treated as -1 so entry = -1 + 6 = 5
-    // which matches Unity's way_point[5] after 6 movement steps from yard.
-    const newPos = Math.min(oldPos + diceValue, TOKEN_HOME_POS);
+    // A 6 from the yard enters directly onto the first shared-ring square.
+    const newPos = oldPos === -1
+      ? 0
+      : Math.min(oldPos + diceValue, TOKEN_HOME_POS);
     tokens[tokenIndex] = newPos;
+
+    // Store the authoritative abs position for this token (used by future kill checks against it).
+    if (!gs.tokenAbsPos) gs.tokenAbsPos = Array.from({ length: gs.tokens.length }, () => Array(TOKENS_PER_PLAYER).fill(-1));
+    const myAbs = (boardAbsIndex != null && boardAbsIndex >= 0) ? boardAbsIndex : _absPos(newPos, seatIndex, playerStarts);
+    gs.tokenAbsPos[seatIndex][tokenIndex] = (newPos >= 0 && newPos <= 50) ? myAbs : -1;
 
     // Kill detection — only on shared ring, non-safe squares
     const killed = [];
-    if (newPos >= 5 && newPos <= 50) {
-      const myAbs = _absPos(newPos, seatIndex, playerStarts);
+    if (newPos >= 0 && newPos <= 50) {
+      console.log(`[KillDBG] seat=${seatIndex} token=${tokenIndex} oldPos=${oldPos} newPos=${newPos} myAbs=${myAbs} safe=${SAFE_SQUARES_ABS.has(myAbs)} boardAbsIndex=${boardAbsIndex}`);
       if (myAbs >= 0 && !SAFE_SQUARES_ABS.has(myAbs)) {
+        if (!gs.tokenAbsPos) gs.tokenAbsPos = Array.from({ length: gs.tokens.length }, () => Array(TOKENS_PER_PLAYER).fill(-1));
         for (let si = 0; si < gs.tokens.length; si++) {
           if (si === seatIndex) continue;
           for (let ti = 0; ti < TOKENS_PER_PLAYER; ti++) {
             const op = gs.tokens[si][ti];
             if (op < 0 || op > 50) continue;           // not on shared ring
-            if (_absPos(op, si, playerStarts) === myAbs) {
+            // Use stored abs pos for opponent if available, else fall back to formula
+            const opAbs = (gs.tokenAbsPos[si][ti] >= 0) ? gs.tokenAbsPos[si][ti] : _absPos(op, si, playerStarts);
+            console.log(`[KillDBG]   check opponent seat=${si} token=${ti} pos=${op} abs=${opAbs} match=${opAbs === myAbs}`);
+            if (opAbs === myAbs) {
               gs.tokens[si][ti] = -1;                   // send to home yard
+              gs.tokenAbsPos[si][ti] = -1;
               killed.push({ seat_index: si, token_index: ti });
             }
           }
@@ -836,6 +858,7 @@ module.exports = function (namespace) {
       if (gs.sixRun >= 3) {
         // Three consecutive sixes: forfeit — token that just moved goes back
         gs.tokens[seatIndex][tokenIndex] = -1;
+        gs.tokenAbsPos[seatIndex][tokenIndex] = -1;
         gs.sixRun   = 0;
         extraTurn   = false;
       }
@@ -916,6 +939,9 @@ module.exports = function (namespace) {
     gs.turnNonce = _acNonce();
     gs.rollNonce = null;
 
+    const tokenSummary = (gs.tokens || []).map((tArr, si) => `s${si}:[${(tArr||[]).join(',')}]`).join(' ');
+    console.log(`[GAME][${room.roomId}] TURN_START seat=${gs.current} type=${seat.playerType} tokens=${tokenSummary}`);
+
     namespace.to(room.roomId).emit(socketEvents.server.TURN_STARTED, {
       seat_index: gs.current,
       is_bot:     seat.playerType === 'bot',
@@ -979,6 +1005,8 @@ module.exports = function (namespace) {
     const legalTokens  = _legalMoves(gs, seatIndex, dv);
     const hasMoves     = legalTokens.length > 0;
 
+    console.log(`[GAME][${room.roomId}] DICE_ROLLED seat=${seatIndex} dice=${dv} legal=[${legalTokens.join(',')}] hasMoves=${hasMoves} tokens=[${(gs.tokens[seatIndex]||[]).join(',')}]`);
+
     namespace.to(room.roomId).emit(socketEvents.server.DICE_ROLLED, {
       seat_index:   seatIndex,
       dice_value:   dv,
@@ -1040,7 +1068,8 @@ module.exports = function (namespace) {
 
   // Core move processor — all game-outcome computation is done here.
   // Client-supplied extra_turn and is_win are intentionally ignored.
-  function _doMove(room, seatIndex, tokenIndex) {
+  // boardAbsIndex: optional absolute ring position (0-51) from Unity client for kill detection.
+  function _doMove(room, seatIndex, tokenIndex, boardAbsIndex) {
     const gs = _gameState(room);
     if (!gs || gs.over) return;
     _clearGameTimer(room);
@@ -1051,11 +1080,28 @@ module.exports = function (namespace) {
 
     // Validate: if the chosen token is illegal, restart the move timer and let
     // the player try again (or timeout and lose the turn).
+    console.log(`[GAME][${room.roomId}] MOVE_REQ seat=${seatIndex} token=${tokenIndex} dice=${dv} boardAbsIndex=${boardAbsIndex} allTokens=[${(gs.tokens[seatIndex]||[]).join(',')}]`);
+
     if (tokenIndex >= 0 && !_canMoveToken(gs.tokens[seatIndex][tokenIndex], dv)) {
       console.warn(
-        `[LudoEngine] _doMove: illegal tokenIndex=${tokenIndex} pos=${gs.tokens[seatIndex][tokenIndex]} dv=${dv}`
+        `[GAME][${room.roomId}] MOVE_ILLEGAL seat=${seatIndex} token=${tokenIndex} pos=${gs.tokens[seatIndex][tokenIndex]} dv=${dv} — auto-forfeiting move to prevent deadlock`
       );
-      _setGameTimer(room, () => _missMove(room), MOVE_TIMEOUT_MS);
+      // Emit a forced-pass TOKEN_MOVED so both clients sync state, then advance the turn.
+      // Silently waiting for _missMove causes a 17s deadlock where the client never gets a
+      // response and both players end up stuck in a TURN_START loop.
+      namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
+        seat_index:    seatIndex,
+        token_index:   -1,          // sentinel: no token moved (forced pass due to illegal move)
+        dice_value:    dv,
+        extra_turn:    false,
+        is_win:        false,
+        killed_tokens: [],
+        tokens:        gs.tokens,   // full snapshot so clients can correct any position desync
+      });
+      gs.diceValue = null;
+      gs.rolled    = false;
+      _advanceTurn(room);
+      _startTurn(room);
       return;
     }
 
@@ -1064,11 +1110,14 @@ module.exports = function (namespace) {
     let killed    = [];
 
     if (tokenIndex >= 0) {
-      const result = _applyTokenMove(gs, seatIndex, tokenIndex, dv, playerStarts);
+      const result = _applyTokenMove(gs, seatIndex, tokenIndex, dv, playerStarts, boardAbsIndex);
       extraTurn = result.extraTurn;
       isWin     = result.isWin;
       killed    = result.killed;
     }
+
+    const tokenSummaryAfter = (gs.tokens || []).map((tArr, si) => `s${si}:[${(tArr||[]).join(',')}]`).join(' ');
+    console.log(`[GAME][${room.roomId}] MOVE_DONE seat=${seatIndex} token=${tokenIndex} dice=${dv} extra=${extraTurn} win=${isWin} killed=${JSON.stringify(killed)} absMap=${JSON.stringify((gs.tokenAbsPos||[]).map((a,si)=>`s${si}:[${(a||[]).join(',')}]`))} tokens=${tokenSummaryAfter}`);
 
     namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
       seat_index:    seatIndex,
@@ -1288,6 +1337,8 @@ module.exports = function (namespace) {
       over:         false,
       tokens:       Array.from({ length: seats.length }, () =>
                       Array(TOKENS_PER_PLAYER).fill(-1)),
+      tokenAbsPos:  Array.from({ length: seats.length }, () =>
+                      Array(TOKENS_PER_PLAYER).fill(-1)),
       playerStarts: _getPlayerStarts(maxPlayers),
       // Anti-cheat nonce chain: turn → roll → move
       // Each step issues a new nonce; the next step must echo it.
@@ -1353,6 +1404,8 @@ module.exports = function (namespace) {
       room.startRetryCount = 0;
       room.state = roomStates.IN_PROGRESS;
       room.startedAt = new Date();
+      const seatSummary = (room.seats || []).map(s => `seat${s.seatNo}=${s.userId}(${s.playerType})`).join(', ');
+      console.log(`[GAME][${room.roomId}] ROOM_START players=${room.currentPlayers}/${room.maxPlayers} seats=[${seatSummary}] bots=${startedWithBots}`);
       namespace.to(room.roomId).emit(socketEvents.server.STARTING, {
         room_id: room.roomId,
         started_with_bots: startedWithBots,
@@ -1682,6 +1735,7 @@ module.exports = function (namespace) {
     socket.data.seatNo = seat.seatNo;
     socket.data.playerType = seat.playerType;
     socket.data.displayName = seat.displayName;
+    console.log(`[GAME][${room.roomId}] PLAYER_JOIN userId=${seat.userId} name=${seat.displayName} seatNo=${seat.seatNo} players=${room.currentPlayers}/${room.maxPlayers}`);
     _persist(room);
 
     namespace.to(room.roomId).emit(socketEvents.server.PLAYER_JOINED, {
@@ -2191,19 +2245,23 @@ module.exports = function (namespace) {
         _acViolation(socket, 'move_token:bad_token_index', { tokenIndex });
         return;
       }
+      // board_abs_index: absolute ring position from Unity's scene graph (LudoNumbersBoxPropertyOffline.index).
+      // Used for kill detection without relying on offset formula. -1 = not on shared ring.
+      const boardAbsIndex = typeof payload.board_abs_index === 'number' ? payload.board_abs_index : -1;
       // extra_turn and is_win from client are intentionally ignored — server computes them
       // ── End anti-cheat gate ───────────────────────────────────────────────
 
       if (!cluster.isOwner(roomId)) {
         cluster.publishCommand(roomId, 'move_token', {
-          userId:     String(claimedUserId),
+          userId:        String(claimedUserId),
           seatIndex,
           tokenIndex,
-          rollNonce:  payload.roll_nonce ?? payload.rollNonce,
+          boardAbsIndex,
+          rollNonce:     payload.roll_nonce ?? payload.rollNonce,
         }).catch(() => {});
         return;
       }
-      _doMove(room, seatIndex, tokenIndex);
+      _doMove(room, seatIndex, tokenIndex, boardAbsIndex);
     });
 
     socket.on("disconnect", () => {
@@ -2261,7 +2319,7 @@ module.exports = function (namespace) {
     if (cmd === 'roll_dice') {
       _doRoll(room, seatIndex);
     } else if (cmd === 'move_token') {
-      _doMove(room, seatIndex, payload.tokenIndex);
+      _doMove(room, seatIndex, payload.tokenIndex, payload.boardAbsIndex ?? -1);
     }
   });
 

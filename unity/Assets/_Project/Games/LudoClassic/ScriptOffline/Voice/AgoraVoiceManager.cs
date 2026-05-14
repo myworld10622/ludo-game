@@ -161,12 +161,15 @@ namespace LudoClassicOffline
         {
             if (!Configuration.IsLudoV2Enabled())
             {
+                Debug.Log("[Agora] JoinVoice: LudoV2 disabled");
                 return;
             }
 
             string channelName = matchmakingBridge != null
                 ? matchmakingBridge.GetAgoraVoiceChannelName()
                 : null;
+
+            Debug.Log($"[Agora] JoinVoice: channel={channelName} isJoined={isJoined} currentChannel={currentChannelName}");
 
             if (string.IsNullOrWhiteSpace(channelName))
             {
@@ -190,6 +193,7 @@ namespace LudoClassicOffline
             }
 #endif
 
+            Debug.Log($"[Agora] Starting FetchTokenAndJoin for channel={channelName}");
             StopJoinCoroutine();
             joinCoroutine = StartCoroutine(FetchTokenAndJoin(channelName, renewOnly: false));
         }
@@ -896,22 +900,32 @@ namespace LudoClassicOffline
         private IEnumerator FetchTokenAndJoin(string channelName, bool renewOnly)
         {
             isJoining = !renewOnly;
+            // Store channel early so ScheduleReconnect can retry even if token fetch fails
+            if (!string.IsNullOrWhiteSpace(channelName))
+                currentChannelName = SanitizeAgoraValue(channelName);
             UpdateStatus(renewOnly ? "Refreshing voice token..." : "Connecting voice...");
 #if UNITY_ANDROID && !UNITY_EDITOR
-            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            bool micGranted = Permission.HasUserAuthorizedPermission(Permission.Microphone);
+            Debug.Log($"[Agora] MicPermission check: granted={micGranted}");
+            if (!micGranted)
             {
                 Permission.RequestUserPermission(Permission.Microphone);
+                // Wait for permission dialog — Android may pause/resume app during this
+                yield return new WaitForSecondsRealtime(0.5f);
                 float waited = 0f;
-                while (!Permission.HasUserAuthorizedPermission(Permission.Microphone) && waited < 8f)
+                while (!Permission.HasUserAuthorizedPermission(Permission.Microphone) && waited < 10f)
                 {
-                    yield return null;
-                    waited += Time.unscaledDeltaTime;
+                    yield return new WaitForSecondsRealtime(0.3f);
+                    waited += 0.3f;
                 }
+                micGranted = Permission.HasUserAuthorizedPermission(Permission.Microphone);
+                Debug.Log($"[Agora] MicPermission after dialog: granted={micGranted} waited={waited:F1}s");
             }
-            if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
+            if (!micGranted)
             {
                 isJoining = false;
                 UpdateStatus("Mic permission denied");
+                Debug.LogWarning("[Agora] Mic permission denied — voice will not work");
                 yield break;
             }
 #else
@@ -928,55 +942,74 @@ namespace LudoClassicOffline
             string url = Configuration.AgoraTokenUrl
                 + "?channel="
                 + UnityWebRequest.EscapeURL(channelName);
+            string authToken = Configuration.GetToken();
+            Debug.Log($"[Agora] FetchToken url={url} tokenLen={authToken?.Length ?? 0} channelLen={channelName?.Length ?? 0}");
 
             using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                request.SetRequestHeader("Authorization", "Bearer " + Configuration.GetToken());
+                request.timeout = 15;  // prevent infinite hang on mobile
+                request.SetRequestHeader("Authorization", "Bearer " + authToken);
                 request.SetRequestHeader("Accept", "application/json");
+                Debug.Log($"[Agora] Sending token request... authTokenEmpty={string.IsNullOrEmpty(authToken)}");
                 yield return request.SendWebRequest();
 
                 if (request.result != UnityWebRequest.Result.Success)
                 {
+                    Debug.LogWarning($"[Agora] Token request FAILED result={request.result} code={request.responseCode} err={request.error}");
                     isJoining = false;
-                    UpdateStatus("Voice token request failed");
+                    UpdateStatus($"Voice failed ({request.responseCode})");
                     ScheduleReconnect();
                     yield break;
                 }
+                string rawResponse = request.downloadHandler.text ?? "";
+                Debug.Log($"[Agora] Token request OK code={request.responseCode} rawLen={rawResponse.Length}");
+                // Log full raw response so we can see exactly what server sends on APK
+                Debug.Log($"[Agora] RAW_RESPONSE: {(rawResponse.Length > 400 ? rawResponse.Substring(0, 400) : rawResponse)}");
 
                 AgoraTokenApiResponse response = null;
                 try
                 {
-                    response = JsonConvert.DeserializeObject<AgoraTokenApiResponse>(request.downloadHandler.text);
+                    response = JsonConvert.DeserializeObject<AgoraTokenApiResponse>(rawResponse);
                 }
                 catch (Exception ex)
                 {
-                    string rawPreview = request.downloadHandler.text;
-                    if (!string.IsNullOrEmpty(rawPreview) && rawPreview.Length > 180)
-                    {
-                        rawPreview = rawPreview.Substring(0, 180);
-                    }
-
-                    Debug.LogWarning("Agora token parse failed: " + ex.Message + " | response: " + rawPreview);
-                }
-
-                if (response?.data == null || string.IsNullOrWhiteSpace(response.data.token) || string.IsNullOrWhiteSpace(response.data.appId))
-                {
+                    Debug.LogWarning($"[Agora] Token parse FAILED: {ex.Message} | raw: {(rawResponse.Length > 200 ? rawResponse.Substring(0, 200) : rawResponse)}");
                     isJoining = false;
-                    UpdateStatus("Voice token invalid");
+                    UpdateStatus("Voice parse err");
                     ScheduleReconnect();
                     yield break;
                 }
 
-                currentChannelName = response.data.channel;
-                currentToken = response.data.token;
-                currentAppId = response.data.appId;
-                currentUid = response.data.uid;
+                string serverAppId = response?.data?.appId ?? "";
+                int serverTokenLen = response?.data?.token?.Length ?? 0;
+                Debug.Log($"[Agora] Parsed: serverAppId='{serverAppId}' serverAppIdLen={serverAppId.Length} tokenLen={serverTokenLen} channel={response?.data?.channel} uid={response?.data?.uid}");
 
-                EnsureRtcEngine();
-                if (rtcEngine == null)
+                if (response?.data == null || string.IsNullOrWhiteSpace(response.data.token) || string.IsNullOrWhiteSpace(response.data.appId))
                 {
                     isJoining = false;
-                    UpdateStatus("Voice engine init failed");
+                    string detail = response?.data == null ? "data=null" : $"token={serverTokenLen} appId={serverAppId.Length}";
+                    UpdateStatus($"Voice token invalid ({detail})");
+                    Debug.LogWarning($"[Agora] Invalid token response — {detail} raw: {(rawResponse.Length > 300 ? rawResponse.Substring(0, 300) : rawResponse)}");
+                    ScheduleReconnect();
+                    yield break;
+                }
+
+                currentChannelName = SanitizeAgoraValue(response.data.channel);
+                currentToken = SanitizeAgoraValue(response.data.token);
+                currentAppId = ResolveAgoraAppId(response.data.appId);
+                currentUid = response.data.uid;
+
+                bool usedFallback = currentAppId != serverAppId.Trim().Trim('"');
+                Debug.Log($"[Agora] AppId resolved: final='{currentAppId}' usedFallback={usedFallback} fallback='{Configuration.AgoraFallbackAppId}'");
+                UpdateStatus($"Voice init... appId={currentAppId.Substring(0, 6)}...");
+
+                EnsureRtcEngine();
+                if (rtcEngine == null || !engineInitialized)
+                {
+                    isJoining = false;
+                    UpdateStatus($"Voice init err={lastInitResult} appId={currentAppId.Substring(0, 6)}...");
+                    Debug.LogError($"[Agora] Engine not initialized — rtcEngine={rtcEngine != null} engineInitialized={engineInitialized} initResult={lastInitResult} appId={currentAppId}");
+                    ScheduleReconnect();
                     yield break;
                 }
 
@@ -1001,9 +1034,20 @@ namespace LudoClassicOffline
                 rtcEngine.SetEnableSpeakerphone(isSpeakerEnabled);
                 rtcEngine.MuteLocalAudioStream(isMuted);
                 rtcEngine.EnableAudioVolumeIndication(400, 3, true);
-                rtcEngine.JoinChannel(currentToken, currentChannelName, currentUid, options);
+                Debug.Log($"[Agora] Calling JoinChannel channel={currentChannelName} uid={currentUid} appIdLen={currentAppId?.Length ?? 0} tokenLen={currentToken?.Length ?? 0}");
+                int joinResult = rtcEngine.JoinChannel(currentToken, currentChannelName, currentUid, options);
+                Debug.Log($"[Agora] JoinChannel returned={joinResult} (0=OK, negative=error)");
+                if (joinResult < 0)
+                {
+                    isJoining = false;
+                    UpdateStatus("Voice join err=" + joinResult);
+                    Debug.LogError($"[Agora] JoinChannel failed immediately with code={joinResult}");
+                    ScheduleReconnect();
+                }
             }
         }
+
+        private int lastInitResult = -999;
 
         private void EnsureRtcEngine()
         {
@@ -1012,12 +1056,29 @@ namespace LudoClassicOffline
                 return;
             }
 
+            currentAppId = ResolveAgoraAppId(currentAppId);
             if (string.IsNullOrWhiteSpace(currentAppId))
             {
+                Debug.LogError("[Agora] EnsureRtcEngine: currentAppId is empty after fallback — cannot init");
+                lastInitResult = -998;
                 return;
             }
 
+            if (rtcEngine != null && !engineInitialized)
+            {
+                Debug.LogWarning("[Agora] Disposing stale partial rtcEngine before re-init");
+                DisposeRtcEngine();
+            }
+
+            Debug.Log($"[Agora] Creating RtcEngine appId={currentAppId} appIdLen={currentAppId.Length}");
             rtcEngine = RtcEngine.CreateAgoraRtcEngine();
+            if (rtcEngine == null)
+            {
+                Debug.LogError("[Agora] CreateAgoraRtcEngine returned null");
+                lastInitResult = -997;
+                return;
+            }
+
             voiceEventHandler = new VoiceEventHandler(this);
 
             RtcEngineContext context = new RtcEngineContext(
@@ -1027,9 +1088,10 @@ namespace LudoClassicOffline
                 AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING
             );
 
-            rtcEngine.Initialize(context);
+            lastInitResult = rtcEngine.Initialize(context);
+            Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 2=invalid_arg)");
             rtcEngine.InitEventHandler(voiceEventHandler);
-            engineInitialized = true;
+            engineInitialized = lastInitResult == 0;
         }
 
         private void DisposeRtcEngine()
@@ -1164,6 +1226,7 @@ namespace LudoClassicOffline
                 || reason == CONNECTION_CHANGED_REASON_TYPE.CONNECTION_CHANGED_JOIN_FAILED
                 || reason == CONNECTION_CHANGED_REASON_TYPE.CONNECTION_CHANGED_TOKEN_EXPIRED)
             {
+                Debug.LogWarning($"[Agora] Connection failed state={state} reason={reason}");
                 UpdateStatus("Voice connection lost");
                 ScheduleReconnect();
             }
@@ -1226,6 +1289,7 @@ namespace LudoClassicOffline
             isJoined = false;
             currentChannelName = null;
             currentToken = null;
+            currentAppId = null;
             currentUid = 0;
             connectedRemoteUsers.Clear();
             mutedRemoteUsers.Clear();
@@ -1237,6 +1301,61 @@ namespace LudoClassicOffline
             {
                 isVoiceAvailable = false;
             }
+        }
+
+        private static string SanitizeAgoraValue(string value)
+        {
+            if (string.IsNullOrEmpty(value))
+            {
+                return string.Empty;
+            }
+
+            return value.Trim().Trim('"');
+        }
+
+        private static string ResolveAgoraAppId(string value)
+        {
+            string sanitized = SanitizeAgoraValue(value);
+            if (IsLikelyAgoraAppId(sanitized))
+            {
+                return sanitized;
+            }
+
+            string fallback = SanitizeAgoraValue(Configuration.AgoraFallbackAppId);
+            if (IsLikelyAgoraAppId(fallback))
+            {
+                if (!string.IsNullOrWhiteSpace(sanitized))
+                {
+                    Debug.LogWarning($"[Agora] Falling back to known appId because runtime value was invalid: '{sanitized}'");
+                }
+
+                return fallback;
+            }
+
+            return sanitized;
+        }
+
+        private static bool IsLikelyAgoraAppId(string value)
+        {
+            if (string.IsNullOrEmpty(value) || value.Length != 32)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < value.Length; i++)
+            {
+                char c = value[i];
+                bool isHex =
+                    (c >= '0' && c <= '9')
+                    || (c >= 'a' && c <= 'f')
+                    || (c >= 'A' && c <= 'F');
+                if (!isHex)
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private void UpdateButtonStates()
@@ -1444,7 +1563,8 @@ namespace LudoClassicOffline
 
             public override void OnError(int err, string msg)
             {
-                Debug.LogWarning("Agora voice error " + err + ": " + msg);
+                // Common errors: 17=JOIN_CHANNEL_REJECTED, 110=TOKEN_EXPIRED, 109=TOKEN_INVALID
+                Debug.LogError($"[Agora] OnError err={err} msg={msg} channel={owner.currentChannelName}");
                 owner.UpdateStatus("Voice error: " + err);
                 owner.ScheduleReconnect();
             }

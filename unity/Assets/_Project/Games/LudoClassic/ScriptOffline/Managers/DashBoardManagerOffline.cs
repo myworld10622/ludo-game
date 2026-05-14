@@ -2074,7 +2074,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = true;
-            Screen.autorotateToLandscapeRight = false;
+            Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
 
             selectedPassNPlayPlayerCount = Mathf.Clamp(playerCount, 2, 4);
             HidePassNPlayPlayerCountPopup();
@@ -2250,14 +2251,33 @@ public class DashBoardManagerOffline : MonoBehaviour
             if (resp == null || !resp.success)
             {
                 ShowMatchmakingLoader(false);
+                string errorCode = resp?.error_code ?? "";
                 string msg = resp?.message ?? "Failed to join table. Please try again.";
-                if (msg.ToLower().Contains("already joined"))
+
+                if (msg.ToLower().Contains("already joined") || msg.ToLower().Contains("already in this"))
                 {
                     Debug.Log($"[PrivateTable] Already in table — rejoining waiting room for {code}");
                     StartCoroutine(RejoinPrivateTableWaiting(code));
                     yield break;
                 }
-                ShowPrivateTableError("Error", msg);
+
+                string toastMsg;
+                switch (errorCode)
+                {
+                    case "invalid_code":
+                        toastMsg = "❌ Invalid or expired code.\nPlease create a new table.";
+                        break;
+                    case "table_full":
+                        toastMsg = "❌ Table is full.\nThis table already has all players.";
+                        break;
+                    case "insufficient_balance":
+                        toastMsg = "❌ Insufficient balance.\n" + msg;
+                        break;
+                    default:
+                        toastMsg = "❌ " + msg;
+                        break;
+                }
+                CommonUtil.ShowToast(toastMsg);
                 yield break;
             }
 
@@ -2356,7 +2376,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         private int _privateTableId = 0;
 
         private static string BuildPrivateTableShareMessage(string code)
-            => $"Please join my private Ludo table!\nUse code: {code}\nPlay at roxludo.com";
+            => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
 
         // Step 1 — Table just created: show code popup so user can copy & share.
         // No game board yet. User joins later using the code (even the creator).
@@ -3338,6 +3358,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         {
             public bool success;
             public string message;
+            public string error_code;
             public PrivateTableData data;
         }
 

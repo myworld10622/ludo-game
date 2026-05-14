@@ -151,6 +151,7 @@ namespace LudoClassicOffline
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = true;
             Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
 
             // The actual play board is landscape-only; lobby/popups remain responsive before entry.
             if (board != null && board.transform.parent != null)
@@ -1963,10 +1964,11 @@ namespace LudoClassicOffline
                                         && socketNumberEventReceiver.diceValue == 6
                                     )
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(true);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            true
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -1984,15 +1986,11 @@ namespace LudoClassicOffline
                                             <= 56
                                     )
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(true);
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockieForClassicMode[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            true
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -2000,10 +1998,11 @@ namespace LudoClassicOffline
                                     }
                                     else
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(false);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            false
+                                        );
                                         //  ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode.ForEach((coockie) => coockie.transform.localScale = new Vector3(1.15f, 1.15f, 1f));
                                         //  ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovement>().CoockieManage();
                                     }
@@ -2195,10 +2194,11 @@ namespace LudoClassicOffline
                                         && socketNumberEventReceiver.diceValue == 6
                                     )
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(true);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            true
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -2216,15 +2216,11 @@ namespace LudoClassicOffline
                                             <= 56
                                     )
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(true);
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockieForClassicMode[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            true
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockieForClassicMode[j]
                                             .transform.GetComponent<Image>()
@@ -2232,10 +2228,11 @@ namespace LudoClassicOffline
                                     }
                                     else
                                     {
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                            .transform.GetChild(0)
-                                            .gameObject.SetActive(false);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockieForClassicMode[j],
+                                            false
+                                        );
                                         //  ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode.ForEach((coockie) => coockie.transform.localScale = new Vector3(1.15f, 1.15f, 1f));
                                         //  ludoNumbersAcknowledgementHandler.ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j].GetComponent<CoockieMovement>().CoockieManage();
                                     }
@@ -2944,6 +2941,24 @@ namespace LudoClassicOffline
             lastSix.SetActive(false);
         }
 
+        private void SetClassicTokenTurnIndicator(GameObject tokenObject, bool isActive)
+        {
+            if (tokenObject == null)
+            {
+                return;
+            }
+
+            CoockieMovementOffline tokenMovement = tokenObject.GetComponent<CoockieMovementOffline>();
+            if (tokenMovement != null)
+            {
+                tokenMovement.SetSelectionIndicatorVisible(isActive);
+            }
+            else if (tokenObject.transform.childCount > 0)
+            {
+                tokenObject.transform.GetChild(0).gameObject.SetActive(isActive);
+            }
+        }
+
         public void AcknowledgementTokenMove(string data) =>
             Debug.Log("AcknowledgementTokenMove || => " + data);
 
@@ -3091,8 +3106,16 @@ namespace LudoClassicOffline
                             profileBlink.transform.DOPunchScale(new Vector3(0.3f, 0.3f, 0), 0.45f, 6, 0.35f);
                             ludoNumberPlayerControl[i].ludoNumbersUserData.animatorOnTurn.enabled =
                                 true;
-                            //if (socketNumberEvnetReceiver.userTurnStart.data.isExtraTurn == true)
-                            //extraMove.transform.DOScale(Vector3.one, 0.5f);
+                            // Show spinning circle under all tokens at turn start (CLASSIC mode)
+                            if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
+                            {
+                                for (int j = 0; j < ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode.Count; j++)
+                                {
+                                    var token = ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j];
+                                    if (token != null)
+                                        SetClassicTokenTurnIndicator(token, true);
+                                }
+                            }
                         }
                         if (!DashBoardManagerOffline.instance.IsPassAndPlay)
                         {

@@ -20,6 +20,7 @@ public class Configuration : MonoBehaviour
 
     public const string APIUrl = BaseUrl + "api/";
     public const string UserUrl = BaseUrl + "api/User/";
+    public const string AgoraFallbackAppId = "d1392576db9d415aa08a43884a8ff81c";
     public const string LudoV2QueueJoinUrl = BaseUrl + "api/v1/ludo/queue/join";
     public const string LudoV2RoomUrl = BaseUrl + "api/v1/ludo/rooms/";
     public const string AgoraTokenUrl = BaseUrl + "api/v1/agora/token";

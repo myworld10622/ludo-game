@@ -460,6 +460,7 @@ namespace LudoClassicOffline
                     break;
                 }
             }
+
             switch (mySeatIndex)
             {
                 case 0:

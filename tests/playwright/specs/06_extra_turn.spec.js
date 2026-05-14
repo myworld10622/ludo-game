@@ -106,7 +106,7 @@ test.describe('Extra Turn Rules', () => {
     }
   });
 
-  test('entry from yard (6 rolled): token moves to position 5, extra_turn=true', async () => {
+  test('entry from yard (6 rolled): token moves to position 0, extra_turn=true', async () => {
     const { clients } = await createRoom({ maxPlayers: 2 });
 
     try {
@@ -132,11 +132,11 @@ test.describe('Extra Turn Rules', () => {
 
           if (moved.is_win) break;
 
-          // Entry from yard: old pos was -1, new pos should be -1+6=5
+          // Entry from yard now lands directly on the first live board square.
           if (dice.dice_value === 6) {
-            // Check if any token just moved from -1 to 5
+            // Check if any token just moved from -1 to 0
             const newPos = moved.tokens[si]?.[entryToken];
-            if (newPos === 5) {
+            if (newPos === 0) {
               expect(moved.extra_turn).toBe(true);
               entryVerified = true;
             }
@@ -147,7 +147,7 @@ test.describe('Extra Turn Rules', () => {
       }
 
       if (!entryVerified) {
-        console.warn('[WARN] entry spec: yard→5 entry not observed in 80 moves');
+        console.warn('[WARN] entry spec: yard→0 entry not observed in 80 moves');
       }
     } finally {
       await teardownRoom(clients);

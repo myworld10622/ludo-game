@@ -58,6 +58,8 @@ namespace LudoClassicOffline
 
         private RectTransform _rectTransform;
         private Image _tokenImage;
+        private Tween _selectionIndicatorTween;
+        private Vector3 _defaultLocalScale;
         private float _lastTapTime = -10f;
         #endregion
 
@@ -65,6 +67,7 @@ namespace LudoClassicOffline
         {
             _rectTransform = GetComponent<RectTransform>();
             _tokenImage = GetComponent<Image>();
+            _defaultLocalScale = transform.localScale;
             if (
                 MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals(
                     "CLASSIC"
@@ -86,6 +89,12 @@ namespace LudoClassicOffline
                     ludoNumbersPlayerHome.way_Point[myLastBoxIndex].transform.GetChild(1)
                 );
             }
+        }
+
+        private void OnDisable()
+        {
+            _selectionIndicatorTween?.Kill();
+            _selectionIndicatorTween = null;
         }
 
         #region ScoreView
@@ -804,7 +813,7 @@ namespace LudoClassicOffline
         {
             try
             {
-                transform.GetChild(0).gameObject.SetActive(false);
+                SetSelectionIndicatorVisible(false);
                 if (myLastBoxIndex == 56)
                     transform.GetComponent<Image>().raycastTarget = false;
                 ludoNumberGsNew.tokenToolTipsImageList.ForEach(
@@ -816,6 +825,36 @@ namespace LudoClassicOffline
                 Debug.Log("EX => " + ex.ToString());
                 throw;
             }
+        }
+
+        public void SetSelectionIndicatorVisible(bool isVisible)
+        {
+            if (transform.childCount <= 0)
+            {
+                return;
+            }
+
+            Transform indicator = transform.GetChild(0);
+            indicator.DOKill();
+            _selectionIndicatorTween?.Kill();
+            _selectionIndicatorTween = null;
+
+            if (!isVisible)
+            {
+                indicator.gameObject.SetActive(false);
+                indicator.localRotation = Quaternion.identity;
+                transform.localScale = _defaultLocalScale;
+                return;
+            }
+
+            indicator.gameObject.SetActive(true);
+            indicator.localRotation = Quaternion.identity;
+            indicator.localScale = Vector3.one;
+            transform.localScale = _defaultLocalScale;
+            _selectionIndicatorTween = indicator
+                .DORotate(new Vector3(0f, 0f, -360f), 0.9f, RotateMode.FastBeyond360)
+                .SetEase(Ease.Linear)
+                .SetLoops(-1, LoopType.Restart);
         }
 
         public bool TokenRemainingBoxCount()
