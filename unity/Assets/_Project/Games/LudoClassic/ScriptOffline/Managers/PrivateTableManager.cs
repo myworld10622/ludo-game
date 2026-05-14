@@ -355,19 +355,70 @@ namespace LudoClassicOffline
 
         private void HandleError(string errorCode, string message)
         {
+            // Always reset UI state so user can retry
+            ShowJoinLoader(false);
+            SetButtonsInteractable(true);
+
             switch (errorCode)
             {
                 case "insufficient_balance":
                     CommonUtil.ShowStyledMessage(message, "Insufficient Balance", true);
                     break;
+
                 case "invalid_code":
-                    CommonUtil.ShowStyledMessage(message, "Invalid Code", true);
+                case "table_not_found":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "Room code is invalid. Please check and try again." : message,
+                        "Invalid Code", true);
                     break;
+
                 case "table_full":
-                    CommonUtil.ShowStyledMessage(message, "Table Full", true);
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "This room is already full." : message,
+                        "Room Full", true);
                     break;
+
+                case "table_expired":
+                case "expired":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "This room code has expired. Ask the host to create a new table." : message,
+                        "Code Expired", true);
+                    break;
+
+                case "table_completed":
+                case "game_over":
+                case "completed":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "This game has already finished. Please create a new table." : message,
+                        "Game Over", true);
+                    break;
+
+                case "already_started":
+                case "game_started":
+                case "game_already_started":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "This game has already started. You cannot join now." : message,
+                        "Game Started", true);
+                    break;
+
+                case "already_joined":
+                case "already_in_table":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "You are already in this room." : message,
+                        "Already Joined", true);
+                    break;
+
+                case "invalid_user":
+                case "unauthenticated":
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "Session expired. Please log in again." : message,
+                        "Session Expired", true);
+                    break;
+
                 default:
-                    CommonUtil.ShowStyledMessage(message, "Error", true);
+                    CommonUtil.ShowStyledMessage(
+                        string.IsNullOrEmpty(message) ? "Something went wrong. Please try again." : message,
+                        "Error", true);
                     break;
             }
         }
