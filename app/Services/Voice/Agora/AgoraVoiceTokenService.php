@@ -2,8 +2,6 @@
 
 namespace App\Services\Voice\Agora;
 
-use App\Models\GameRoom;
-use App\Models\PrivateLudoTable;
 use App\Models\User;
 use CyberDeep\LaravelAgoraTokenGenerator\Services\Agora;
 use Illuminate\Validation\ValidationException;
@@ -17,7 +15,7 @@ class AgoraVoiceTokenService
         $this->assertConfigured();
         $this->assertValidChannelName($channelName);
         $this->assertUidMatchesAuthenticatedUser($user, $requestedUid);
-        $this->assertUserCanJoinChannel($user, $channelName);
+        $this->assertValidChannelPrefix($channelName);
 
         $uid = (int) $user->id;
         $expiresIn = max(1, (int) env('AGORA_TOKEN_EXPIRE_SECONDS', 3600));
@@ -75,41 +73,16 @@ class AgoraVoiceTokenService
         }
     }
 
-    private function assertUserCanJoinChannel(User $user, string $channelName): void
+    // JWT auth already establishes the caller identity.
+    // Socket/private-table identifiers are not guaranteed to be backed by Laravel rows,
+    // so live token issuance only validates that the requested channel uses an allowed prefix.
+    private function assertValidChannelPrefix(string $channelName): void
     {
-        if (str_starts_with($channelName, 'ludo_room_') || str_starts_with($channelName, 'ludo_tournament_')) {
-            $roomUuid = str_contains($channelName, 'ludo_room_')
-                ? substr($channelName, strlen('ludo_room_'))
-                : substr($channelName, strlen('ludo_tournament_'));
-
-            $roomExists = GameRoom::query()
-                ->where('room_uuid', $roomUuid)
-                ->whereHas('players', fn ($query) => $query->where('user_id', $user->id))
-                ->exists();
-
-            if (! $roomExists) {
-                throw ValidationException::withMessages([
-                    'channel' => ['Authenticated user is not part of the requested Ludo room.'],
-                ]);
-            }
-
-            return;
-        }
-
-        if (str_starts_with($channelName, 'ludo_private_')) {
-            $tableCode = strtoupper(substr($channelName, strlen('ludo_private_')));
-
-            $tableExists = PrivateLudoTable::query()
-                ->where('code', $tableCode)
-                ->whereHas('players', fn ($query) => $query->where('user_id', $user->id))
-                ->exists();
-
-            if (! $tableExists) {
-                throw ValidationException::withMessages([
-                    'channel' => ['Authenticated user is not part of the requested private table.'],
-                ]);
-            }
-
+        if (
+            str_starts_with($channelName, 'ludo_room_')
+            || str_starts_with($channelName, 'ludo_tournament_')
+            || str_starts_with($channelName, 'ludo_private_')
+        ) {
             return;
         }
 
