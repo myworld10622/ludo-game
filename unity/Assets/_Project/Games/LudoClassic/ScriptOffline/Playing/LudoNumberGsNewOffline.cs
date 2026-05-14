@@ -2975,6 +2975,8 @@ namespace LudoClassicOffline
                     true
                 );
                 ludoNumberUiManager.RefreshPassAndPlayEmojiButton(userTurnStart.data.startTurnSeatIndex);
+                // Update turn highlight UX (dice glow, YOUR TURN / OPP TURN banner)
+                PlayerIdentityUIManager.Instance?.RefreshTurnUX(userTurnStart.data.startTurnSeatIndex);
                 Debug.Log(
                     "Moves Left = > " + socketNumberEventReceiver.userTurnStart.data.movesLeft
                 );

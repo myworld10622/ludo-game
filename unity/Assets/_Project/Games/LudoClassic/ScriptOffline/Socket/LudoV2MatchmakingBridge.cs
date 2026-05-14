@@ -694,6 +694,10 @@ namespace LudoClassicOffline
             socketNumberEventReceiver.userTurnStart = BuildUserTurnStart();
             ResetVisibleSeatWidgets();
             socketNumberEventReceiver.ludoNumbersAcknowledgementHandler.JoinTableAcknowledged();
+
+            // Notify identity UX manager so it can mark the local player's panel
+            if (PlayerIdentityUIManager.Instance != null)
+                PlayerIdentityUIManager.Instance.SetLocalSeat(localSeatOffset);
         }
 
         private JoinTableResponse BuildJoinTableResponse(LudoV2RoomSnapshot snapshot)

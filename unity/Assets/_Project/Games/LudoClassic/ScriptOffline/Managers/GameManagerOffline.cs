@@ -31,6 +31,10 @@ namespace LudoClassicOffline
                 instace = this;
 
             Input.multiTouchEnabled = false;
+
+            // Auto-inject PlayerIdentityUIManager if not already in the scene
+            if (FindObjectOfType<PlayerIdentityUIManager>() == null)
+                gameObject.AddComponent<PlayerIdentityUIManager>();
         }
 
         public void Signup() =>
