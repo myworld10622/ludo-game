@@ -705,14 +705,16 @@ namespace LudoClassicOffline
                 int serverIdx = Mathf.Max(0, seat.seatNo - 1);
                 int visualIdx = ToVisualSeat(serverIdx, maxP);
                 string uid = seat.userId?.ToString() ?? seat.botCode ?? string.Empty;
+                bool isLocalSeat = serverIdx == localSeatOffset;
+                string rawName = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx);
                 playerInfo.Add(new PlayerInfoData
                 {
                     playerSeatIndex = serverIdx,
                     userId = uid,
-                    username = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx),
+                    username = isLocalSeat ? rawName + " (You)" : rawName,
                     userProfile = DefaultSeatAvatarUrl,
                 });
-                Debug.Log($"[LudoV2] Seat serverIdx={serverIdx} visualIdx={visualIdx} userId={uid} name={seat.displayName}");
+                Debug.Log($"[LudoV2] Seat serverIdx={serverIdx} visualIdx={visualIdx} userId={uid} name={seat.displayName} isLocal={isLocalSeat}");
             }
 
             return new JoinTableResponse
@@ -748,11 +750,13 @@ namespace LudoClassicOffline
                 int serverIdx = Mathf.Max(0, seat.seatNo - 1);
                 int visualIdx = ToVisualSeat(serverIdx, maxP);
                 string uid = seat.userId?.ToString() ?? seat.botCode ?? string.Empty;
+                bool isLocal = serverIdx == localSeatOffset;
+                string rawN = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx);
                 players.Add(new SignUpResponceClass.PlayerInfo
                 {
                     seatIndex = serverIdx,
                     userId = uid,
-                    username = LudoDisplayNameUtility.ResolveDisplayName(uid, seat.displayName ?? ("Seat " + seat.seatNo), visualIdx),
+                    username = isLocal ? rawN + " (You)" : rawN,
                     avatar = DefaultSeatAvatarUrl,
                     tokenDetails = new List<int> { 0, 0, 0, 0 },
                     score = 0,

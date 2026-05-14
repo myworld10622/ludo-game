@@ -1081,17 +1081,26 @@ namespace LudoClassicOffline
 
             voiceEventHandler = new VoiceEventHandler(this);
 
+            LogConfig logConfig = new LogConfig(
+                filePath: Application.persistentDataPath + "/agora_rtc.log",
+                fileSize: 512,
+                level: LOG_LEVEL.LOG_LEVEL_INFO
+            );
+
             RtcEngineContext context = new RtcEngineContext(
                 currentAppId,
                 0,
                 CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING
+                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING,
+                AREA_CODE.AREA_CODE_GLOB,
+                logConfig
             );
 
+            Debug.Log($"[Agora] LogFile={Application.persistentDataPath}/agora_rtc.log");
             lastInitResult = rtcEngine.Initialize(context);
-            Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 2=invalid_arg)");
+            Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 101=invalid_appid)");
             rtcEngine.InitEventHandler(voiceEventHandler);
-            engineInitialized = lastInitResult == 0;
+            engineInitialized = lastInitResult == 0 || lastInitResult == -7;
         }
 
         private void DisposeRtcEngine()
