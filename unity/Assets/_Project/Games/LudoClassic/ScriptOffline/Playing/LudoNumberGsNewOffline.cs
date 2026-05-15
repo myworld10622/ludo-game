@@ -1248,6 +1248,7 @@ namespace LudoClassicOffline
         void BattleFinishBorad()
         {
             Debug.Log("BattleFinishBorad =>");
+            isMatchOver = true;
             // #if UNITY_ANDROID
             //             if (PlayerPrefs.GetInt("removeAds") == 0)
             //             {
@@ -1351,13 +1352,17 @@ namespace LudoClassicOffline
         }
 
         // Called by LudoV2MatchmakingBridge when server emits the final result.
-        public void BattleFinishFromServer(bool localPlayerWon)
+        public void BattleFinishFromServer(BattleFinishData resultData, bool localPlayerWon)
         {
-            StartCoroutine(BattleFinishFromServerCoroutine(localPlayerWon));
+            StartCoroutine(BattleFinishFromServerCoroutine(resultData, localPlayerWon));
         }
 
-        private IEnumerator BattleFinishFromServerCoroutine(bool localPlayerWon)
+        internal bool isMatchOver = false;
+
+        private IEnumerator BattleFinishFromServerCoroutine(BattleFinishData resultData, bool localPlayerWon)
         {
+            isMatchOver = true;
+
             yield return new WaitForSeconds(1f);
 
             SoundManagerOffline.instance.musicAudioSource.Stop();
@@ -1368,6 +1373,15 @@ namespace LudoClassicOffline
             waitPanel.SetActive(false);
             board.SetActive(false);
             winningPartical.gameObject.SetActive(false);
+            youWin.SetActive(false);
+            youLose.SetActive(false);
+            gameTie.SetActive(false);
+            ludoNumberUiManager.moveLeft.SetActive(false);
+
+            if (resultData?.payload?.players != null && resultData.payload.players.Count > 0)
+            {
+                ludoNumberWinnerData.SetWinnerData(resultData);
+            }
 
             if (localPlayerWon)
             {
@@ -1381,6 +1395,10 @@ namespace LudoClassicOffline
                 youLose.SetActive(true);
                 SoundManagerOffline.instance.SoundPlay(SoundManagerOffline.instance.loseAudio);
             }
+
+            // Auto-return to home after 10 seconds — fallback since result panel has no close button
+            yield return new WaitForSeconds(10f);
+            if (isMatchOver) GameManagerOffline.instace?.OnClickExit();
         }
 
         #endregion

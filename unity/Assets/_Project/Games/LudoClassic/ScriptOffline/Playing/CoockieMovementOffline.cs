@@ -405,11 +405,16 @@ namespace LudoClassicOffline
 
                 ludoNumberGsNew.homePartical.Play();
 
-                // Celebratory punch scale when token reaches home; resize after settle.
+                // Celebratory punch scale when token reaches home; shrink to half after settle.
                 transform.DOKill();
                 transform.localScale = Vector3.one;
                 transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0), 0.5f, 8, 0.4f)
-                    .OnComplete(() => CoockieManage());
+                    .OnComplete(() =>
+                    {
+                        CoockieManage();
+                        // CockieManage sets scale to (1,1) for single-token slot; override to half-size at home center
+                        transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+                    });
                 //if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                 //{
                 //    ludoNumberGsNew.pointPanel.transform.DOScale(Vector3.one, 0.5f).OnComplete(() =>
@@ -492,11 +497,20 @@ namespace LudoClassicOffline
             {
                 if (ludoNumberGsNew.CheckFinishBattle())
                 {
-                    ludoNumberGsNew.winnerId = socketNumberEventReceiver
-                        .userTurnStart
-                        .data
-                        .startTurnSeatIndex;
-                    ludoNumberGsNew.BattleFinishUserData();
+                    if (socketNumberEventReceiver.isServerDrivenGameMode)
+                    {
+                        // Server-driven: report the winning move to server so it can emit the result.
+                        // Don't show local battle finish — server sends ludo.game.result.
+                        ludoNumberGsNew.ChangeUserTurn();
+                    }
+                    else
+                    {
+                        ludoNumberGsNew.winnerId = socketNumberEventReceiver
+                            .userTurnStart
+                            .data
+                            .startTurnSeatIndex;
+                        ludoNumberGsNew.BattleFinishUserData();
+                    }
                 }
                 else
                     ludoNumberGsNew.ChangeUserTurn();

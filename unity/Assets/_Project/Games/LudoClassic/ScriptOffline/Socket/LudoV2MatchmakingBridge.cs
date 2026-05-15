@@ -50,6 +50,7 @@ namespace LudoClassicOffline
         private int    pendingLocalMoveTokenIndex = -1;
         private int    pendingLocalMoveDiceValue = -1;
         private float  pendingLocalMoveSentAt = -999f;
+        private readonly List<int> serverFinishedSeatOrder = new List<int>();
         public bool IsServerDrivenGameMode => isServerDrivenGameMode;
         // Server seat index of the local player (0-based). Used for ego-view remapping.
         private int localSeatOffset;
@@ -1001,6 +1002,7 @@ namespace LudoClassicOffline
         private void OnTurnStarted(LudoV2TurnStarted payload)
         {
             if (payload == null) return;
+            if (socketNumberEventReceiver?.ludoNumberGsNew?.isMatchOver == true) return;
             // Auto-enable server-driven mode when server sends turn events (handles allHumans parse failure)
             if (!isServerDrivenGameMode) isServerDrivenGameMode = true;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
@@ -1129,6 +1131,12 @@ namespace LudoClassicOffline
                 }
             }
 
+            if ((payload.finished_seats != null && payload.finished_seats.Length > 0)
+                || (payload.player_ranks != null && payload.player_ranks.Length > 0))
+            {
+                ReplaceFinishedSeatOrder(BuildFinishedSeatOrder(payload.finished_seats, payload.player_ranks));
+            }
+
             if (shouldTreatAsLocal)
             {
                 ClearPendingLocalMove();
@@ -1142,18 +1150,21 @@ namespace LudoClassicOffline
                 RunOnMainThread(() => StartCoroutine(ReconcileKilledTokensAfterDelay(killedCopy, maxPk)));
             }
 
-            // Handle server-confirmed win for any player
+            // Handle server-confirmed player finish.
+            // In 3p/4p the match can continue after one player finishes, so do not open
+            // the final popup here. Only track the seat as finished and update badges.
             if (payload.is_win)
             {
-                bool localWon = isLocalPlayer;
-                RunOnMainThread(() => HandleServerBattleFinish(localWon));
+                NoteFinishedSeat(payload.seat_index);
             }
         }
 
-        private void HandleServerBattleFinish(bool localPlayerWon)
+        private void HandleServerBattleFinish(LudoV2MatchResult payload)
         {
             if (socketNumberEventReceiver?.ludoNumberGsNew == null) return;
-            socketNumberEventReceiver.ludoNumberGsNew.BattleFinishFromServer(localPlayerWon);
+            BattleFinishData resultData = BuildBattleFinishDataFromServerResult(payload);
+            bool localPlayerWon = IsLocalWinner(payload);
+            socketNumberEventReceiver.ludoNumberGsNew.BattleFinishFromServer(resultData, localPlayerWon);
         }
 
         // Teleports a single token to an authoritative board position without animation.
@@ -1227,6 +1238,8 @@ namespace LudoClassicOffline
         private void OnTurnMissed(LudoV2TurnMissed payload)
         {
             if (!isServerDrivenGameMode || payload == null) return;
+            // Suppress turn-missed toasts after the match result has been shown
+            if (socketNumberEventReceiver?.ludoNumberGsNew?.isMatchOver == true) return;
             int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
             int visualSeat = ToVisualSeat(payload.seat_index, maxP);
             Debug.Log($"[LudoV2] turn_missed serverSeat={payload.seat_index} visualSeat={visualSeat} reason={payload.reason}");
@@ -1456,8 +1469,8 @@ namespace LudoClassicOffline
             // For server-driven mode: show win/lose panel from server result
             if (isServerDrivenGameMode && !isTournamentMode)
             {
-                bool localWon = IsLocalWinner(payload);
-                RunOnMainThread(() => HandleServerBattleFinish(localWon));
+                ReplaceFinishedSeatOrder(ExtractRankedServerSeats(payload));
+                RunOnMainThread(() => HandleServerBattleFinish(payload));
                 return;
             }
 
@@ -1614,6 +1627,7 @@ namespace LudoClassicOffline
             // Server sends turn_nonce when rolled=false, roll_nonce when rolled=true.
             currentTurnNonce = !string.IsNullOrEmpty(payload.turn_nonce) ? payload.turn_nonce : null;
             currentRollNonce = !string.IsNullOrEmpty(payload.roll_nonce) ? payload.roll_nonce : null;
+            ReplaceFinishedSeatOrder(BuildFinishedSeatOrder(payload.finished_seats, payload.player_ranks));
 
             // Stop any running coroutines (pending animations, timers) before overwriting state
             gsNew.StopAllCoroutines();
@@ -1846,6 +1860,7 @@ namespace LudoClassicOffline
             lastAnnouncedSeatCount = 0;
             hasMySeatFromServer = false;
             localSeatOffset = 0;
+            serverFinishedSeatOrder.Clear();
             CancelInvoke(nameof(ClaimNextTournamentRound));
             DisconnectSocket();
         }
@@ -1896,6 +1911,185 @@ namespace LudoClassicOffline
             }
 
             return false;
+        }
+
+        private BattleFinishData BuildBattleFinishDataFromServerResult(LudoV2MatchResult payload)
+        {
+            List<LudoV2Placement> placements = payload?.placements?
+                .OrderBy(p => p.finish_position)
+                .ThenBy(p => p.seat_no)
+                .ToList() ?? new List<LudoV2Placement>();
+
+            BattleFinishData resultData = new BattleFinishData
+            {
+                payload = new Payload
+                {
+                    players = new List<AvtarData>(),
+                },
+            };
+
+            foreach (LudoV2Placement placement in placements)
+            {
+                LudoV2SeatData seat = latestSnapshot?.seats?.Find(item => item != null && item.seatNo == placement.seat_no);
+                string userId = seat?.userId?.ToString()
+                    ?? placement.user_id?.ToString()
+                    ?? placement.seat_no.ToString();
+                string displayName = LudoDisplayNameUtility.ResolveDisplayName(
+                    userId,
+                    seat?.displayName ?? string.Empty,
+                    Mathf.Max(0, placement.seat_no - 1)
+                );
+
+                resultData.payload.players.Add(new AvtarData
+                {
+                    userId = userId,
+                    username = $"{placement.finish_position}. {displayName} [{userId}]",
+                    seatIndex = Mathf.Max(0, placement.seat_no - 1),
+                    isPlaying = placement.finish_position == 1,
+                    avatar = string.Empty,
+                    score = placement.score,
+                    winAmount = 0,
+                    winType = placement.finish_position == 1 ? "win" : "loss",
+                });
+            }
+
+            return resultData;
+        }
+
+        private List<int> ExtractRankedServerSeats(LudoV2MatchResult payload)
+        {
+            if (payload?.placements == null || payload.placements.Count == 0)
+            {
+                return new List<int>();
+            }
+
+            return payload.placements
+                .OrderBy(p => p.finish_position)
+                .ThenBy(p => p.seat_no)
+                .Select(p => Mathf.Max(0, p.seat_no - 1))
+                .Distinct()
+                .ToList();
+        }
+
+        private void NoteFinishedSeat(int serverSeat)
+        {
+            if (serverSeat < 0 || serverFinishedSeatOrder.Contains(serverSeat))
+            {
+                return;
+            }
+
+            serverFinishedSeatOrder.Add(serverSeat);
+            ApplyFinishedSeatBadges();
+        }
+
+        private void ReplaceFinishedSeatOrder(IEnumerable<int> finishedSeats)
+        {
+            serverFinishedSeatOrder.Clear();
+            if (finishedSeats != null)
+            {
+                foreach (int seat in finishedSeats)
+                {
+                    if (seat >= 0 && !serverFinishedSeatOrder.Contains(seat))
+                    {
+                        serverFinishedSeatOrder.Add(seat);
+                    }
+                }
+            }
+
+            ApplyFinishedSeatBadges();
+        }
+
+        private List<int> BuildFinishedSeatOrder(IEnumerable<int> finishedSeats, int[] playerRanks)
+        {
+            if (playerRanks != null && playerRanks.Length > 0)
+            {
+                return playerRanks
+                    .Select((rank, seat) => new { rank, seat })
+                    .Where(item => item.rank > 0)
+                    .OrderBy(item => item.rank)
+                    .ThenBy(item => item.seat)
+                    .Select(item => item.seat)
+                    .ToList();
+            }
+
+            return finishedSeats?
+                .Where(seat => seat >= 0)
+                .Distinct()
+                .ToList() ?? new List<int>();
+        }
+
+        private void ApplyFinishedSeatBadges()
+        {
+            var gsNew = socketNumberEventReceiver?.ludoNumberGsNew;
+            if (gsNew?.ludoNumberPlayerControl == null)
+            {
+                return;
+            }
+
+            int maxP = latestSnapshot?.max_players > 0 ? latestSnapshot.max_players : 2;
+
+            foreach (var playerControl in gsNew.ludoNumberPlayerControl)
+            {
+                if (playerControl?.ludoNumbersUserData == null)
+                {
+                    continue;
+                }
+
+                SetSeatFinishedVisual(playerControl.ludoNumbersUserData, 0);
+            }
+
+            for (int index = 0; index < serverFinishedSeatOrder.Count; index++)
+            {
+                int visualSeat = ToVisualSeat(serverFinishedSeatOrder[index], maxP);
+                if (visualSeat < 0 || visualSeat >= gsNew.ludoNumberPlayerControl.Length)
+                {
+                    continue;
+                }
+
+                var userData = gsNew.ludoNumberPlayerControl[visualSeat]?.ludoNumbersUserData;
+                if (userData == null)
+                {
+                    continue;
+                }
+
+                SetSeatFinishedVisual(userData, index + 1);
+            }
+        }
+
+        private void SetSeatFinishedVisual(LudoNumbersUserData userData, int finishPosition)
+        {
+            if (userData == null)
+            {
+                return;
+            }
+
+            if (userData.fristBox != null) userData.fristBox.SetActive(finishPosition == 1);
+            if (userData.secondBox != null) userData.secondBox.SetActive(finishPosition == 2);
+            if (userData.thirdBox != null) userData.thirdBox.SetActive(finishPosition == 3);
+
+            bool isFinished = finishPosition > 0;
+            if (!isFinished)
+            {
+                return;
+            }
+
+            if (userData.smallRoundImage != null) userData.smallRoundImage.SetActive(false);
+            if (userData.turnProfileBlink != null) userData.turnProfileBlink.SetActive(false);
+            if (userData.turnTimeShowArrow != null) userData.turnTimeShowArrow.SetActive(false);
+            if (userData.arrowAnimationOnTurnTime != null) userData.arrowAnimationOnTurnTime.enabled = false;
+            if (userData.animatorOnTurn != null) userData.animatorOnTurn.enabled = false;
+
+            if (userData.playerCoockieForClassicMode != null)
+            {
+                foreach (GameObject token in userData.playerCoockieForClassicMode)
+                {
+                    var tokenImage = token?.GetComponent<Image>();
+                    if (tokenImage != null)
+                    {
+                        tokenImage.raycastTarget = false;
+                    }
+                }
+            }
         }
 
         public void ReportMatchCompleted(BattleFinishData battleFinishData)
@@ -2214,6 +2408,8 @@ namespace LudoClassicOffline
         public bool                   is_win;
         public List<LudoV2KilledToken> killed_tokens;
         public int[][]                tokens;         // full authoritative board snapshot
+        public int[]                  finished_seats; // ordered server seat indices that have finished
+        public int[]                  player_ranks;   // player_ranks[serverSeat] = 1..N, 0 = unfinished
     }
 
     [Serializable]
@@ -2232,6 +2428,8 @@ namespace LudoClassicOffline
         public int?     dice_value;         // null if dice not yet rolled this turn
         public bool     rolled;             // whether dice was rolled this turn
         public int[]    finished_seats;     // server seat indices that have finished
+        public int[]    player_ranks;       // player_ranks[serverSeat] = 1..N, 0 = unfinished
+        public int      active_players_count;
         public int?     timer_remaining_ms; // ms left on current turn timer (null = unknown)
         public string   turn_nonce;         // valid when rolled=false (awaiting roll_dice)
         public string   roll_nonce;         // valid when rolled=true  (awaiting move_token)

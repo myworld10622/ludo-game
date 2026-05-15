@@ -20,66 +20,50 @@ namespace LudoClassicOffline
 
         public void SetWinnerData(BattleFinishData data)
         {
+            int maxPlayerCount = socketNumberEventReceiver?.joinTableResponse?.data?.maxPlayerCount ?? 2;
+            int playerCount = data?.payload?.players?.Count ?? 0;
+            bool useFourPlayerLayout = maxPlayerCount > 2;
 
-            Debug.Log("SetWinnerData" + data.payload.players.Count);
-            if (socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount == 4)
-                fourPlayer.SetActive(true);
-            else
-                twoPlayer.SetActive(true);
+            Debug.Log("SetWinnerData" + playerCount);
+            twoPlayer.SetActive(!useFourPlayerLayout);
+            fourPlayer.SetActive(useFourPlayerLayout);
 
-            for (int i = 0; i < socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount; i++)
+            List<LudoNumberResultPlayerDataOffline> rows = useFourPlayerLayout ? fourPlayerDataList : twoPlayerDataList;
+            foreach (LudoNumberResultPlayerDataOffline row in rows)
             {
-                if (socketNumberEventReceiver.joinTableResponse.data.maxPlayerCount == 4)
+                if (row == null) continue;
+                row.userName.text = string.Empty;
+                row.score.text = "0";
+                row.winAmount.text = "₹0";
+                row.crown.SetActive(false);
+                row.boxImage.GetComponent<Image>().sprite = blueSprite;
+                row.gameObject.SetActive(false);
+            }
+
+            for (int i = 0; i < playerCount && i < rows.Count; i++)
+            {
+                LudoNumberResultPlayerDataOffline row = rows[i];
+                AvtarData player = data.payload.players[i];
+                row.gameObject.SetActive(true);
+                row.userName.text = player.username;
+                row.score.text = player.score.ToString();
+                row.winAmount.text = "₹" + player.winAmount.ToString();
+                row.setProfile(player.avatar);
+
+                if (player.winType == "win")
                 {
-                    fourPlayerDataList[i].userName.text = LudoDisplayNameUtility.ResolveDisplayName(
-                        data.payload.players[i].userId,
-                        data.payload.players[i].username,
-                        i
-                    );
-                    fourPlayerDataList[i].score.text = data.payload.players[i].score.ToString();
-                    fourPlayerDataList[i].winAmount.text = "₹" + data.payload.players[i].winAmount.ToString();
-                    fourPlayerDataList[i].setProfile(data.payload.players[i].avatar);
-                    if (data.payload.players[i].winType == "win")
-                    {
-                        fourPlayerDataList[i].boxImage.GetComponent<Image>().sprite = greenSprite;
-                        fourPlayerDataList[i].crown.SetActive(true);
-                    }
-                    else if (data.payload.players[i].winType == "lost")
-                    {
-                        fourPlayerDataList[i].boxImage.GetComponent<Image>().sprite = blueSprite;
-                        fourPlayerDataList[i].crown.SetActive(false);
-                    }
-                    else if (data.payload.players[i].winType == "tie")
-                    {
-                        fourPlayerDataList[i].boxImage.GetComponent<Image>().sprite = greenSprite;
-                        fourPlayerDataList[i].crown.SetActive(false);
-                    }
+                    row.boxImage.GetComponent<Image>().sprite = greenSprite;
+                    row.crown.SetActive(true);
                 }
-                else
+                else if (player.winType == "loss" || player.winType == "lost")
                 {
-                    twoPlayerDataList[i].userName.text = LudoDisplayNameUtility.ResolveDisplayName(
-                        data.payload.players[i].userId,
-                        data.payload.players[i].username,
-                        i
-                    );
-                    twoPlayerDataList[i].score.text = data.payload.players[i].score.ToString();
-                    twoPlayerDataList[i].winAmount.text = "₹" + data.payload.players[i].winAmount.ToString();
-                    twoPlayerDataList[i].setProfile(data.payload.players[i].avatar);
-                    if (data.payload.players[i].winType == "win")
-                    {
-                        twoPlayerDataList[i].boxImage.GetComponent<Image>().sprite = greenSprite;
-                        twoPlayerDataList[i].crown.SetActive(true);
-                    }
-                    else if (data.payload.players[i].winType == "lost")
-                    {
-                        twoPlayerDataList[i].boxImage.GetComponent<Image>().sprite = blueSprite;
-                        twoPlayerDataList[i].crown.SetActive(false);
-                    }
-                    else if (data.payload.players[i].winType == "tie")
-                    {
-                        twoPlayerDataList[i].boxImage.GetComponent<Image>().sprite = greenSprite;
-                        twoPlayerDataList[i].crown.SetActive(false);
-                    }
+                    row.boxImage.GetComponent<Image>().sprite = blueSprite;
+                    row.crown.SetActive(false);
+                }
+                else if (player.winType == "tie")
+                {
+                    row.boxImage.GetComponent<Image>().sprite = greenSprite;
+                    row.crown.SetActive(false);
                 }
             }
         }
