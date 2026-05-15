@@ -1081,22 +1081,15 @@ namespace LudoClassicOffline
 
             voiceEventHandler = new VoiceEventHandler(this);
 
-            LogConfig logConfig = new LogConfig(
-                filePath: Application.persistentDataPath + "/agora_rtc.log",
-                fileSize: 512,
-                level: LOG_LEVEL.LOG_LEVEL_INFO
-            );
-
+            // Keep context minimal — matches the working Agora example pattern
             RtcEngineContext context = new RtcEngineContext(
                 currentAppId,
                 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_GAME_STREAMING,
-                AREA_CODE.AREA_CODE_GLOB,
-                logConfig
+                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
+                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT,
+                AREA_CODE.AREA_CODE_GLOB
             );
 
-            Debug.Log($"[Agora] LogFile={Application.persistentDataPath}/agora_rtc.log");
             lastInitResult = rtcEngine.Initialize(context);
             Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 101=invalid_appid)");
             rtcEngine.InitEventHandler(voiceEventHandler);

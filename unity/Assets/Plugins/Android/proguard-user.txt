@@ -1,0 +1,6 @@
+# Agora RTC SDK — keep all classes from being stripped/obfuscated by R8
+-keep class io.agora.** { *; }
+-keep class io.agora.rtc.** { *; }
+-keep class io.agora.rtc2.** { *; }
+-keep class io.agora.base.** { *; }
+-dontwarn io.agora.**
