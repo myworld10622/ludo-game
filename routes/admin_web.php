@@ -58,6 +58,7 @@ Route::middleware('web')->group(function () {
             Route::get('/users/{user}', [UserController::class, 'show'])->name('users.show');
             Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
             Route::post('/users/{user}/panel-permissions', [UserController::class, 'updatePanelPermissions'])->name('users.panel-permissions');
+            Route::post('/users/{user}/adjust-wallet', [UserController::class, 'adjustWallet'])->name('users.adjust-wallet');
             Route::get('/support-tickets', [SupportTicketController::class, 'index'])->name('support.index');
             Route::get('/support-tickets/{ticket}', [SupportTicketController::class, 'show'])->name('support.show');
             Route::post('/support-tickets/{ticket}/reply', [SupportTicketController::class, 'reply'])->name('support.reply');
