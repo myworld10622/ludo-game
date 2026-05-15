@@ -2261,23 +2261,42 @@ public class DashBoardManagerOffline : MonoBehaviour
                     yield break;
                 }
 
-                string toastMsg;
+                string errorTitle;
+                string errorMsg;
                 switch (errorCode)
                 {
                     case "invalid_code":
-                        toastMsg = "❌ Invalid or expired code.\nPlease create a new table.";
+                    case "table_not_found":
+                        errorTitle = "Invalid Code";
+                        errorMsg = "This room code is invalid or has expired.\nPlease ask the host to create a new table.";
                         break;
                     case "table_full":
-                        toastMsg = "❌ Table is full.\nThis table already has all players.";
+                        errorTitle = "Room Full";
+                        errorMsg = "This room already has all players.\nPlease create a new table.";
+                        break;
+                    case "table_completed":
+                    case "game_over":
+                    case "completed":
+                        errorTitle = "Game Already Over";
+                        errorMsg = "This game has already finished.\nPlease create a new table.";
+                        break;
+                    case "already_started":
+                    case "game_started":
+                    case "game_already_started":
+                        errorTitle = "Game Started";
+                        errorMsg = "This game has already started.\nYou cannot join now.";
                         break;
                     case "insufficient_balance":
-                        toastMsg = "❌ Insufficient balance.\n" + msg;
+                        errorTitle = "Insufficient Balance";
+                        errorMsg = msg;
                         break;
                     default:
-                        toastMsg = "❌ " + msg;
+                        errorTitle = "Cannot Join";
+                        errorMsg = string.IsNullOrEmpty(msg) ? "Could not join. Please try again." : msg;
                         break;
                 }
-                CommonUtil.ShowToast(toastMsg);
+                ShowPrivateTableError(errorTitle, errorMsg);
+                ShowPassNPlayPlayerCountPopup();
                 yield break;
             }
 

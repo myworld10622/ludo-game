@@ -145,7 +145,7 @@ namespace LudoClassicOffline
         {
             if (!string.IsNullOrEmpty(currentTableCode))
             {
-                GUIUtility.systemCopyBuffer = BuildShareMessage(currentTableCode);
+                PassNPlayPopup.CopyToClipboard(BuildShareMessage(currentTableCode));
                 CommonUtil.ShowToast("Share message copied!");
             }
         }
@@ -155,7 +155,7 @@ namespace LudoClassicOffline
         {
             if (!string.IsNullOrEmpty(currentTableCode))
             {
-                GUIUtility.systemCopyBuffer = currentTableCode;
+                PassNPlayPopup.CopyToClipboard(currentTableCode);
                 CommonUtil.ShowToast("Room code copied: " + currentTableCode);
             }
         }

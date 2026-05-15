@@ -1,4 +1,6 @@
+using System.Text.RegularExpressions;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
@@ -39,6 +41,7 @@ public class PassNPlayPopup : MonoBehaviour
                 SetChildActive("TxtFee",  false);
                 SetChildActive("TxtCode", true);
                 ClearInput("TxtCode");
+                TryPasteCodeFromClipboard("TxtCode");  // auto-detect code from copied share message
                 SetChildActive("2PlayersButton", true);
                 SetChildActive("3PlayersButton", true);
                 SetChildActive("4PlayersButton", false);
@@ -54,8 +57,14 @@ public class PassNPlayPopup : MonoBehaviour
                 SetChildActive("2PlayersButton", false);
                 SetChildActive("3PlayersButton", false);
                 SetChildActive("4PlayersButton", false);
-                SetCancelButtonText(WaitingIsCreator ? "Copy Code & Close" : "Close");
-                if (WaitingIsCreator) GUIUtility.systemCopyBuffer = WaitingCode;
+                SetCancelButtonText(WaitingIsCreator ? "📋 Copy Code & Share" : "Close");
+                if (WaitingIsCreator) CopyToClipboard(BuildShareMessage(WaitingCode));
+                // Make the code text tappable — tap it to copy just the bare code
+                MakeTextTappable(TxtMessage, () =>
+                {
+                    CopyToClipboard(WaitingCode);
+                    if (TxtMessage != null) TxtMessage.text = "✅ Code copied!\n" + TxtMessage.text;
+                });
                 break;
 
             case 3: // ERROR view
@@ -149,5 +158,71 @@ public class PassNPlayPopup : MonoBehaviour
             if (f != null) return f;
         }
         return null;
+    }
+
+    // ── Clipboard: works on Android APK + Editor ─────────────────────────────
+    public static void CopyToClipboard(string text)
+    {
+#if UNITY_ANDROID && !UNITY_EDITOR
+        try
+        {
+            AndroidJavaClass unityPlayer = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+            AndroidJavaObject activity   = unityPlayer.GetStatic<AndroidJavaObject>("currentActivity");
+            AndroidJavaObject clipboard  = activity.Call<AndroidJavaObject>("getSystemService", "clipboard");
+            AndroidJavaClass  clipClass  = new AndroidJavaClass("android.content.ClipData");
+            AndroidJavaObject clip       = clipClass.CallStatic<AndroidJavaObject>("newPlainText", "rox_code", text);
+            clipboard.Call("setPrimaryClip", clip);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[Clipboard] Android copy failed: " + e.Message);
+            GUIUtility.systemCopyBuffer = text;
+        }
+#else
+        GUIUtility.systemCopyBuffer = text;
+#endif
+    }
+
+    private static string BuildShareMessage(string code)
+        => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
+
+    // ── Smart paste: scan clipboard for a 6-char uppercase code ─────────────
+    private void TryPasteCodeFromClipboard(string inputChildName)
+    {
+        try
+        {
+            string clipboard = GUIUtility.systemCopyBuffer;
+            if (string.IsNullOrEmpty(clipboard)) return;
+
+            // Match 6-char alphanumeric — handles "👉 P97X38" or "code: P97X38" etc.
+            var match = Regex.Match(clipboard, @"\b([A-Z0-9]{6})\b");
+            if (!match.Success)
+                match = Regex.Match(clipboard.ToUpper(), @"[A-Z0-9]{6}");
+            if (!match.Success) return;
+
+            string code = match.Value.ToUpper();
+            Transform t = FindDeep(transform, inputChildName);
+            if (t == null) return;
+            InputField inp = t.GetComponent<InputField>();
+            if (inp != null)
+            {
+                inp.text = code;
+                if (TxtMessage != null)
+                    TxtMessage.text = $"Code detected: {code}\nTap JOIN TABLE to continue.";
+            }
+        }
+        catch { }
+    }
+
+    // ── Make a Text label tappable (adds EventTrigger at runtime) ────────────
+    private static void MakeTextTappable(Text label, UnityEngine.Events.UnityAction onClick)
+    {
+        if (label == null) return;
+        var trigger = label.GetComponent<EventTrigger>()
+                      ?? label.gameObject.AddComponent<EventTrigger>();
+        trigger.triggers.Clear();
+        var entry = new EventTrigger.Entry { eventID = EventTriggerType.PointerClick };
+        entry.callback.AddListener(_ => onClick?.Invoke());
+        trigger.triggers.Add(entry);
     }
 }
