@@ -103,8 +103,12 @@
                         <td class="muted" style="font-size:12px;">
                             {{ $user->last_login_at?->format('M d, Y H:i') ?? '—' }}
                         </td>
-                        <td>
+                        <td style="white-space:nowrap;">
                             <a href="{{ route('admin.users.show', $user) }}" class="btn-detail">Detail</a>
+                            <button class="btn-detail" style="background:#dcfce7;color:#166534;margin-left:4px;"
+                                onclick="openWalletModal({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ $user->primaryWallet?->balance ?? 0 }}')">
+                                💰 Wallet
+                            </button>
                         </td>
                     </tr>
                 @empty
@@ -114,6 +118,42 @@
         </table>
     </div>
     <div style="padding:16px 18px;">{{ $users->links() }}</div>
+</div>
+
+{{-- Wallet Adjust Modal --}}
+<div class="modal-overlay" id="walletModal" onclick="if(event.target===this)closeWalletModal()">
+    <div class="modal-box" style="max-width:420px;">
+        <div class="modal-header">
+            <span class="modal-title" id="walletModalTitle">Adjust Wallet</span>
+            <button class="modal-close" onclick="closeWalletModal()">✕</button>
+        </div>
+        <div class="modal-body">
+            <p style="margin:0 0 12px;font-size:13px;color:#6b7280;">
+                Current Balance: <strong id="walletCurrentBal" style="color:#065f46;font-size:15px;"></strong>
+            </p>
+            <form id="walletForm" method="POST">
+                @csrf
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <label style="flex:1;cursor:pointer;">
+                        <input type="radio" name="type" value="credit" checked> &nbsp;
+                        <span style="color:#166534;font-weight:600;">➕ Add Funds</span>
+                    </label>
+                    <label style="flex:1;cursor:pointer;">
+                        <input type="radio" name="type" value="debit"> &nbsp;
+                        <span style="color:#991b1b;font-weight:600;">➖ Deduct Funds</span>
+                    </label>
+                </div>
+                <input type="number" name="amount" min="1" max="100000" step="1" placeholder="Amount (₹)"
+                    style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:10px;box-sizing:border-box;" required>
+                <input type="text" name="note" placeholder="Reason / Note (optional)"
+                    style="width:100%;padding:9px 12px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;margin-bottom:14px;box-sizing:border-box;">
+                <button type="submit"
+                    style="width:100%;padding:10px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:15px;font-weight:600;cursor:pointer;">
+                    Confirm
+                </button>
+            </form>
+        </div>
+    </div>
 </div>
 
 {{-- Match History Modal --}}
@@ -147,7 +187,20 @@ function closeModal() {
     document.getElementById('matchModal').classList.remove('open');
 }
 
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+function openWalletModal(userId, username, balance) {
+    document.getElementById('walletModalTitle').textContent = username + ' — Adjust Wallet';
+    document.getElementById('walletCurrentBal').textContent = '₹' + parseFloat(balance).toFixed(2);
+    document.getElementById('walletForm').action = '/admin/users/' + userId + '/adjust-wallet';
+    document.getElementById('walletModal').classList.add('open');
+}
+
+function closeWalletModal() {
+    document.getElementById('walletModal').classList.remove('open');
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeWalletModal(); }
+});
 </script>
 
 @endsection

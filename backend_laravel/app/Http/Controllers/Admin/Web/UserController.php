@@ -152,6 +152,60 @@ class UserController extends Controller
             ->with('status', 'User panel permissions updated successfully.');
     }
 
+    // POST /admin/users/{user}/adjust-wallet
+    public function adjustWallet(Request $request, User $user): RedirectResponse
+    {
+        $request->validate([
+            'type'   => ['required', 'in:credit,debit'],
+            'amount' => ['required', 'numeric', 'min:1', 'max:100000'],
+            'note'   => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $amount = (float) $request->amount;
+        $wallet = $user->primaryWallet;
+
+        if (! $wallet) {
+            return back()->with('error', 'User has no wallet.');
+        }
+
+        if ($request->type === 'debit' && $wallet->balance < $amount) {
+            return back()->with('error', "Insufficient balance. Current balance: ₹{$wallet->balance}");
+        }
+
+        DB::transaction(function () use ($wallet, $request, $amount, $user) {
+            $balanceBefore = $wallet->balance;
+
+            if ($request->type === 'credit') {
+                $wallet->increment('balance', $amount);
+            } else {
+                $wallet->decrement('balance', $amount);
+            }
+
+            $balanceAfter = $wallet->fresh()->balance;
+
+            DB::table('wallet_transactions')->insert([
+                'transaction_uuid' => \Illuminate\Support\Str::uuid(),
+                'user_id'          => $user->id,
+                'wallet_id'        => $wallet->id,
+                'type'             => $request->type === 'credit' ? 'admin_credit' : 'admin_debit',
+                'direction'        => $request->type === 'credit' ? 'in' : 'out',
+                'status'           => 'completed',
+                'amount'           => $amount,
+                'balance_before'   => $balanceBefore,
+                'balance_after'    => $balanceAfter,
+                'description'      => $request->note ?? 'Admin wallet adjustment',
+                'processed_at'     => now(),
+                'created_at'       => now(),
+                'updated_at'       => now(),
+            ]);
+        });
+
+        $action = $request->type === 'credit' ? 'credited' : 'debited';
+        return redirect()
+            ->route('admin.users.show', $user)
+            ->with('status', "₹{$amount} {$action} successfully. New balance: ₹{$wallet->fresh()->balance}");
+    }
+
     // GET /admin/users/{user}/matches  — returns HTML fragment for popup
     public function userMatches(User $user): View
     {
