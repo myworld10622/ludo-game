@@ -849,9 +849,13 @@ module.exports = function (namespace) {
       }
     }
 
-    // Extra-turn: rolling 6 or killing at least one opponent token
+    const reachedHome = oldPos >= 0 && oldPos < TOKEN_HOME_POS && newPos === TOKEN_HOME_POS;
+    const isWin       = gs.tokens[seatIndex].every(p => p >= TOKEN_HOME_POS);
+
+    // Extra-turn: rolling 6, killing an opponent token, or reaching home.
+    // A player who has already finished all tokens should not be granted another turn.
     const rolledSix  = diceValue === 6;
-    let   extraTurn  = rolledSix || killed.length > 0;
+    let   extraTurn  = !isWin && (rolledSix || killed.length > 0 || reachedHome);
 
     if (rolledSix) {
       gs.sixRun = (gs.sixRun || 0) + 1;
@@ -865,9 +869,6 @@ module.exports = function (namespace) {
     } else {
       gs.sixRun = 0;
     }
-
-    // Win: all four tokens home
-    const isWin = gs.tokens[seatIndex].every(p => p >= TOKEN_HOME_POS);
 
     return { killed, extraTurn, isWin };
   }
@@ -919,7 +920,7 @@ module.exports = function (namespace) {
   function _advanceTurn(room) {
     const gs = _gameState(room);
     if (!gs) return;
-    const active = gs.active.filter(i => !gs.finished.has(i));
+    const active = gs.active.filter(i => !(gs.isFinished?.[i] || gs.finished.has(i)));
     if (active.length === 0) { gs.over = true; return; }
     const pos   = active.indexOf(gs.current);
     gs.current  = active[(pos + 1) % active.length];
@@ -932,6 +933,15 @@ module.exports = function (namespace) {
     const gs = _gameState(room);
     if (!gs || gs.over) return;
     _clearGameTimer(room);
+    const active = gs.active.filter(i => !(gs.isFinished?.[i] || gs.finished.has(i)));
+    if (active.length === 0) {
+      gs.over = true;
+      _persist(room);
+      return;
+    }
+    if (gs.isFinished?.[gs.current]) {
+      gs.current = active[0];
+    }
     const seat = room.seats[gs.current];
     if (!seat) return;
 
@@ -1119,23 +1129,36 @@ module.exports = function (namespace) {
     const tokenSummaryAfter = (gs.tokens || []).map((tArr, si) => `s${si}:[${(tArr||[]).join(',')}]`).join(' ');
     console.log(`[GAME][${room.roomId}] MOVE_DONE seat=${seatIndex} token=${tokenIndex} dice=${dv} extra=${extraTurn} win=${isWin} killed=${JSON.stringify(killed)} absMap=${JSON.stringify((gs.tokenAbsPos||[]).map((a,si)=>`s${si}:[${(a||[]).join(',')}]`))} tokens=${tokenSummaryAfter}`);
 
-    namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
-      seat_index:    seatIndex,
-      token_index:   tokenIndex,    // -1 = pass (caller-supplied for no-move path)
-      dice_value:    dv,
-      extra_turn:    extraTurn,     // server-computed, not client-supplied
-      is_win:        isWin,         // server-computed, not client-supplied
-      killed_tokens: killed,        // [{seat_index, token_index}] — opponents sent home
-      tokens:        gs.tokens,     // full authoritative snapshot for client reconciliation
-    });
-
     if (isWin) {
-      gs.finished.add(seatIndex);
-      const remaining = gs.active.filter(i => !gs.finished.has(i));
+      if (!gs.isFinished[seatIndex]) {
+        gs.finished.add(seatIndex);
+        gs.isFinished[seatIndex] = true;
+        gs.finishedOrder.push(seatIndex);
+        gs.playerRanks[seatIndex] = gs.finishedOrder.length;
+      }
+      const remaining = gs.active.filter(i => !gs.isFinished[i]);
       // Game ends when only one (or zero) active players remain unfinished
       if (remaining.length <= 1) {
-        remaining.forEach(i => gs.finished.add(i));
+        remaining.forEach(i => {
+          if (!gs.isFinished[i]) {
+            gs.finished.add(i);
+            gs.isFinished[i] = true;
+            gs.finishedOrder.push(i);
+            gs.playerRanks[i] = gs.finishedOrder.length;
+          }
+        });
         gs.over = true;
+        namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
+          seat_index:      seatIndex,
+          token_index:     tokenIndex,
+          dice_value:      dv,
+          extra_turn:      extraTurn,
+          is_win:          isWin,
+          killed_tokens:   killed,
+          tokens:          gs.tokens,
+          finished_seats:  [...gs.finishedOrder],
+          player_ranks:    gs.playerRanks,
+        });
         _persist(room);
         _autoSettle(room).catch(err =>
           console.error('[LudoEngine] _autoSettle error:', err.message)
@@ -1143,6 +1166,18 @@ module.exports = function (namespace) {
         return;
       }
     }
+
+    namespace.to(room.roomId).emit(socketEvents.server.TOKEN_MOVED, {
+      seat_index:      seatIndex,
+      token_index:     tokenIndex,    // -1 = pass (caller-supplied for no-move path)
+      dice_value:      dv,
+      extra_turn:      extraTurn,     // server-computed, not client-supplied
+      is_win:          isWin,         // server-computed, not client-supplied
+      killed_tokens:   killed,        // [{seat_index, token_index}] — opponents sent home
+      tokens:          gs.tokens,     // full authoritative snapshot for client reconciliation
+      finished_seats:  [...gs.finishedOrder],
+      player_ranks:    gs.playerRanks,
+    });
 
     if (!extraTurn) {
       _advanceTurn(room);
@@ -1160,7 +1195,9 @@ module.exports = function (namespace) {
     const seats = room.seats ?? [];
     if (!gs) return;
 
-    const finishedArr = [...gs.finished];               // ordered by insertion
+    const finishedArr = Array.isArray(gs.finishedOrder) && gs.finishedOrder.length > 0
+      ? [...gs.finishedOrder]
+      : [...gs.finished];
     const allSeats    = seats.map((_, i) => i);
     const notFinished = allSeats.filter(i => !gs.finished.has(i));
     const ranked      = [...finishedArr, ...notFinished];
@@ -1330,6 +1367,9 @@ module.exports = function (namespace) {
     room._gs = {
       active:       seats.map((_, i) => i),
       finished:     new Set(),
+      finishedOrder:[],
+      playerRanks:  Array(seats.length).fill(0),
+      isFinished:   Array(seats.length).fill(false),
       current:      0,
       diceValue:    null,
       rolled:       false,
@@ -2135,7 +2175,9 @@ module.exports = function (namespace) {
           current_seat:       gs.current,
           dice_value:         gs.diceValue ?? null,
           rolled:             gs.rolled ?? false,
-          finished_seats:     [...gs.finished],
+          finished_seats:     [...(gs.finishedOrder ?? gs.finished)],
+          player_ranks:       gs.playerRanks ?? [],
+          active_players_count: gs.active.filter(i => !(gs.isFinished?.[i] || gs.finished.has(i))).length,
           timer_remaining_ms: timerRemainingMs,
           // Nonce chain restored so the reconnected player can act immediately
           turn_nonce: !gs.rolled ? gs.turnNonce : null,
