@@ -2247,10 +2247,28 @@ public class DashBoardManagerOffline : MonoBehaviour
 
             yield return new WaitUntil(() => done);
 
-            var resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(responseText ?? "{}");
+            // Always hide loader first — even if parsing throws, we must not leave screen stuck
+            ShowMatchmakingLoader(false);
+
+            PrivateTableApiResponse resp = null;
+            try
+            {
+                resp = JsonConvert.DeserializeObject<PrivateTableApiResponse>(responseText ?? "{}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[PrivateTable] Non-JSON response (likely 404/HTML): {ex.Message}");
+                // HTML response (404/502 etc.) most likely means invalid/expired code
+                bool isHtmlResponse = responseText != null && responseText.TrimStart().StartsWith("<");
+                if (isHtmlResponse)
+                    ShowPrivateTableError("Invalid Code", "This room code is invalid or has expired.\nPlease ask the host to create a new table.");
+                else
+                    ShowPrivateTableError("Connection Error", "Could not connect to server.\nPlease check your internet and try again.");
+                yield break;
+            }
+
             if (resp == null || !resp.success)
             {
-                ShowMatchmakingLoader(false);
                 string errorCode = resp?.error_code ?? "";
                 string msg = resp?.message ?? "Failed to join table. Please try again.";
 
@@ -2296,7 +2314,6 @@ public class DashBoardManagerOffline : MonoBehaviour
                         break;
                 }
                 ShowPrivateTableError(errorTitle, errorMsg);
-                ShowPassNPlayPlayerCountPopup();
                 yield break;
             }
 
@@ -2313,6 +2330,8 @@ public class DashBoardManagerOffline : MonoBehaviour
             {
                 req.SetRequestHeader("Authorization", "Bearer " + Configuration.GetToken());
                 yield return req.SendWebRequest();
+
+                ShowMatchmakingLoader(false);
 
                 Debug.Log($"[PrivateTable] Rejoin {url} → {req.result} ({req.responseCode})");
                 if (req.result != UnityWebRequest.Result.Success)

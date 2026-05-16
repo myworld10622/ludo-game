@@ -364,6 +364,21 @@ public class Configuration : MonoBehaviour
     public const string DeleteAccount = BaseUrl + "delete-account";
     public const string TelegramSupportHandle = "John_bz1122";
     public const string TelegramSupportUrl = "https://t.me/John_bz1122";
+
+    private const string TelegramSupportUrlPrefKey = "support_telegram_url";
+
+    // Admin panel can call SetTelegramSupportUrl() after fetching from server config
+    public static string GetTelegramSupportUrl()
+        => PlayerPrefs.GetString(TelegramSupportUrlPrefKey, TelegramSupportUrl);
+
+    public static void SetTelegramSupportUrl(string url)
+    {
+        if (!string.IsNullOrWhiteSpace(url))
+        {
+            PlayerPrefs.SetString(TelegramSupportUrlPrefKey, url);
+            PlayerPrefs.Save();
+        }
+    }
     public const string VCPmindetails = Url + "ColorPrediction/get_bet_details";
     public const string VCP1mindetails = Url + "ColorPrediction1Min/get_bet_details";
     public const string VCP3mindetails = Url + "ColorPrediction3Min/get_bet_details";

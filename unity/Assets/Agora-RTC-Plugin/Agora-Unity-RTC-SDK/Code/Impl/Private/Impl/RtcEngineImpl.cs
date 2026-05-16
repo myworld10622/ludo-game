@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Runtime.InteropServices;
+using System.IO;
 #if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX || UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID 
 using AOT;
 #endif
@@ -236,19 +237,70 @@ namespace Agora.Rtc
             return engineInstance;
         }
 
+        private static string BuildSingleIntParamJson(string key, int value)
+        {
+            return "{\"" + key + "\":" + value + "}";
+        }
+
+        private static string BuildSingleBoolParamJson(string key, bool value)
+        {
+            return "{\"" + key + "\":" + (value ? "true" : "false") + "}";
+        }
+
+        private static string BuildEnableAudioVolumeIndicationJson(int interval, int smooth, bool reportVad)
+        {
+            return "{\"interval\":" + interval + ",\"smooth\":" + smooth + ",\"reportVad\":" + (reportVad ? "true" : "false") + "}";
+        }
+
+        private static string BuildJoinChannelJson(string token, string channelId, uint uid, ChannelMediaOptions options)
+        {
+            using (var textWriter = new StringWriter())
+            {
+                var writer = new LitJson.JsonWriter(textWriter);
+                writer.WriteObjectStart();
+                writer.WritePropertyName("token");
+                writer.Write(token ?? string.Empty);
+                writer.WritePropertyName("channelId");
+                writer.Write(channelId ?? string.Empty);
+                writer.WritePropertyName("uid");
+                writer.Write((int)uid);
+                writer.WritePropertyName("options");
+                if (options != null)
+                {
+                    options.ToJson(writer);
+                }
+                else
+                {
+                    writer.WriteObjectStart();
+                    writer.WriteObjectEnd();
+                }
+
+                writer.WriteObjectEnd();
+                return textWriter.ToString();
+            }
+        }
+
         public int Initialize(RtcEngineContext context)
         {
-            var param = new
-            {
-                context
-            };
-            var json = AgoraJson.ToJson(param);
+            // Build JSON manually — IL2CPP strips anonymous-type reflection and
+            // boxed-enum casts in WriteEnum, causing context.ToJson() to silently
+            // produce {} on Android APK builds.
+            string appId = context.appId ?? "";
+            string logFilePath = (context.logConfig?.filePath ?? "").Replace("\\", "/");
+            uint logFileSize = context.logConfig?.fileSizeInKB ?? 1024;
+            int logLevel = (int)(context.logConfig?.level ?? LOG_LEVEL.LOG_LEVEL_INFO);
+            int channelProfile = (int)context.channelProfile;
+            int audioScenario = (int)context.audioScenario;
+            uint areaCode = (uint)context.areaCode;
+            string json = "{\"context\":{\"appId\":\"" + appId + "\",\"context\":0,\"channelProfile\":" + channelProfile + ",\"audioScenario\":" + audioScenario + ",\"areaCode\":" + areaCode + ",\"logConfig\":{\"filePath\":\"" + logFilePath + "\",\"fileSizeInKB\":" + logFileSize + ",\"level\":" + logLevel + "},\"useExternalEglContext\":false}}";
+            UnityEngine.Debug.Log("[Agora][INIT] appId=" + appId + " logPath=" + logFilePath + " json=" + json);
 
             var nRet = AgoraRtcNative.CallIrisApi(
                 _irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_INITIALIZE,
                 json, (UInt32)json.Length,
                 IntPtr.Zero, 0,
                 out _result);
+            UnityEngine.Debug.Log("[Agora][INIT] nRet=" + nRet + " result=" + _result.Result);
             var ret = nRet != 0 ? nRet : (int)AgoraJson.GetData<int>(_result.Result, "result");
 
 #if UNITY_EDITOR_WIN || UNITY_EDITOR_OSX || UNITY_STANDALONE_WIN || UNITY_STANDALONE_OSX || UNITY_IOS || UNITY_ANDROID 
@@ -599,15 +651,7 @@ namespace Agora.Rtc
         public int JoinChannel(string token, string channelId, uint uid,
                                 ChannelMediaOptions options)
         {
-            var param = new
-            {
-                token,
-                channelId,
-                uid,
-                options
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildJoinChannelJson(token, channelId, uid, options);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_JOINCHANNEL2,
                 json, (UInt32)json.Length,
@@ -680,12 +724,7 @@ namespace Agora.Rtc
 
         public int SetChannelProfile(CHANNEL_PROFILE_TYPE profile)
         {
-            var param = new
-            {
-                profile
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleIntParamJson("profile", (int)profile);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_SETCHANNELPROFILE,
                 json, (UInt32)json.Length,
@@ -696,11 +735,7 @@ namespace Agora.Rtc
 
         public int SetClientRole(CLIENT_ROLE_TYPE role)
         {
-            var param = new
-            {
-                role
-            };
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleIntParamJson("role", (int)role);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_SETCLIENTROLE,
                 json, (UInt32)json.Length,
@@ -1014,12 +1049,7 @@ namespace Agora.Rtc
 
         public int MuteLocalAudioStream(bool mute)
         {
-            var param = new
-            {
-                mute
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleBoolParamJson("mute", mute);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_MUTELOCALAUDIOSTREAM,
                 json, (UInt32)json.Length,
@@ -1283,14 +1313,7 @@ namespace Agora.Rtc
 
         public int EnableAudioVolumeIndication(int interval, int smooth, bool reportVad)
         {
-            var param = new
-            {
-                interval,
-                smooth,
-                reportVad
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildEnableAudioVolumeIndicationJson(interval, smooth, reportVad);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_ENABLEAUDIOVOLUMEINDICATION,
                 json, (UInt32)json.Length,
@@ -3089,13 +3112,7 @@ namespace Agora.Rtc
 
         public int SetEnableSpeakerphone(bool speakerOn)
         {
-            var param = new
-            {
-                speakerOn
-            };
-
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleBoolParamJson("speakerOn", speakerOn);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_SETENABLESPEAKERPHONE,
                 json, (UInt32)json.Length,
@@ -4524,12 +4541,7 @@ namespace Agora.Rtc
 
         private int SetAppType(AppType appType)
         {
-            var param = new
-            {
-                appType
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleIntParamJson("appType", (int)appType);
 
             var nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_SETAPPTYPE,
                 json, (UInt32)json.Length,
@@ -5480,12 +5492,7 @@ namespace Agora.Rtc
 
         public int SetAudioScenario(AUDIO_SCENARIO_TYPE scenario)
         {
-            var param = new
-            {
-                scenario
-            };
-
-            var json = AgoraJson.ToJson(param);
+            var json = BuildSingleIntParamJson("scenario", (int)scenario);
             int nRet = AgoraRtcNative.CallIrisApi(_irisRtcEngine, AgoraApiType.FUNC_RTCENGINE_SETAUDIOSCENARIO,
                 json, (UInt32)json.Length,
                 IntPtr.Zero, 0,

@@ -1007,8 +1007,9 @@ namespace LudoClassicOffline
                 if (rtcEngine == null || !engineInitialized)
                 {
                     isJoining = false;
-                    UpdateStatus($"Voice init err={lastInitResult} appId={currentAppId.Substring(0, 6)}...");
-                    Debug.LogError($"[Agora] Engine not initialized — rtcEngine={rtcEngine != null} engineInitialized={engineInitialized} initResult={lastInitResult} appId={currentAppId}");
+                    string diagMsg = $"err={lastInitResult} id={currentAppId?.Substring(0,8)}.. len={currentAppId?.Length} eng={rtcEngine != null}";
+                    UpdateStatus(diagMsg);
+                    Debug.LogError($"[Agora] INIT FAILED — {diagMsg} fullAppId={currentAppId}");
                     ScheduleReconnect();
                     yield break;
                 }
@@ -1081,17 +1082,41 @@ namespace LudoClassicOffline
 
             voiceEventHandler = new VoiceEventHandler(this);
 
-            // Keep context minimal — matches the working Agora example pattern
+            // Set valid log path — empty filePath causes "Failed opening file" on Android → Initialize returns 101
+            string logPath = System.IO.Path.Combine(UnityEngine.Application.persistentDataPath, "agorasdk.log");
+            var logConfig = new LogConfig(logPath, 1024, LOG_LEVEL.LOG_LEVEL_WARN);
+
             RtcEngineContext context = new RtcEngineContext(
                 currentAppId,
                 0,
-                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_LIVE_BROADCASTING,
-                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT,
-                AREA_CODE.AREA_CODE_GLOB
+                CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION,
+                AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT
             );
+            context.logConfig = logConfig;
 
             lastInitResult = rtcEngine.Initialize(context);
-            Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 101=invalid_appid)");
+            Debug.Log($"[Agora] RtcEngine.Initialize result={lastInitResult} (0=OK, -7=already_init, 101=invalid_appid) appId='{currentAppId}'");
+
+            // If app ID rejected, retry once with the hardcoded fallback
+            if (lastInitResult == 101)
+            {
+                string fallback = SanitizeAgoraValue(Configuration.AgoraFallbackAppId);
+                if (!string.IsNullOrEmpty(fallback) && fallback != currentAppId)
+                {
+                    Debug.LogWarning($"[Agora] Initialize returned 101 — retrying with hardcoded fallback appId");
+                    rtcEngine.Dispose();
+                    rtcEngine = RtcEngine.CreateAgoraRtcEngine();
+                    currentAppId = fallback;
+                    var retryCtx = new RtcEngineContext(
+                        currentAppId, 0,
+                        CHANNEL_PROFILE_TYPE.CHANNEL_PROFILE_COMMUNICATION,
+                        AUDIO_SCENARIO_TYPE.AUDIO_SCENARIO_DEFAULT);
+                    retryCtx.logConfig = logConfig;
+                    lastInitResult = rtcEngine.Initialize(retryCtx);
+                    Debug.Log($"[Agora] Retry Initialize result={lastInitResult} fallback='{currentAppId}'");
+                }
+            }
+
             rtcEngine.InitEventHandler(voiceEventHandler);
             engineInitialized = lastInitResult == 0 || lastInitResult == -7;
         }
@@ -1565,9 +1590,9 @@ namespace LudoClassicOffline
 
             public override void OnError(int err, string msg)
             {
-                // Common errors: 17=JOIN_CHANNEL_REJECTED, 110=TOKEN_EXPIRED, 109=TOKEN_INVALID
-                Debug.LogError($"[Agora] OnError err={err} msg={msg} channel={owner.currentChannelName}");
-                owner.UpdateStatus("Voice error: " + err);
+                // Common errors: 17=JOIN_CHANNEL_REJECTED, 110=TOKEN_EXPIRED, 109=TOKEN_INVALID, 101=INVALID_APP_ID
+                Debug.LogError($"[Agora] OnError err={err} msg={msg} channel={owner.currentChannelName} appId={owner.currentAppId}");
+                owner.UpdateStatus("Voice err(cb): " + err);
                 owner.ScheduleReconnect();
             }
         }

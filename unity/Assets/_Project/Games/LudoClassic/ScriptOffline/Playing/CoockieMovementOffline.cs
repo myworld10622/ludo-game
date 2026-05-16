@@ -15,6 +15,8 @@ namespace LudoClassicOffline
     {
         #region VARIABLES
 
+        public const float HomeCenterScale = 0.4f;
+
         public SocketNumberEventReceiverOffline socketNumberEventReceiver;
         public LudoNumbersPlayerHomeOffline ludoNumbersPlayerHome;
         public LudoNumberGsNewOffline ludoNumberGsNew;
@@ -61,6 +63,11 @@ namespace LudoClassicOffline
         private Tween _selectionIndicatorTween;
         private Vector3 _defaultLocalScale;
         private float _lastTapTime = -10f;
+        private static readonly Vector3 HomeCenterScaleVector = new Vector3(
+            HomeCenterScale,
+            HomeCenterScale,
+            1f
+        );
         #endregion
 
         private void Awake()
@@ -405,15 +412,14 @@ namespace LudoClassicOffline
 
                 ludoNumberGsNew.homePartical.Play();
 
-                // Celebratory punch scale when token reaches home; shrink to half after settle.
+                // Keep center-finished tokens compact so all four can fit cleanly.
                 transform.DOKill();
                 transform.localScale = Vector3.one;
-                transform.DOPunchScale(new Vector3(0.5f, 0.5f, 0), 0.5f, 8, 0.4f)
+                transform.DOPunchScale(new Vector3(0.35f, 0.35f, 0), 0.5f, 8, 0.4f)
                     .OnComplete(() =>
                     {
                         CoockieManage();
-                        // CockieManage sets scale to (1,1) for single-token slot; override to half-size at home center
-                        transform.localScale = new Vector3(0.5f, 0.5f, 1f);
+                        ResetVisualScale();
                     });
                 //if (!MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                 //{
@@ -857,18 +863,23 @@ namespace LudoClassicOffline
             {
                 indicator.gameObject.SetActive(false);
                 indicator.localRotation = Quaternion.identity;
-                transform.localScale = _defaultLocalScale;
+                ResetVisualScale();
                 return;
             }
 
             indicator.gameObject.SetActive(true);
             indicator.localRotation = Quaternion.identity;
             indicator.localScale = Vector3.one;
-            transform.localScale = _defaultLocalScale;
+            ResetVisualScale();
             _selectionIndicatorTween = indicator
                 .DORotate(new Vector3(0f, 0f, -360f), 0.9f, RotateMode.FastBeyond360)
                 .SetEase(Ease.Linear)
                 .SetLoops(-1, LoopType.Restart);
+        }
+
+        public void ResetVisualScale()
+        {
+            transform.localScale = myLastBoxIndex == 56 ? HomeCenterScaleVector : _defaultLocalScale;
         }
 
         public bool TokenRemainingBoxCount()

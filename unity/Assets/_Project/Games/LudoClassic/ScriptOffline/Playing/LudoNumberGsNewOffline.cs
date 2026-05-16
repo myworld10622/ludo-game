@@ -50,6 +50,7 @@ namespace LudoClassicOffline
         [FormerlySerializedAs("WinPanel")]
         [Header("GameObject")]
         public GameObject winPanel;
+        public Button winPanelCloseButton;
 
         public GameObject board;
 
@@ -1396,7 +1397,14 @@ namespace LudoClassicOffline
                 SoundManagerOffline.instance.SoundPlay(SoundManagerOffline.instance.loseAudio);
             }
 
-            // Auto-return to home after 10 seconds — fallback since result panel has no close button
+            if (winPanelCloseButton != null)
+            {
+                winPanelCloseButton.gameObject.SetActive(true);
+                winPanelCloseButton.onClick.RemoveAllListeners();
+                winPanelCloseButton.onClick.AddListener(() => GameManagerOffline.instace?.OnClickExit());
+            }
+
+            // Auto-return to home after 10 seconds
             yield return new WaitForSeconds(10f);
             if (isMatchOver) GameManagerOffline.instace?.OnClickExit();
         }
@@ -1757,7 +1765,7 @@ namespace LudoClassicOffline
                                     );
                                     ludoNumberPlayerControl[i]
                                         .ludoNumbersUserData.playerCoockie.ForEach(
-                                            (coockie) => coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
+                                            (coockie) => ResetClassicTokenVisualScale(coockie)
                                         );
                                 }
                             }
@@ -1804,7 +1812,7 @@ namespace LudoClassicOffline
                                     );
                                     ludoNumberPlayerControl[i]
                                         .ludoNumbersUserData.playerCoockieForClassicMode.ForEach(
-                                            (coockie) => coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
+                                            (coockie) => ResetClassicTokenVisualScale(coockie)
                                         );
                                 }
                             }
@@ -2079,11 +2087,15 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetChild(0)
                                             .gameObject.SetActive(true);
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            true
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetComponent<Image>()
@@ -2309,11 +2321,15 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetChild(0)
                                             .gameObject.SetActive(true);
-                                        ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            true
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                         ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetComponent<Image>()
@@ -2977,6 +2993,20 @@ namespace LudoClassicOffline
             }
         }
 
+        private void ResetClassicTokenVisualScale(GameObject tokenObject)
+        {
+            if (tokenObject == null)
+            {
+                return;
+            }
+
+            CoockieMovementOffline tokenMovement = tokenObject.GetComponent<CoockieMovementOffline>();
+            if (tokenMovement != null)
+            {
+                tokenMovement.ResetVisualScale();
+            }
+        }
+
         public void AcknowledgementTokenMove(string data) =>
             Debug.Log("AcknowledgementTokenMove || => " + data);
 
@@ -3074,10 +3104,19 @@ namespace LudoClassicOffline
                                 .GetComponent<CoockieMovementOffline>()
                                 .transform.GetComponent<Image>()
                                 .raycastTarget = false;
-                            ludoNumberPlayerControl[i]
+                            var _cm = ludoNumberPlayerControl[i]
                                 .ludoNumbersUserData.playerCoockieForClassicMode[j]
-                                .GetComponent<CoockieMovementOffline>()
-                                .CoockieManage();
+                                .GetComponent<CoockieMovementOffline>();
+                            _cm?.CoockieManage();
+                            // Preserve compact home-center scale for finished tokens.
+                            if (_cm != null && _cm.myLastBoxIndex == 56)
+                                ludoNumberPlayerControl[i]
+                                    .ludoNumbersUserData.playerCoockieForClassicMode[j]
+                                    .transform.localScale = new Vector3(
+                                        CoockieMovementOffline.HomeCenterScale,
+                                        CoockieMovementOffline.HomeCenterScale,
+                                        1f
+                                    );
                         }
 
                         if (
@@ -3126,14 +3165,16 @@ namespace LudoClassicOffline
                             profileBlink.transform.DOPunchScale(new Vector3(0.3f, 0.3f, 0), 0.45f, 6, 0.35f);
                             ludoNumberPlayerControl[i].ludoNumbersUserData.animatorOnTurn.enabled =
                                 true;
-                            // Show spinning circle under all tokens at turn start (CLASSIC mode)
+                            // Show spinning circle under active (non-home) tokens at turn start (CLASSIC mode)
                             if (MGPSDK.MGPGameManager.instance.sdkConfig.data.lobbyData.gameModeName.Equals("CLASSIC"))
                             {
                                 for (int j = 0; j < ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode.Count; j++)
                                 {
                                     var token = ludoNumberPlayerControl[i].ludoNumbersUserData.playerCoockieForClassicMode[j];
-                                    if (token != null)
-                                        SetClassicTokenTurnIndicator(token, true);
+                                    if (token == null) continue;
+                                    var tokenCm = token.GetComponent<CoockieMovementOffline>();
+                                    if (tokenCm != null && tokenCm.myLastBoxIndex == 56) continue;
+                                    SetClassicTokenTurnIndicator(token, true);
                                 }
                             }
                         }
@@ -3425,12 +3466,17 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetChild(0)
                                             .gameObject.SetActive(true);
-                                        ludoNumbersAcknowledgementHandler
-                                            .ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            true
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                         ludoNumbersAcknowledgementHandler
                                             .ludoNumberPlayerControl[i]
                                             .ludoNumbersUserData.playerCoockie[j]
@@ -3445,12 +3491,17 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetChild(0)
                                             .gameObject.SetActive(false);
-                                        ludoNumbersAcknowledgementHandler
-                                            .ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.28f, 1.28f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            false
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                     }
                                 }
                             }
@@ -3620,12 +3671,17 @@ namespace LudoClassicOffline
                                                     .transform
                                                     .localScale
                                         );
-                                        ludoNumbersAcknowledgementHandler
-                                            .ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.38f, 1.38f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            true
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                         Debug.Log(
                                             "Cukii name User turn after Scale = > "
                                                 + ludoNumbersAcknowledgementHandler
@@ -3657,12 +3713,17 @@ namespace LudoClassicOffline
                                             .ludoNumbersUserData.playerCoockie[j]
                                             .transform.GetChild(0)
                                             .gameObject.SetActive(false);
-                                        ludoNumbersAcknowledgementHandler
-                                            .ludoNumberPlayerControl[i]
-                                            .ludoNumbersUserData
-                                            .playerCoockie[j]
-                                            .transform
-                                            .localScale = new Vector3(1.28f, 1.28f, 1f);
+                                        SetClassicTokenTurnIndicator(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j],
+                                            false
+                                        );
+                                        ResetClassicTokenVisualScale(
+                                            ludoNumbersAcknowledgementHandler
+                                                .ludoNumberPlayerControl[i]
+                                                .ludoNumbersUserData.playerCoockie[j]
+                                        );
                                     }
                                 }
                             }
@@ -3945,8 +4006,7 @@ namespace LudoClassicOffline
                                 ludoNumbersAcknowledgementHandler
                                     .ludoNumberPlayerControl[i]
                                     .ludoNumbersUserData.playerCoockie.ForEach(
-                                        (coockie) =>
-                                            coockie.transform.localScale = new Vector3(1.28f, 1.28f, 1f)
+                                        (coockie) => ResetClassicTokenVisualScale(coockie)
                                     );
                             }
                         }

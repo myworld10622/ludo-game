@@ -1,0 +1,29 @@
+<linker>
+  <!--
+    APK-only Agora init was still failing with err=101 even when the runtime appId
+    string was valid. The weak point is IL2CPP stripping around Agora's JSON init
+    path, especially RtcEngineContext and bundled LitJson types.
+
+    Keep the preserve rules explicit instead of relying only on namespace-wide
+    preservation so the Android player build retains the exact types involved in
+    engine initialization.
+  -->
+  <assembly fullname="Assembly-CSharp">
+    <namespace fullname="Agora.Rtc" preserve="all"/>
+    <namespace fullname="Agora.Rtc.LitJson" preserve="all"/>
+    <type fullname="Agora.Rtc.RtcEngineContext" preserve="all"/>
+    <type fullname="Agora.Rtc.LogConfig" preserve="all"/>
+    <type fullname="Agora.Rtc.OptionalJsonParse" preserve="all"/>
+    <type fullname="Agora.Rtc.LitJson.JsonMapper" preserve="all"/>
+    <type fullname="Agora.Rtc.LitJson.JsonWriter" preserve="all"/>
+  </assembly>
+  <assembly fullname="Assembly-CSharp-firstpass">
+    <namespace fullname="Agora.Rtc" preserve="all"/>
+    <namespace fullname="Agora.Rtc.LitJson" preserve="all"/>
+    <type fullname="Agora.Rtc.RtcEngineContext" preserve="all"/>
+    <type fullname="Agora.Rtc.LogConfig" preserve="all"/>
+    <type fullname="Agora.Rtc.OptionalJsonParse" preserve="all"/>
+    <type fullname="Agora.Rtc.LitJson.JsonMapper" preserve="all"/>
+    <type fullname="Agora.Rtc.LitJson.JsonWriter" preserve="all"/>
+  </assembly>
+</linker>

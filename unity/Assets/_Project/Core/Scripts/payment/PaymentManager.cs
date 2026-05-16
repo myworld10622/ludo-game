@@ -99,6 +99,7 @@ public class PaymentManager : MonoBehaviour
 
     void OnDisable()
     {
+        SupportHelpButton.Hide();
         if (_extrasRoot != null) { RemoveGeneratedObject(_extrasRoot); _extrasRoot = null; }
         if (_transferQuickButton != null) { RemoveGeneratedObject(_transferQuickButton); _transferQuickButton = null; }
         if (_transferPopupRoot != null) { RemoveGeneratedObject(_transferPopupRoot); _transferPopupRoot = null; }
@@ -425,6 +426,8 @@ public class PaymentManager : MonoBehaviour
 
     private void ShowMainAddCashPanel()
     {
+        SupportHelpButton.EnsureExists();
+        SupportHelpButton.Show();
         transform.SetAsLastSibling();
         HidePaymentFlowPanels();
 

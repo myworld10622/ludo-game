@@ -1,0 +1,50 @@
+workflows:
+  android-release:
+    name: Android Release (Play Store)
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+
+    environment:
+      groups:
+        - unity_credentials      # UNITY_SERIAL or UNITY_LICENSE_FILE_PATH
+        - android_credentials    # CM_KEYSTORE, CM_KEYSTORE_PASSWORD, CM_KEY_ALIAS, CM_KEY_ALIAS_PASSWORD
+        - google_play            # GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+      vars:
+        UNITY_VERSION: "6000.3.8f1"
+        UNITY_BUILDER_CLASS: "AndroidProductionBuild"
+        BUNDLE_ID: "com.roxludo.roxludo"
+        PACKAGE_NAME: "com.roxludo.roxludo"
+
+    scripts:
+      - name: Activate Unity License
+        script: |
+          unity-activate
+
+      - name: Set keystore from environment
+        script: |
+          echo $CM_KEYSTORE | base64 --decode > /tmp/roxludo-release.keystore
+
+      - name: Build Android AAB
+        script: |
+          unity-build \
+            -projectPath "$CM_BUILD_DIR/unity" \
+            -executeMethod AndroidProductionBuild.Build \
+            -buildTarget Android \
+            -logFile /dev/stdout \
+            -quit \
+            -nographics
+        env:
+          ROX_ANDROID_APK_PATH: "$CM_BUILD_DIR/build/RoxLudo.aab"
+          ROX_ANDROID_KEYSTORE_PATH: "/tmp/roxludo-release.keystore"
+          ROX_ANDROID_KEYSTORE_PASS: $CM_KEYSTORE_PASSWORD
+          ROX_ANDROID_KEYALIAS_PASS: $CM_KEY_ALIAS_PASSWORD
+
+    artifacts:
+      - build/RoxLudo.aab
+      - unity/Logs/**/*.log
+
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal        # internal → alpha → beta → production
+        submit_as_draft: true  # pehle draft mein, manually review karke publish karna

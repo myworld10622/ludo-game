@@ -1680,21 +1680,21 @@ namespace Agora.Rtc.LitJson
                 Type e_type = Enum.GetUnderlyingType(obj_type);
 
                 if (e_type == typeof(long))
-                    writer.Write((long)obj);
+                    writer.Write(Convert.ToInt64(obj));
                 else if (e_type == typeof(uint))
-                    writer.Write((uint)obj);
+                    writer.Write(Convert.ToUInt32(obj));
                 else if (e_type == typeof(ulong))
-                    writer.Write((ulong)obj);
+                    writer.Write(Convert.ToUInt64(obj));
                 else if (e_type == typeof(ushort))
-                    writer.Write((ushort)obj);
+                    writer.Write(Convert.ToUInt16(obj));
                 else if (e_type == typeof(short))
-                    writer.Write((short)obj);
+                    writer.Write(Convert.ToInt16(obj));
                 else if (e_type == typeof(byte))
-                    writer.Write((byte)obj);
+                    writer.Write(Convert.ToByte(obj));
                 else if (e_type == typeof(sbyte))
-                    writer.Write((sbyte)obj);
+                    writer.Write(Convert.ToSByte(obj));
                 else
-                    writer.Write((int)obj);
+                    writer.Write(Convert.ToInt32(obj));
 
                 return;
             }

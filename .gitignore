@@ -40,6 +40,18 @@ test-results/
 # Backend
 backend/.env
 backend/vendor/
+backend_laravel/.env
+
+# Keystore — never commit, upload to CodeMagic as secret
+*.keystore
+*.jks
+
+# Unity recovery / temp scenes
+unity/Assets/_Recovery/
+
+# Unity slnx
+unity/*.slnx
+unity/*.UpgradeLog.htm
 
 # Claude Code local config
 .claude/

@@ -78,6 +78,11 @@ namespace LudoClassicOffline
             }
             else
             {
+                Screen.autorotateToPortrait = true;
+                Screen.autorotateToPortraitUpsideDown = true;
+                Screen.autorotateToLandscapeLeft = false;
+                Screen.autorotateToLandscapeRight = false;
+                Screen.orientation = ScreenOrientation.Portrait;
                 socketNumberEventReceiver.ResetGame();
                 dashBoardManager.ResetGame();
                 socketNumberEventReceiver.ludoNumberGsNew.ResetGame();

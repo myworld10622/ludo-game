@@ -86,13 +86,35 @@ namespace LudoClassicOffline
 
                 anyFound = true;
 
+                bool tinted = false;
+
                 // Tint profile image gold so local player is visually distinct
                 if (ctrl.playerProfile != null)
+                {
                     ctrl.playerProfile.color = LocalProfileTint;
+                    tinted = true;
+                }
 
                 // Also tint userImage inside userData if that exists
                 if (ctrl.ludoNumbersUserData?.userImage != null)
+                {
                     ctrl.ludoNumbersUserData.userImage.color = LocalProfileTint;
+                    tinted = true;
+                }
+
+                // Fallback: tint ring images (always present for every player slot)
+                if (!tinted && ctrl.ludoNumbersUserData?.ring != null)
+                {
+                    foreach (var r in ctrl.ludoNumbersUserData.ring)
+                        if (r != null) { r.color = LocalProfileTint; tinted = true; }
+                }
+
+                // Last-resort: tint first Image found on the control's gameObject tree
+                if (!tinted && ctrl.gameObject != null)
+                {
+                    var img = ctrl.gameObject.GetComponentInChildren<Image>();
+                    if (img != null) { img.color = LocalProfileTint; tinted = true; }
+                }
 
                 // Punch-scale the profile once to draw attention on entry
                 Transform punchTarget = ctrl.playerProfile != null
@@ -106,7 +128,9 @@ namespace LudoClassicOffline
                     punchTarget.DOPunchScale(new Vector3(0.25f, 0.25f, 0f), 0.5f, 5, 0.3f);
                 }
 
-                Debug.Log($"[IdentityUX] Local player mark applied to slot {i} seat={_localSeat}");
+                Debug.Log($"[IdentityUX] Local player mark applied slot={i} seat={_localSeat} tinted={tinted} " +
+                    $"playerProfile={ctrl.playerProfile != null} userImage={ctrl.ludoNumbersUserData?.userImage != null} " +
+                    $"ring={ctrl.ludoNumbersUserData?.ring?.Count}");
                 _marksApplied = true;
             }
 

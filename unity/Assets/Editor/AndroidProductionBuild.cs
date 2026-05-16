@@ -7,7 +7,7 @@ using UnityEngine;
 
 public static class AndroidProductionBuild
 {
-    private const string DefaultOutputPath = @"E:\New Rox APK\ROX 1.2\ROX_Ludo.apk";
+    private const string DefaultOutputPath = @"E:\New Rox APK\Latest new ROX 15.05\ROX 6.2\ROX_Ludo.apk";
     private const string BundleId = "com.roxludo.roxludo";
 
     [UnityEditor.MenuItem("Tools/Build Android APK (E:/New Rox APK)")]
@@ -23,6 +23,13 @@ public static class AndroidProductionBuild
 
         string keystorePassword = Environment.GetEnvironmentVariable("ROX_ANDROID_KEYSTORE_PASS");
         string keyaliasPassword = Environment.GetEnvironmentVariable("ROX_ANDROID_KEYALIAS_PASS");
+
+        // CodeMagic: keystore path can be overridden via env var
+        string keystorePath = Environment.GetEnvironmentVariable("ROX_ANDROID_KEYSTORE_PATH");
+        if (!string.IsNullOrWhiteSpace(keystorePath) && File.Exists(keystorePath))
+        {
+            PlayerSettings.Android.keystoreName = keystorePath;
+        }
 
         outputPath = Path.GetFullPath(outputPath);
         Directory.CreateDirectory(Path.GetDirectoryName(outputPath) ?? Path.GetPathRoot(outputPath));
@@ -41,8 +48,8 @@ public static class AndroidProductionBuild
 
         PlayerSettings.companyName = "RoxLudo";
         PlayerSettings.productName = "ROX Ludo";
-        PlayerSettings.bundleVersion = "1.2.0";
-        PlayerSettings.Android.bundleVersionCode = 12;
+        PlayerSettings.bundleVersion = "6.2.0";
+        PlayerSettings.Android.bundleVersionCode = 62;
         PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, BundleId);
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;
@@ -71,6 +78,10 @@ public static class AndroidProductionBuild
         QualitySettings.shadowDistance = 40f;
         QualitySettings.shadows = ShadowQuality.All;
         Application.targetFrameRate = 60;
+
+        // AAB for Play Store, APK for direct install
+        bool buildAab = outputPath.EndsWith(".aab", StringComparison.OrdinalIgnoreCase);
+        EditorUserBuildSettings.buildAppBundle = buildAab;
 
         BuildPlayerOptions options = new BuildPlayerOptions
         {

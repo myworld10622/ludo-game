@@ -87,6 +87,7 @@ public class WithdrawManager : MonoBehaviour
 
     void OnDisable()
     {
+        SupportHelpButton.Hide();
         if (_transferButton != null)
         {
             _transferButton.SetActive(false);
@@ -132,6 +133,8 @@ public class WithdrawManager : MonoBehaviour
 
     public async void ShowTransactions()
     {
+        SupportHelpButton.EnsureExists();
+        SupportHelpButton.Show();
         EnsureWithdrawLogsPopup();
         if (_withdrawLogsPopupRoot != null)
         {
@@ -183,6 +186,8 @@ public class WithdrawManager : MonoBehaviour
     }
     public void ShowWithdraw()
     {
+        SupportHelpButton.EnsureExists();
+        SupportHelpButton.Show();
         CloseWithdrawLogsPopup();
         foreach (var trans in transactionsobj)  trans.SetActive(false);
         foreach (var withdraw in withdrawobjs)  withdraw.SetActive(true);

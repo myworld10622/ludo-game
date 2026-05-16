@@ -151,11 +151,21 @@ public class Profile : MonoBehaviour
         {
             EnsureBankDetailBindings();
         }
+
+        if (obj.name == "Withdrawal Logs")
+        {
+            SupportHelpButton.EnsureExists();
+            SupportHelpButton.Show();
+        }
+
         PopUpUtil.ButtonClick(obj);
     }
 
     public void PopUpPanelClose(GameObject obj)
     {
+        if (obj.name == "Withdrawal Logs")
+            SupportHelpButton.Hide();
+
         PopUpUtil.ButtonCancel(obj);
     }
 
