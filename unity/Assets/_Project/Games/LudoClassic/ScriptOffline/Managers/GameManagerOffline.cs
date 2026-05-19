@@ -63,6 +63,7 @@ namespace LudoClassicOffline
             StopAllCoroutines();
 
             Screen.orientation = ScreenOrientation.Portrait;
+            WebGlOrientationBridge.SetPortrait();
 
         }
         public void OnClickExit()
@@ -83,6 +84,7 @@ namespace LudoClassicOffline
                 Screen.autorotateToLandscapeLeft = false;
                 Screen.autorotateToLandscapeRight = false;
                 Screen.orientation = ScreenOrientation.Portrait;
+                WebGlOrientationBridge.SetPortrait();
                 socketNumberEventReceiver.ResetGame();
                 dashBoardManager.ResetGame();
                 socketNumberEventReceiver.ludoNumberGsNew.ResetGame();

@@ -2070,6 +2070,7 @@ public class DashBoardManagerOffline : MonoBehaviour
         private void StartPassNPlayMatch(int playerCount)
         {
             Debug.Log("--------StartPassNPlayMatch---------");
+            WebGlOrientationBridge.SetLandscape();
             Screen.orientation = ScreenOrientation.LandscapeLeft;
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
@@ -2153,11 +2154,11 @@ public class DashBoardManagerOffline : MonoBehaviour
             if (tf != null)
             {
                 InputField inp = tf.GetComponent<InputField>();
-                if (inp != null) code = inp.text.Trim().ToUpper();
+                if (inp != null) code = inp.text.Trim();
             }
-            if (string.IsNullOrEmpty(code) || code.Length != 6)
+            if (!IsValidPrivateTableCode(code))
             {
-                ShowPrivateTableError("Invalid Code", "Please enter a valid 6-character game code.");
+                ShowPrivateTableError("Invalid Code", "Please enter a valid 6-digit game code.");
                 return;
             }
             HidePassNPlayPlayerCountPopup();
@@ -2414,7 +2415,21 @@ public class DashBoardManagerOffline : MonoBehaviour
         private int _privateTableId = 0;
 
         private static string BuildPrivateTableShareMessage(string code)
-            => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
+            => $"Play Rox Ludo with me!\nRoom Code: {code}\nPlay at roxludo.com";
+
+        private static bool IsValidPrivateTableCode(string code)
+        {
+            if (string.IsNullOrEmpty(code) || code.Length != 6)
+                return false;
+
+            for (int i = 0; i < code.Length; i++)
+            {
+                if (!char.IsDigit(code[i]))
+                    return false;
+            }
+
+            return true;
+        }
 
         // Step 1 — Table just created: show code popup so user can copy & share.
         // No game board yet. User joins later using the code (even the creator).
@@ -2427,7 +2442,7 @@ public class DashBoardManagerOffline : MonoBehaviour
             PassNPlayPopup.WaitingCurrentPlayers = 1;
             PassNPlayPopup.WaitingIsCreator = true;
             PassNPlayPopup.Index = 2;
-            GUIUtility.systemCopyBuffer = BuildPrivateTableShareMessage(code);
+            PassNPlayPopup.CopyToClipboard(BuildPrivateTableShareMessage(code));
             ShowPassNPlayPlayerCountPopup();
         }
 
@@ -2437,6 +2452,14 @@ public class DashBoardManagerOffline : MonoBehaviour
         public void EnterPrivateTableBoard(string code, int maxPlayers, int tableId,
             int fee = 0, int currentPlayers = 1, bool isCreator = false)
         {
+            WebGlOrientationBridge.SetLandscape();
+            Screen.orientation = ScreenOrientation.LandscapeLeft;
+            Screen.autorotateToPortrait = false;
+            Screen.autorotateToPortraitUpsideDown = false;
+            Screen.autorotateToLandscapeLeft = true;
+            Screen.autorotateToLandscapeRight = true;
+            Screen.orientation = ScreenOrientation.AutoRotation;
+
             _privateTableBoardActive = true;
             _privateTableEntryFee = fee;
             _privateTableId = tableId;
@@ -2949,7 +2972,11 @@ public class DashBoardManagerOffline : MonoBehaviour
                     bool isCreator = PassNPlayPopup.WaitingIsCreator;
                     cancelButton.onClick.AddListener(() =>
                     {
-                        if (isCreator) GUIUtility.systemCopyBuffer = BuildPrivateTableShareMessage(code);
+                        if (isCreator)
+                        {
+                            PassNPlayPopup.CopyToClipboard(BuildPrivateTableShareMessage(code));
+                            CommonUtil.ShowToast("Share message copied!");
+                        }
                         PrivateTableSocketHandler.Disconnect();
                         HidePassNPlayPlayerCountPopup();
                     });

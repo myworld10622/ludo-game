@@ -94,14 +94,15 @@ class PrivateLudoTableController extends Controller
     public function join(Request $request): JsonResponse
     {
         $request->validate([
-            'code' => 'required|string|size:6',
+            'code' => 'required|digits:' . PrivateLudoTable::CODE_LENGTH,
         ]);
 
         $user = $request->user();
 
         try {
             return DB::transaction(function () use ($request, $user) {
-                $table = PrivateLudoTable::where('code', strtoupper($request->code))
+                $code = trim((string) $request->code);
+                $table = PrivateLudoTable::where('code', $code)
                     ->where('status', 'waiting')
                     ->where('expires_at', '>', now())
                     ->lockForUpdate()
@@ -249,14 +250,15 @@ class PrivateLudoTableController extends Controller
     public function leave(Request $request): JsonResponse
     {
         $request->validate([
-            'code' => 'required|string|size:6',
+            'code' => 'required|digits:' . PrivateLudoTable::CODE_LENGTH,
         ]);
 
         $user = $request->user();
 
         try {
             return DB::transaction(function () use ($request, $user) {
-                $table = PrivateLudoTable::where('code', strtoupper($request->code))
+                $code = trim((string) $request->code);
+                $table = PrivateLudoTable::where('code', $code)
                     ->where('status', 'waiting')
                     ->lockForUpdate()
                     ->first();
@@ -318,7 +320,7 @@ class PrivateLudoTableController extends Controller
     public function info(string $code): JsonResponse
     {
         try {
-            $table = PrivateLudoTable::where('code', strtoupper($code))
+            $table = PrivateLudoTable::where('code', trim($code))
                 ->with(['creator:id,username', 'players.user:id,username'])
                 ->first();
 

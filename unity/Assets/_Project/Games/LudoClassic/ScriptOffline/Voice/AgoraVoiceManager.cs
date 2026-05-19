@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using Agora.Rtc;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -20,6 +21,10 @@ namespace LudoClassicOffline
 {
     public class AgoraVoiceManager : MonoBehaviour
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        [DllImport("__Internal")] private static extern void RoxRequestWebGLMicrophonePermission();
+#endif
+
         private const string VoicePanelRootName = "AgoraVoicePanelRoot";
         private const string VoiceToggleLabelName = "AgoraVoiceToggleLabel";
         private const string VoiceStatusLabelName = "AgoraVoiceStatusLabel";
@@ -129,6 +134,9 @@ namespace LudoClassicOffline
 
         public void SetVoiceAvailability(bool available)
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            available = false;
+#endif
             isVoiceAvailable = available;
             TryBuildUi();
 
@@ -143,10 +151,19 @@ namespace LudoClassicOffline
             }
 
             UpdateButtonStates();
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+            UpdateStatus("Voice unavailable on WebGL");
+#endif
         }
 
         public void HandleRoomOpened()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            SetVoiceAvailability(false);
+            UpdateStatus("Voice unavailable on WebGL");
+            return;
+#endif
             SetVoiceAvailability(true);
             JoinVoiceForActiveRoom();
         }
@@ -159,6 +176,10 @@ namespace LudoClassicOffline
 
         public void JoinVoiceForActiveRoom()
         {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            UpdateStatus("Voice unavailable on WebGL");
+            return;
+#endif
             if (!Configuration.IsLudoV2Enabled())
             {
                 Debug.Log("[Agora] JoinVoice: LudoV2 disabled");
@@ -1142,6 +1163,15 @@ namespace LudoClassicOffline
             if (!Permission.HasUserAuthorizedPermission(Permission.Microphone))
             {
                 Permission.RequestUserPermission(Permission.Microphone);
+            }
+#elif UNITY_WEBGL && !UNITY_EDITOR
+            try
+            {
+                RoxRequestWebGLMicrophonePermission();
+            }
+            catch (Exception ex)
+            {
+                Debug.LogWarning("[Agora] WebGL mic permission request failed: " + ex.Message);
             }
 #endif
         }

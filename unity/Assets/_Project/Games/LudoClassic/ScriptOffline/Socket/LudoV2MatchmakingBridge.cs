@@ -620,8 +620,7 @@ namespace LudoClassicOffline
             dashBoardManager.ShowMatchmakingLoader(false);
             // Force landscape immediately so the host sees landscape as soon as they enter
             // the waiting room (not just after the 2nd player joins).
-            // Setting AutoRotation alone doesn't rotate — must set LandscapeLeft first to
-            // force the physical rotation, then switch to AutoRotation so both hands work.
+            WebGlOrientationBridge.SetLandscape();
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;
             Screen.autorotateToLandscapeLeft = true;
@@ -646,7 +645,7 @@ namespace LudoClassicOffline
             GameObject board = socketNumberEventReceiver.ludoNumberGsNew.board;
             if (board.transform.parent != null)
                 board.transform.parent.localScale = new Vector3(1.10f, 1.10f, 1f);
-            SetBoardCanvasScalerForLandscape(board);
+            SetBoardCanvasScalerForCurrentOrientation(board);
             socketNumberEventReceiver.ludoNumberGsNew.winPanel.SetActive(false);
             if (socketNumberEventReceiver.ludoNumberGsNew.ludoNumberUiManager != null)
             {
@@ -663,7 +662,7 @@ namespace LudoClassicOffline
             LudoFriendPanelController.RefreshRoomPlayerActionsIfPresent();
         }
 
-        private void SetBoardCanvasScalerForLandscape(GameObject boardObject)
+        private void SetBoardCanvasScalerForCurrentOrientation(GameObject boardObject)
         {
             Canvas rootCanvas = boardObject.GetComponentInParent<Canvas>(true);
             if (rootCanvas != null) rootCanvas = rootCanvas.rootCanvas;

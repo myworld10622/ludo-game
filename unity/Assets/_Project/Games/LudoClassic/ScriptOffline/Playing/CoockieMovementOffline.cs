@@ -863,13 +863,25 @@ namespace LudoClassicOffline
             {
                 indicator.gameObject.SetActive(false);
                 indicator.localRotation = Quaternion.identity;
+                RectTransform indicatorRect = indicator as RectTransform;
+                if (indicatorRect != null)
+                {
+                    indicatorRect.anchoredPosition = Vector2.zero;
+                    indicatorRect.localScale = Vector3.one;
+                }
                 ResetVisualScale();
                 return;
             }
 
             indicator.gameObject.SetActive(true);
             indicator.localRotation = Quaternion.identity;
-            indicator.localScale = Vector3.one;
+            RectTransform activeIndicatorRect = indicator as RectTransform;
+            if (activeIndicatorRect != null)
+            {
+                activeIndicatorRect.anchoredPosition = new Vector2(0f, -10f);
+                activeIndicatorRect.localScale = new Vector3(1.35f, 1.35f, 1f);
+            }
+            indicator.SetAsFirstSibling();
             ResetVisualScale();
             _selectionIndicatorTween = indicator
                 .DORotate(new Vector3(0f, 0f, -360f), 0.9f, RotateMode.FastBeyond360)

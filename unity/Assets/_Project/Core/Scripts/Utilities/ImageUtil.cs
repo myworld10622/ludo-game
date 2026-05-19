@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Best.HTTP;
 using UnityEngine;
@@ -10,11 +11,22 @@ using UnityEngine.UI;
 
 public class ImageUtil : MonoBehaviour
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void RoxOpenGalleryWebGL(string target);
+#endif
+
     private static ImageUtil _instance;
     private string Target;
     public bool bannerloaded;
     public bool isGuest;
     public static ImageUtil Instance => _instance;
+
+    private static void OpenGalleryWebGlBridge(string target)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        RoxOpenGalleryWebGL(target);
+#endif
+    }
 
     void OnEnable()
     {
@@ -154,8 +166,7 @@ public class ImageUtil : MonoBehaviour
         WebGLImageUtil.ImageComponent = img;
         WebGLImageUtil.LogoImage = logo_img;
         CommonUtil.CheckLog("Clicked for webgl");
-        // Trigger the gallery in the browser
-        Application.ExternalCall("openGalleryWebGL", target);
+        OpenGalleryWebGlBridge(target);
 #endif
 #if UNITY_EDITOR || UNITY_ANDROID || UNITY_IOS
         Debug.Log("Opening gallery to pick an image...");

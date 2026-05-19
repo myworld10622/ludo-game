@@ -48,13 +48,13 @@ public static class AndroidProductionBuild
 
         PlayerSettings.companyName = "RoxLudo";
         PlayerSettings.productName = "ROX Ludo";
-        PlayerSettings.bundleVersion = "6.2.0";
-        PlayerSettings.Android.bundleVersionCode = 62;
+        PlayerSettings.bundleVersion = "6.2.1";
+        PlayerSettings.Android.bundleVersionCode = 63;
         PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, BundleId);
         PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);
         PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARMv7 | AndroidArchitecture.ARM64;
         PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel23;
-        PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel34;
+        PlayerSettings.Android.targetSdkVersion = AndroidSdkVersions.AndroidApiLevel35;
         PlayerSettings.SetManagedStrippingLevel(BuildTargetGroup.Android, ManagedStrippingLevel.Medium);
         PlayerSettings.stripEngineCode = true;
 

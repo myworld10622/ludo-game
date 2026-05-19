@@ -89,10 +89,10 @@ namespace LudoClassicOffline
         // ── Called when user wants to join by code ──
         public void OnJoinPressed()
         {
-            string code = joinCodeInput?.text?.Trim().ToUpper();
-            if (string.IsNullOrEmpty(code) || code.Length != 6)
+            string code = joinCodeInput?.text?.Trim();
+            if (!IsValidPrivateTableCode(code))
             {
-                CommonUtil.ShowToast("Please enter a valid 6-character table code.");
+                CommonUtil.ShowToast("Please enter a valid 6-digit table code.");
                 return;
             }
 
@@ -161,7 +161,21 @@ namespace LudoClassicOffline
         }
 
         private static string BuildShareMessage(string code)
-            => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
+            => $"Play Rox Ludo with me!\nRoom Code: {code}\nPlay at roxludo.com";
+
+        private static bool IsValidPrivateTableCode(string code)
+        {
+            if (string.IsNullOrEmpty(code) || code.Length != 6)
+                return false;
+
+            for (int i = 0; i < code.Length; i++)
+            {
+                if (!char.IsDigit(code[i]))
+                    return false;
+            }
+
+            return true;
+        }
 
         // ── Attach a one-time click listener to the code Text so tapping it copies the code ──
         private void MakeCodeLabelClickable(Text codeText)
@@ -240,7 +254,7 @@ namespace LudoClassicOffline
             currentTableCode = resp.code;
             currentTableId = resp.table_id;
 
-            GUIUtility.systemCopyBuffer = BuildShareMessage(resp.code);
+            PassNPlayPopup.CopyToClipboard(BuildShareMessage(resp.code));
             CommonUtil.ShowToast($"Table created! Share message copied (Code: {resp.code})");
 
             // Go directly to the game board — player waits there for others to join
@@ -345,7 +359,7 @@ namespace LudoClassicOffline
             if (cancelWaitingButton != null)
                 cancelWaitingButton.interactable = true;
 
-            GUIUtility.systemCopyBuffer = BuildShareMessage(code);
+            PassNPlayPopup.CopyToClipboard(BuildShareMessage(code));
         }
 
         private void HideWaitingPanel()

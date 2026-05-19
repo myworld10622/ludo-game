@@ -46,7 +46,7 @@ namespace LudoClassicOffline
             {
                 transformObj.GetChild(0).transform.GetComponent<RectTransform>().anchoredPosition = new Vector2(0f, 0f);
                 transformObj.GetChild(0).transform.GetComponent<Canvas>().sortingOrder = 301+CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(1f, 1f);
+                ApplyTokenScale(transformObj.GetChild(0), 1f);
             }
             if (myChildCount == 2)
             {
@@ -54,8 +54,8 @@ namespace LudoClassicOffline
                 transformObj.GetChild(1).transform.GetComponent<RectTransform>().anchoredPosition = new Vector2(10f, 0f);
                 transformObj.GetChild(0).transform.GetComponent<Canvas>().sortingOrder = 301+CanvasOrder;
                 transformObj.GetChild(1).transform.GetComponent<Canvas>().sortingOrder = 302+CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.8f, 0.8f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.8f, 0.8f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.8f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.8f);
             }
             if (myChildCount == 3)
             {
@@ -65,9 +65,9 @@ namespace LudoClassicOffline
                 transformObj.GetChild(0).transform.GetComponent<Canvas>().sortingOrder = 302+CanvasOrder;
                 transformObj.GetChild(1).transform.GetComponent<Canvas>().sortingOrder = 303 + CanvasOrder;
                 transformObj.GetChild(2).transform.GetComponent<Canvas>().sortingOrder = 301 + CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.7f, 0.7f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.7f, 0.7f);
-                transformObj.GetChild(2).transform.localScale = new Vector2(0.7f, 0.7f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.7f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.7f);
+                ApplyTokenScale(transformObj.GetChild(2), 0.7f);
             }
             if (myChildCount == 4)
             {
@@ -79,10 +79,10 @@ namespace LudoClassicOffline
                 transformObj.GetChild(1).transform.GetComponent<Canvas>().sortingOrder = 302 + CanvasOrder;
                 transformObj.GetChild(2).transform.GetComponent<Canvas>().sortingOrder = 303 + CanvasOrder;
                 transformObj.GetChild(3).transform.GetComponent<Canvas>().sortingOrder = 304 + CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.6f, 0.6f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.6f, 0.6f);
-                transformObj.GetChild(2).transform.localScale = new Vector2(0.6f, 0.6f);
-                transformObj.GetChild(3).transform.localScale = new Vector2(0.6f, 0.6f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.6f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.6f);
+                ApplyTokenScale(transformObj.GetChild(2), 0.6f);
+                ApplyTokenScale(transformObj.GetChild(3), 0.6f);
             }
             if (myChildCount == 5)
             {
@@ -96,11 +96,11 @@ namespace LudoClassicOffline
                 transformObj.GetChild(2).transform.GetComponent<Canvas>().sortingOrder = 303 + CanvasOrder;
                 transformObj.GetChild(3).transform.GetComponent<Canvas>().sortingOrder = 304 + CanvasOrder;
                 transformObj.GetChild(4).transform.GetComponent<Canvas>().sortingOrder = 305 + CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(2).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(3).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(4).transform.localScale = new Vector2(0.5f, 0.5f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(2), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(3), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(4), 0.5f);
             }
             if (myChildCount == 6)
             {
@@ -116,12 +116,12 @@ namespace LudoClassicOffline
                 transformObj.GetChild(3).transform.GetComponent<Canvas>().sortingOrder = 304 + CanvasOrder;
                 transformObj.GetChild(4).transform.GetComponent<Canvas>().sortingOrder = 305 + CanvasOrder;
                 transformObj.GetChild(5).transform.GetComponent<Canvas>().sortingOrder = 306 + CanvasOrder;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(2).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(3).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(4).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(5).transform.localScale = new Vector2(0.5f, 0.5f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(2), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(3), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(4), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(5), 0.5f);
             }
             if (myChildCount == 7)
             {
@@ -139,15 +139,28 @@ namespace LudoClassicOffline
                 transformObj.GetChild(4).transform.GetComponent<Canvas>().sortingOrder = 305;
                 transformObj.GetChild(5).transform.GetComponent<Canvas>().sortingOrder = 306;
                 transformObj.GetChild(6).transform.GetComponent<Canvas>().sortingOrder = 307;
-                transformObj.GetChild(0).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(1).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(2).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(3).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(4).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(5).transform.localScale = new Vector2(0.5f, 0.5f);
-                transformObj.GetChild(6).transform.localScale = new Vector2(0.5f, 0.5f);
+                ApplyTokenScale(transformObj.GetChild(0), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(1), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(2), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(3), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(4), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(5), 0.5f);
+                ApplyTokenScale(transformObj.GetChild(6), 0.5f);
             }
 
+        }
+
+        private void ApplyTokenScale(Transform tokenTransform, float defaultScale)
+        {
+            if (tokenTransform == null)
+                return;
+
+            CoockieMovementOffline tokenMovement = tokenTransform.GetComponent<CoockieMovementOffline>();
+            float finalScale = defaultScale;
+            if (tokenMovement != null && tokenMovement.myLastBoxIndex == 56)
+                finalScale = CoockieMovementOffline.HomeCenterScale;
+
+            tokenTransform.localScale = new Vector2(finalScale, finalScale);
         }
 
         private void DisableBoardRaycasts()

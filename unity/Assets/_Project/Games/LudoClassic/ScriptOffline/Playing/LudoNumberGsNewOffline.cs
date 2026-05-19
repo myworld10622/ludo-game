@@ -147,6 +147,7 @@ namespace LudoClassicOffline
             // ludoNumbersAcknowledgementHandler.yesBtn.GetComponent<Image>().raycastTarget = false;
             //  ludoNumbersAcknowledgementHandler.noBtn.GetComponent<Image>().raycastTarget = false;
 
+            WebGlOrientationBridge.SetLandscape();
             Screen.orientation = ScreenOrientation.LandscapeLeft;
             Screen.autorotateToPortrait = false;
             Screen.autorotateToPortraitUpsideDown = false;

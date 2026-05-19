@@ -1181,7 +1181,7 @@
       Real-time multiplayer Ludo with <strong>live tournaments</strong>, massive prize pools, and your own private matches. Compete, win, dominate.
     </p>
     <div class="hero-cta">
-      <a href="/login" class="btn-primary" data-i18n="hero.cta.start">🎲 Start Playing Free</a>
+      <a href="/ludo-webgl/" class="btn-primary" data-i18n="hero.cta.start">🎲 Start Playing Free</a>
       <a href="#" class="btn-apk" onclick="openModal('apkModal')" data-i18n="hero.cta.apk">📱 Download APK</a>
       <a href="#" class="btn-secondary" onclick="openModal('guideModal')" data-i18n="hero.cta.guide">📖 How to Play</a>
       <a href="/tournament-guide" class="btn-secondary" target="_blank">🏆 Tournament Guide</a>

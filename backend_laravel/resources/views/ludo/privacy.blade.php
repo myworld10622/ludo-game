@@ -49,7 +49,7 @@
   <div class="page-header">
     <div class="page-tag">Legal</div>
     <h1>Privacy Policy</h1>
-    <p class="page-meta">Last Updated: January 1, 2025 &nbsp;•&nbsp; Effective Date: January 1, 2025 &nbsp;•&nbsp; Domain: roxludo.com</p>
+    <p class="page-meta">Last Updated: May 19, 2026 &nbsp;•&nbsp; Effective Date: May 19, 2026 &nbsp;•&nbsp; Domain: roxludo.com</p>
   </div>
 
   <div class="highlight-box">

@@ -1391,6 +1391,9 @@ namespace AndroApps
 
         private void ApplyLoginResponsiveLayout(bool portrait)
         {
+            bool compactDesktopWeb = UseDesktopWebCompactLayout() && !portrait;
+            float sizeScale = compactDesktopWeb ? 0.68f : 1f;
+
             Transform loginPanel = FindByPath(_overlay.transform, "LoginFormPanel");
             if (loginPanel == null)
             {
@@ -1407,8 +1410,8 @@ namespace AndroApps
                 {
                     SetAnchors(
                         modelRect,
-                        portrait ? new Vector2(-0.08f, 0.00f) : new Vector2(0.00f, 0.02f),
-                        portrait ? new Vector2(0.56f, 0.72f) : new Vector2(0.38f, 0.92f));
+                        portrait ? new Vector2(-0.08f, 0.00f) : (compactDesktopWeb ? new Vector2(0.04f, 0.10f) : new Vector2(0.00f, 0.02f)),
+                        portrait ? new Vector2(0.56f, 0.72f) : (compactDesktopWeb ? new Vector2(0.30f, 0.78f) : new Vector2(0.38f, 0.92f)));
                 }
             }
 
@@ -1431,7 +1434,10 @@ namespace AndroApps
             }
             else
             {
-                SetAnchors(cardRect, new Vector2(0.34f, 0.045f), new Vector2(0.965f, 0.955f));
+                SetAnchors(
+                    cardRect,
+                    compactDesktopWeb ? new Vector2(0.42f, 0.16f) : new Vector2(0.34f, 0.045f),
+                    compactDesktopWeb ? new Vector2(0.90f, 0.84f) : new Vector2(0.965f, 0.955f));
             }
 
             Image cardImage = card.GetComponent<Image>();
@@ -1443,8 +1449,10 @@ namespace AndroApps
             VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
             if (layout != null)
             {
-                layout.padding = portrait ? new RectOffset(34, 34, 24, 20) : new RectOffset(38, 38, 22, 18);
-                layout.spacing = portrait ? 10f : 8f;
+                layout.padding = portrait
+                    ? new RectOffset(34, 34, 24, 20)
+                    : (compactDesktopWeb ? new RectOffset(28, 28, 14, 12) : new RectOffset(38, 38, 22, 18));
+                layout.spacing = portrait ? 10f : (compactDesktopWeb ? 5f : 8f);
                 layout.childAlignment = TextAnchor.MiddleCenter;
                 layout.childControlWidth = true;
                 layout.childControlHeight = true;
@@ -1458,21 +1466,21 @@ namespace AndroApps
                 Text directText = child.GetComponent<Text>();
                 if (directText != null)
                 {
-                    ApplyLoginLabelSize(directText, portrait);
+                    ApplyLoginLabelSize(directText, portrait, sizeScale);
                     continue;
                 }
 
                 InputField input = child.GetComponent<InputField>();
                 if (input != null)
                 {
-                    StyleInput(input, portrait ? 48 : 42, portrait ? 118f : 98f);
+                    StyleInput(input, ScaleInt(portrait ? 48 : 42, sizeScale), ScaleFloat(portrait ? 118f : 98f, sizeScale));
                     continue;
                 }
 
                 Button button = child.GetComponent<Button>();
                 if (button != null)
                 {
-                    ApplyLoginButtonSize(button, portrait);
+                    ApplyLoginButtonSize(button, portrait, sizeScale);
                     continue;
                 }
 
@@ -1485,6 +1493,9 @@ namespace AndroApps
 
         private void ApplySignupResponsiveLayout(bool portrait)
         {
+            bool compactDesktopWeb = UseDesktopWebCompactLayout() && !portrait;
+            float sizeScale = compactDesktopWeb ? 0.68f : 1f;
+
             Transform card = FindByPath(_overlay.transform, "SignupFormPanel/SignupCard");
             if (card == null)
             {
@@ -1494,8 +1505,8 @@ namespace AndroApps
             RectTransform cardRect = card as RectTransform;
             SetAnchors(
                 cardRect,
-                portrait ? new Vector2(0.035f, 0.025f) : new Vector2(0.18f, 0.035f),
-                portrait ? new Vector2(0.965f, 0.975f) : new Vector2(0.82f, 0.965f));
+                portrait ? new Vector2(0.035f, 0.025f) : (compactDesktopWeb ? new Vector2(0.27f, 0.12f) : new Vector2(0.18f, 0.035f)),
+                portrait ? new Vector2(0.965f, 0.975f) : (compactDesktopWeb ? new Vector2(0.73f, 0.88f) : new Vector2(0.82f, 0.965f)));
 
             Image cardImage = card.GetComponent<Image>();
             if (cardImage != null)
@@ -1506,8 +1517,10 @@ namespace AndroApps
             VerticalLayoutGroup layout = card.GetComponent<VerticalLayoutGroup>();
             if (layout != null)
             {
-                layout.padding = portrait ? new RectOffset(32, 32, 22, 18) : new RectOffset(38, 38, 22, 18);
-                layout.spacing = portrait ? 9f : 8f;
+                layout.padding = portrait
+                    ? new RectOffset(32, 32, 22, 18)
+                    : (compactDesktopWeb ? new RectOffset(26, 26, 14, 12) : new RectOffset(38, 38, 22, 18));
+                layout.spacing = portrait ? 9f : (compactDesktopWeb ? 5f : 8f);
                 layout.childAlignment = TextAnchor.MiddleCenter;
                 layout.childControlWidth = true;
                 layout.childControlHeight = true;
@@ -1521,49 +1534,49 @@ namespace AndroApps
                 Text directText = child.GetComponent<Text>();
                 if (directText != null)
                 {
-                    ApplySignupLabelSize(directText, portrait);
+                    ApplySignupLabelSize(directText, portrait, sizeScale);
                     continue;
                 }
 
                 InputField input = child.GetComponent<InputField>();
                 if (input != null)
                 {
-                    StyleInput(input, portrait ? 42 : 36, portrait ? 96f : 78f);
+                    StyleInput(input, ScaleInt(portrait ? 42 : 36, sizeScale), ScaleFloat(portrait ? 96f : 78f, sizeScale));
                     continue;
                 }
 
                 Button button = child.GetComponent<Button>();
                 if (button != null)
                 {
-                    ApplyGenericButtonSize(button, portrait ? 42 : 34, portrait ? 84f : 68f);
+                    ApplyGenericButtonSize(button, ScaleInt(portrait ? 42 : 34, sizeScale), ScaleFloat(portrait ? 84f : 68f, sizeScale));
                     continue;
                 }
 
                 if (child.name == "TermsRow")
                 {
-                    SetLayoutHeight(child, portrait ? 62f : 52f);
+                    SetLayoutHeight(child, ScaleFloat(portrait ? 62f : 52f, sizeScale));
                     Text termsText = child.GetComponentInChildren<Text>(true);
                     if (termsText != null)
                     {
-                        termsText.fontSize = portrait ? 30 : 25;
+                        termsText.fontSize = ScaleInt(portrait ? 30 : 25, sizeScale);
                         termsText.resizeTextForBestFit = true;
-                        termsText.resizeTextMinSize = portrait ? 24 : 20;
-                        termsText.resizeTextMaxSize = portrait ? 30 : 25;
+                        termsText.resizeTextMinSize = ScaleInt(portrait ? 24 : 20, sizeScale);
+                        termsText.resizeTextMaxSize = ScaleInt(portrait ? 30 : 25, sizeScale);
                     }
                 }
                 else if (child.name == "SignupFooterRow")
                 {
-                    SetLayoutHeight(child, portrait ? 78f : 64f);
+                    SetLayoutHeight(child, ScaleFloat(portrait ? 78f : 64f, sizeScale));
                     Button[] buttons = child.GetComponentsInChildren<Button>(true);
                     for (int b = 0; b < buttons.Length; b++)
                     {
-                        ApplyGenericButtonSize(buttons[b], portrait ? 38 : 32, portrait ? 74f : 60f);
+                        ApplyGenericButtonSize(buttons[b], ScaleInt(portrait ? 38 : 32, sizeScale), ScaleFloat(portrait ? 74f : 60f, sizeScale));
                     }
                 }
             }
         }
 
-        private void ApplyLoginLabelSize(Text label, bool portrait)
+        private void ApplyLoginLabelSize(Text label, bool portrait, float sizeScale)
         {
             if (label == null)
             {
@@ -1583,27 +1596,27 @@ namespace AndroApps
 
             if (text.IndexOf("Welcome", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                label.fontSize = portrait ? 76 : 62;
+                label.fontSize = ScaleInt(portrait ? 76 : 62, sizeScale);
                 label.alignment = TextAnchor.MiddleCenter;
-                SetLayoutHeight(label.transform, portrait ? 96f : 78f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 96f : 78f, sizeScale));
             }
             else if (text.IndexOf("Login to", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                label.fontSize = portrait ? 52 : 42;
+                label.fontSize = ScaleInt(portrait ? 52 : 42, sizeScale);
                 label.fontStyle = FontStyle.Bold;
                 label.alignment = TextAnchor.MiddleCenter;
-                SetLayoutHeight(label.transform, portrait ? 64f : 52f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 64f : 52f, sizeScale));
             }
             else
             {
-                label.fontSize = portrait ? 44 : 36;
+                label.fontSize = ScaleInt(portrait ? 44 : 36, sizeScale);
                 label.fontStyle = FontStyle.Bold;
                 label.alignment = TextAnchor.MiddleLeft;
-                SetLayoutHeight(label.transform, portrait ? 54f : 44f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 54f : 44f, sizeScale));
             }
         }
 
-        private void ApplySignupLabelSize(Text label, bool portrait)
+        private void ApplySignupLabelSize(Text label, bool portrait, float sizeScale)
         {
             if (label == null)
             {
@@ -1616,40 +1629,40 @@ namespace AndroApps
 
             if (text.IndexOf("Create New", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                label.fontSize = portrait ? 58 : 48;
+                label.fontSize = ScaleInt(portrait ? 58 : 48, sizeScale);
                 label.alignment = TextAnchor.MiddleCenter;
-                SetLayoutHeight(label.transform, portrait ? 74f : 62f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 74f : 62f, sizeScale));
             }
             else if (text.IndexOf("Sign up", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                label.fontSize = portrait ? 38 : 32;
+                label.fontSize = ScaleInt(portrait ? 38 : 32, sizeScale);
                 label.alignment = TextAnchor.MiddleCenter;
-                SetLayoutHeight(label.transform, portrait ? 46f : 38f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 46f : 38f, sizeScale));
             }
             else
             {
-                label.fontSize = portrait ? 34 : 28;
+                label.fontSize = ScaleInt(portrait ? 34 : 28, sizeScale);
                 label.alignment = TextAnchor.MiddleLeft;
-                SetLayoutHeight(label.transform, portrait ? 42f : 34f);
+                SetLayoutHeight(label.transform, ScaleFloat(portrait ? 42f : 34f, sizeScale));
             }
         }
 
-        private void ApplyLoginButtonSize(Button button, bool portrait)
+        private void ApplyLoginButtonSize(Button button, bool portrait, float sizeScale)
         {
             Text label = button.GetComponentInChildren<Text>(true);
             string text = label != null ? label.text ?? string.Empty : string.Empty;
 
             if (text.IndexOf("LOGIN WITH", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                ApplyGenericButtonSize(button, portrait ? 46 : 38, portrait ? 102f : 84f);
+                ApplyGenericButtonSize(button, ScaleInt(portrait ? 46 : 38, sizeScale), ScaleFloat(portrait ? 102f : 84f, sizeScale));
             }
             else if (text.IndexOf("Guest", System.StringComparison.OrdinalIgnoreCase) >= 0)
             {
-                ApplyGenericButtonSize(button, portrait ? 44 : 36, portrait ? 92f : 72f);
+                ApplyGenericButtonSize(button, ScaleInt(portrait ? 44 : 36, sizeScale), ScaleFloat(portrait ? 92f : 72f, sizeScale));
             }
             else
             {
-                ApplyGenericButtonSize(button, portrait ? 40 : 32, portrait ? 66f : 54f);
+                ApplyGenericButtonSize(button, ScaleInt(portrait ? 40 : 32, sizeScale), ScaleFloat(portrait ? 66f : 54f, sizeScale));
             }
         }
 
@@ -1793,6 +1806,25 @@ namespace AndroApps
             rect.anchorMax = max;
             rect.offsetMin = Vector2.zero;
             rect.offsetMax = Vector2.zero;
+        }
+
+        private static int ScaleInt(int value, float multiplier)
+        {
+            return Mathf.Max(16, Mathf.RoundToInt(value * multiplier));
+        }
+
+        private static float ScaleFloat(float value, float multiplier)
+        {
+            return Mathf.Max(24f, value * multiplier);
+        }
+
+        private static bool UseDesktopWebCompactLayout()
+        {
+#if UNITY_WEBGL && !UNITY_EDITOR
+            return !Application.isMobilePlatform;
+#else
+            return false;
+#endif
         }
 
 

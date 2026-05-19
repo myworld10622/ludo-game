@@ -316,7 +316,13 @@ public class CPV_Socket_Manager : MonoBehaviour
 
     void SetOrientation(string orientation)
     {
-        Application.ExternalCall("setDesiredOrientation", orientation);
+        if (orientation == "landscape")
+        {
+            WebGlOrientationBridge.SetLandscape();
+            return;
+        }
+
+        WebGlOrientationBridge.SetPortrait();
     }
 
     private void OnEnable()

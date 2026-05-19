@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PrivateLudoTable extends Model
 {
+    public const CODE_LENGTH = 6;
+
     protected $fillable = [
         'code', 'creator_id', 'fee_amount', 'max_players',
         'current_players', 'prize_pool', 'status',
@@ -42,7 +44,7 @@ class PrivateLudoTable extends Model
     public static function generateCode(): string
     {
         do {
-            $code = strtoupper(substr(str_shuffle('ABCDEFGHJKLMNPQRSTUVWXYZ23456789'), 0, 6));
+            $code = str_pad((string) random_int(0, (10 ** self::CODE_LENGTH) - 1), self::CODE_LENGTH, '0', STR_PAD_LEFT);
         } while (self::where('code', $code)->exists());
 
         return $code;

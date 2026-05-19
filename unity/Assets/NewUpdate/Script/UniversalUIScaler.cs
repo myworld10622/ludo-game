@@ -6,6 +6,8 @@ public class UniversalUIScaler : MonoBehaviour
 {
     private static readonly Vector2 PortraitReference = new Vector2(1080f, 1920f);
     private static readonly Vector2 LandscapeReference = new Vector2(1920f, 1080f);
+    private static readonly Vector2 DesktopWebPortraitReference = new Vector2(1800f, 3200f);
+    private static readonly Vector2 DesktopWebLandscapeReference = new Vector2(3200f, 1800f);
 
     private int lastScreenWidth;
     private int lastScreenHeight;
@@ -52,6 +54,14 @@ public class UniversalUIScaler : MonoBehaviour
         lastScreenHeight = Screen.height;
 
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+
+        if (UseDesktopWebCompactLayout())
+        {
+            scaler.referenceResolution = landscape ? DesktopWebLandscapeReference : DesktopWebPortraitReference;
+            scaler.matchWidthOrHeight = 1f;
+            return;
+        }
+
         scaler.referenceResolution = landscape ? LandscapeReference : PortraitReference;
 
         if (landscape)
@@ -62,5 +72,14 @@ public class UniversalUIScaler : MonoBehaviour
         {
             scaler.matchWidthOrHeight = aspect > 0.68f ? 1f : 0f;
         }
+    }
+
+    private static bool UseDesktopWebCompactLayout()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return !Application.isMobilePlatform;
+#else
+        return false;
+#endif
     }
 }

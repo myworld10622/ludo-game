@@ -45,6 +45,7 @@ public class LoadingManager : MonoBehaviour
 
     void Start()
     {
+        WebGlOrientationBridge.SetPortrait();
         startTime = Time.time;
         startValue = 0;
         targetValue = 1;

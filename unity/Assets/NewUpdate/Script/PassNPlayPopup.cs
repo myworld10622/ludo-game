@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
+using System.Runtime.InteropServices;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TouchScreenKeyboardType = UnityEngine.TouchScreenKeyboardType;
 
 /// <summary>
 /// Index values:
@@ -13,6 +15,11 @@ using UnityEngine.UI;
 /// </summary>
 public class PassNPlayPopup : MonoBehaviour
 {
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void RoxCopyTextToClipboard(string text);
+    [DllImport("__Internal")] private static extern void RoxPrepareWebGlTextInput(string mode);
+#endif
+
     public Text TxtTitle;
     public Text TxtMessage;
     public GameObject ObjePrivateTable;
@@ -36,12 +43,14 @@ public class PassNPlayPopup : MonoBehaviour
         {
             case 1: // JOIN view
                 TxtTitle.text = "Private Table";
-                TxtMessage.text = "Enter a 6-character code to join a table.";
+                TxtMessage.text = "Enter a 6-digit code to join a table.";
                 ObjePrivateTable.SetActive(true);
                 SetChildActive("TxtFee",  false);
                 SetChildActive("TxtCode", true);
                 ClearInput("TxtCode");
-                TryPasteCodeFromClipboard("TxtCode");  // auto-detect code from copied share message
+                ConfigureInput("TxtCode", InputField.ContentType.IntegerNumber, TouchScreenKeyboardType.NumberPad, 6);
+                SetInputPlaceholder("TxtCode", "Please fill 6-digit code here");
+                PrepareWebGlTextInput(true);
                 SetChildActive("2PlayersButton", true);
                 SetChildActive("3PlayersButton", true);
                 SetChildActive("4PlayersButton", false);
@@ -57,13 +66,12 @@ public class PassNPlayPopup : MonoBehaviour
                 SetChildActive("2PlayersButton", false);
                 SetChildActive("3PlayersButton", false);
                 SetChildActive("4PlayersButton", false);
-                SetCancelButtonText(WaitingIsCreator ? "📋 Copy Code & Share" : "Close");
-                if (WaitingIsCreator) CopyToClipboard(BuildShareMessage(WaitingCode));
+                SetCancelButtonText(WaitingIsCreator ? "Share Invite" : "Close");
                 // Make the code text tappable — tap it to copy just the bare code
                 MakeTextTappable(TxtMessage, () =>
                 {
                     CopyToClipboard(WaitingCode);
-                    if (TxtMessage != null) TxtMessage.text = "✅ Code copied!\n" + TxtMessage.text;
+                    RefreshWaitingMessage("Code copied");
                 });
                 break;
 
@@ -84,6 +92,8 @@ public class PassNPlayPopup : MonoBehaviour
                 SetChildActive("TxtFee",  true);
                 SetChildActive("TxtCode", false);
                 ClearInput("TxtFee");
+                ConfigureInput("TxtFee", InputField.ContentType.IntegerNumber, TouchScreenKeyboardType.NumberPad, 6);
+                PrepareWebGlTextInput(true);
                 SetChildActive("2PlayersButton", true);
                 SetChildActive("3PlayersButton", true);
                 SetChildActive("4PlayersButton", true);
@@ -110,16 +120,24 @@ public class PassNPlayPopup : MonoBehaviour
 
     private void OnDisable()
     {
+        PrepareWebGlTextInput(false);
         Index = 0;
     }
 
     internal void RefreshWaitingMessage()
     {
+        RefreshWaitingMessage(null);
+    }
+
+    internal void RefreshWaitingMessage(string statusLine)
+    {
         if (TxtMessage == null) return;
         TxtMessage.text =
-            $"Code:  {WaitingCode}\n" +
+            $"Room Code\n{WaitingCode}\n" +
+            "Tap code to copy\n" +
             $"{WaitingPrizeInfo}\n" +
             $"Players joined: {WaitingCurrentPlayers}/{WaitingMaxPlayers}\n" +
+            (!string.IsNullOrEmpty(statusLine) ? $"{statusLine}\n" : "") +
             (WaitingCurrentPlayers >= WaitingMaxPlayers ? "Starting game..." : "Waiting for players...");
     }
 
@@ -141,6 +159,32 @@ public class PassNPlayPopup : MonoBehaviour
         if (t == null) return;
         InputField inp = t.GetComponent<InputField>();
         if (inp != null) { inp.text = ""; inp.interactable = true; }
+    }
+
+    private void ConfigureInput(string childName, InputField.ContentType contentType, TouchScreenKeyboardType keyboardType, int characterLimit)
+    {
+        Transform t = FindDeep(transform, childName);
+        if (t == null) return;
+
+        InputField inp = t.GetComponent<InputField>();
+        if (inp == null) return;
+
+        inp.contentType = contentType;
+        inp.keyboardType = keyboardType;
+        inp.characterLimit = characterLimit;
+        inp.lineType = InputField.LineType.SingleLine;
+        inp.ForceLabelUpdate();
+    }
+
+    private void SetInputPlaceholder(string childName, string placeholderText)
+    {
+        Transform t = FindDeep(transform, childName);
+        if (t == null) return;
+        InputField inp = t.GetComponent<InputField>();
+        if (inp == null || inp.placeholder == null) return;
+
+        if (inp.placeholder is Text textPlaceholder)
+            textPlaceholder.text = placeholderText;
     }
 
     private void SetChildActive(string childName, bool active)
@@ -178,41 +222,37 @@ public class PassNPlayPopup : MonoBehaviour
             Debug.LogWarning("[Clipboard] Android copy failed: " + e.Message);
             GUIUtility.systemCopyBuffer = text;
         }
+#elif UNITY_WEBGL && !UNITY_EDITOR
+        try
+        {
+            RoxCopyTextToClipboard(text ?? string.Empty);
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[Clipboard] WebGL copy failed: " + e.Message);
+            GUIUtility.systemCopyBuffer = text;
+        }
 #else
         GUIUtility.systemCopyBuffer = text;
 #endif
     }
 
-    private static string BuildShareMessage(string code)
-        => $"Play Rox Ludo with me!\nRoom Code:\n👉 {code}\nPlay at roxludo.com";
-
-    // ── Smart paste: scan clipboard for a 6-char uppercase code ─────────────
-    private void TryPasteCodeFromClipboard(string inputChildName)
+    private static void PrepareWebGlTextInput(bool numericOnly)
     {
+#if UNITY_WEBGL && !UNITY_EDITOR
         try
         {
-            string clipboard = GUIUtility.systemCopyBuffer;
-            if (string.IsNullOrEmpty(clipboard)) return;
-
-            // Match 6-char alphanumeric — handles "👉 P97X38" or "code: P97X38" etc.
-            var match = Regex.Match(clipboard, @"\b([A-Z0-9]{6})\b");
-            if (!match.Success)
-                match = Regex.Match(clipboard.ToUpper(), @"[A-Z0-9]{6}");
-            if (!match.Success) return;
-
-            string code = match.Value.ToUpper();
-            Transform t = FindDeep(transform, inputChildName);
-            if (t == null) return;
-            InputField inp = t.GetComponent<InputField>();
-            if (inp != null)
-            {
-                inp.text = code;
-                if (TxtMessage != null)
-                    TxtMessage.text = $"Code detected: {code}\nTap JOIN TABLE to continue.";
-            }
+            RoxPrepareWebGlTextInput(numericOnly ? "numeric" : "default");
         }
-        catch { }
+        catch (System.Exception e)
+        {
+            Debug.LogWarning("[WebGLInput] prepare failed: " + e.Message);
+        }
+#endif
     }
+
+    private static string BuildShareMessage(string code)
+        => $"Play Rox Ludo with me!\nRoom Code: {code}\nPlay at roxludo.com";
 
     // ── Make a Text label tappable (adds EventTrigger at runtime) ────────────
     private static void MakeTextTappable(Text label, UnityEngine.Events.UnityAction onClick)
